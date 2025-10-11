@@ -115,6 +115,44 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ---
 
+## [1.0.3] - 2025-10-11
+
+### Added
+- 🎨 **OAuth Loading UX Enhancement**: Professioneller Google-Login Flow mit Visual Feedback
+  - OAuthLoadingOverlay Component mit animiertem Google Logo
+  - CircularProgress Spinner während OAuth-Redirect
+  - "Weiterleitung zu Google..." Nachricht mit Erklärung
+  - Pulse Animation für Google Logo
+  - Backdrop mit Blur-Effekt für bessere Fokussierung
+
+### Changed
+- 📱 **AuthContext erweitert** (bazar_bold Projekt):
+  - Neuer `oauthLoading` State für OAuth-Flow Tracking
+  - Loading State wird automatisch bei OAuth-Start gesetzt
+  - Loading State wird bei Deep Link Callback automatisch zurückgesetzt
+  - Verbesserte Error Handling während OAuth-Flow
+
+- 🎨 **LoginDialog UX Verbesserung**:
+  - OAuthLoadingOverlay Integration
+  - Smooth Fade-In Animation beim Erscheinen
+  - Automatisches Schließen des Overlays nach erfolgreicher Auth
+  - Konsistentes Loading-Feedback für User
+
+### Technical Details
+- Neue Komponente: `/src/components/Auth/OAuthLoadingOverlay.tsx`
+- MUI System Keyframes für Animationen
+- Backdrop mit 95% weiß und Blur-Filter
+- ASWebAuthenticationSession Best Practices befolgt
+- Entspricht iOS OAuth Standards von Spotify, Twitter, Canva
+
+### UX Improvements
+- User sieht jetzt klares visuelles Feedback während OAuth-Redirect
+- Reduzierte Verwirrung durch informativen Text
+- Professionellerer Look & Feel beim Google Login
+- Smooth Transitions statt abrupter Browser-Wechsel
+
+---
+
 ## [Unreleased]
 
 ### Geplante Features
@@ -137,6 +175,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - `Fixed` - Bug Fixes
 - `Security` - Sicherheits-Updates
 
+[1.0.3]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.3
 [1.0.2]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.0
