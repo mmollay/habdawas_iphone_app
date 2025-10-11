@@ -1,0 +1,62 @@
+# Vercel Ignore File
+# Only deploy www/ directory
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# iOS specific files
+ios/
+*.xcodeproj
+*.xcworkspace
+*.pbxproj
+Podfile
+Podfile.lock
+*.xcuserstate
+
+# Capacitor
+.capacitor/
+
+# Development files
+*.md
+!README.md
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Supabase
+supabase/
+.supabase/
+
+# Test/Analysis
+bazar-integration/
+bazar_analysis/
+
+# Scripts
+*.sh
+
+# Resources (source files, not needed in deployment)
+resources/
+
+# Documentation
+ICONS-README.md
+PUSH-NOTIFICATIONS-SETUP.md
+QUICK-START-NOTIFICATIONS.md
+SETUP-ANLEITUNG.md
+STATUS.md
+TEST-REPORT.md
+NAECHSTE-SCHRITTE.md

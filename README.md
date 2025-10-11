@@ -278,6 +278,60 @@ cd ../..
 - Simulator unterstützt keine APNs
 - Apple Developer Account erforderlich
 
+## ☁️ Vercel Deployment
+
+Die App ist für Vercel-Deployment vorbereitet und deployed die optimierte mobile UI.
+
+### Deployment-Konfiguration
+
+Die Vercel-Konfiguration in `vercel.json` enthält:
+- **Static File Serving** aus `www/` Verzeichnis
+- **SPA Routing** (alle Requests → index.html)
+- **Asset Caching** mit `max-age=31536000` für Optimierung
+- **Security Headers** (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
+
+### Vercel CLI Installation
+
+```bash
+npm install -g vercel
+```
+
+### Deployment
+
+```bash
+# Erstmaliges Deployment
+vercel
+
+# Production Deployment
+vercel --prod
+```
+
+### Automatisches Deployment
+
+Verbinde das Repository mit Vercel für automatische Deployments:
+1. Gehe zu [Vercel Dashboard](https://vercel.com/dashboard)
+2. Import Git Repository
+3. Configure Project (nutzt automatisch `vercel.json`)
+4. Deploy
+
+**Branch Strategy**:
+- `main` → Production (`*.vercel.app`)
+- Feature Branches → Preview Deployments
+
+### Environment Variables
+
+Setze in Vercel Dashboard unter "Settings → Environment Variables":
+```
+NEXT_PUBLIC_API_URL=https://beta.habdawas.at/api
+# Weitere Environment Variables...
+```
+
+### Deployment URL
+
+Nach Deployment erreichbar unter:
+- Production: `https://habdawas-mobile.vercel.app`
+- Preview: `https://habdawas-mobile-[branch].vercel.app`
+
 ## 📚 Weitere Ressourcen
 
 ### Capacitor
@@ -292,11 +346,18 @@ cd ../..
 - [iOS Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/)
 - [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)
 
+### Deployment & CI/CD
+
+- [Vercel Documentation](https://vercel.com/docs)
+- [Vercel CLI](https://vercel.com/docs/cli)
+- [Environment Variables](https://vercel.com/docs/projects/environment-variables)
+
 ### Tools
 
 - [Xcode](https://apps.apple.com/app/xcode/id497799835)
 - [Capacitor Assets Generator](https://github.com/ionic-team/capacitor-assets)
 - [AppIcon.co](https://appicon.co/) - Icon Generator
+- [Vercel CLI](https://vercel.com/download)
 
 ## 🤝 Support & Fragen
 
