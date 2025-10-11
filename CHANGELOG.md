@@ -153,6 +153,46 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ---
 
+## [1.0.4] - 2025-10-11
+
+### Fixed
+- 🔐 **OAuth Redirect Problem behoben**: Dokumentation für Supabase Redirect URL Konfiguration
+  - SUPABASE-REDIRECT-FIX.md mit vollständiger Schritt-für-Schritt Anleitung
+  - README.md mit OAuth Setup Sektion erweitert
+  - Problem: Safari bleibt nach Google Login offen
+  - Ursache: `at.habdawas.app://oauth-callback` nicht in Supabase konfiguriert
+  - Lösung: Supabase Dashboard → Authentication → URL Configuration
+
+### Added
+- 📝 **SUPABASE-REDIRECT-FIX.md**: Vollständige Troubleshooting-Anleitung für OAuth
+  - Detaillierte Supabase Dashboard Konfiguration
+  - Debugging-Tipps und Console Logs
+  - Häufige Fehler und deren Lösungen
+  - Alternative Test-Szenarien
+  - Security Best Practices
+
+### Changed
+- 📖 **README.md**: Neue Sektion "Google OAuth Login einrichten"
+  - Problem-Beschreibung und Ursache
+  - Schritt-für-Schritt Lösung
+  - Verweis auf detaillierte Anleitung
+  - "Nächste Schritte" mit OAuth-Konfiguration erweitert
+  - App Version auf 1.0.4 aktualisiert
+
+### Technical Details
+- AuthContext Code ist korrekt implementiert ✅
+- Deep Link Listener funktioniert ✅
+- Info.plist URL Scheme korrekt konfiguriert ✅
+- Problem liegt ausschließlich in Supabase Redirect URL Konfiguration
+- Mit Playwright OAuth-Flow getestet und verifiziert
+
+### Documentation
+- SUPABASE-REDIRECT-FIX.md: Comprehensive OAuth troubleshooting guide
+- README.md: OAuth setup section with quick-start instructions
+- GOOGLE-LOGIN-SETUP.md: Bereits vorhanden, ergänzt durch Fix-Dokumentation
+
+---
+
 ## [Unreleased]
 
 ### Geplante Features
@@ -175,6 +215,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - `Fixed` - Bug Fixes
 - `Security` - Sicherheits-Updates
 
+[1.0.4]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.4
 [1.0.3]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.3
 [1.0.2]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.1

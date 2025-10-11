@@ -155,6 +155,63 @@ import { scheduleLocalNotification } from './notifications.js';
 scheduleLocalNotification('Test', 'Das ist eine Test-Notification');
 ```
 
+## 🔐 Google OAuth Login einrichten
+
+Die App unterstützt Google OAuth Login für iOS. **Wichtig**: Eine zusätzliche Supabase-Konfiguration ist erforderlich.
+
+### Problem: OAuth Redirect funktioniert nicht
+
+Nach dem Google Login im Safari bleibt der Browser offen und die App wird nicht automatisch geöffnet.
+
+**Ursache**: Die Custom URL Scheme Redirect URL ist nicht in Supabase konfiguriert.
+
+### Lösung: Supabase Dashboard konfigurieren
+
+1. **Supabase Dashboard öffnen**: https://hsbjflixgavjqxvnkivi.supabase.co/project/hsbjflixgavjqxvnkivi
+2. **Navigation**: Authentication → URL Configuration
+3. **Redirect URLs hinzufügen**:
+   ```
+   at.habdawas.app://oauth-callback
+   ```
+4. **Bestehende URLs behalten**:
+   ```
+   https://beta.habdawas.at
+   https://beta.habdawas.at/
+   at.habdawas.app://oauth-callback
+   ```
+5. **Speichern** klicken
+
+### Was bereits implementiert ist
+
+✅ AuthContext mit Capacitor OAuth Support
+✅ Deep Link Listener für iOS
+✅ Custom URL Scheme in Info.plist (`at.habdawas.app://`)
+✅ Automatisches Browser-Schließen nach Auth
+✅ OAuth Loading Overlay mit Google Logo
+
+### Testen
+
+Nach der Supabase-Konfiguration:
+
+```bash
+npx cap open ios
+```
+
+In Xcode:
+1. Build & Run (⌘ + R)
+2. In der App auf "Mit Google anmelden" klicken
+3. Safari öffnet sich mit Google Login
+4. Nach Login sollte die **App automatisch wieder öffnen**
+5. Safari schließt sich automatisch
+
+### Detaillierte Anleitung
+
+Siehe [SUPABASE-REDIRECT-FIX.md](./SUPABASE-REDIRECT-FIX.md) für:
+- Schritt-für-Schritt Konfiguration
+- Debugging-Tipps
+- Häufige Fehler und Lösungen
+- Security Best Practices
+
 ## 🔧 Konfiguration
 
 ### Capacitor Config
@@ -368,6 +425,7 @@ Bei Fragen oder Problemen:
 
 ## 📝 Nächste Schritte
 
+- [ ] **Google OAuth konfigurieren** → Siehe [SUPABASE-REDIRECT-FIX.md](./SUPABASE-REDIRECT-FIX.md) ⚠️ **WICHTIG**
 - [ ] **App Icons erstellen** → Siehe [ICONS-README.md](./ICONS-README.md)
 - [ ] **Auf Simulator testen** → `npx cap open ios`
 - [ ] **Auf iPhone testen** → USB verbinden + Xcode Build
@@ -377,7 +435,7 @@ Bei Fragen oder Problemen:
 
 ---
 
-**App Version**: 1.0.0
+**App Version**: 1.0.4
 **Capacitor Version**: 7.4.3
 **iOS Target**: iOS 13.0+
 **Erstellt**: Oktober 2025
