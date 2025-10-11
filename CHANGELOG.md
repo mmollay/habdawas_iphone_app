@@ -5,6 +5,35 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.5] - 2025-10-12
+
+### Fixed
+- 🔐 **OAuth Session Detection aktiviert**: Google Login funktioniert jetzt korrekt in der iOS App
+  - Supabase Auth mit `detectSessionInUrl: true` konfiguriert
+  - PKCE OAuth-Flow für erhöhte Sicherheit implementiert
+  - OAuth-Tokens werden automatisch aus URL extrahiert nach Google-Callback
+  - Benutzer werden nach erfolgreicher Google-Anmeldung sofort eingeloggt
+  - Endloses Laden nach OAuth-Callback behoben
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Neueste Version von bazar_bold (v1.3.7) integriert
+  - Alle OAuth-Fixes von Web-App übernommen
+  - Optimierte Supabase Auth-Konfiguration
+  - Vollständiger Sync mit iOS Native-App
+
+### Technical Details
+- Web-App Version: 1.3.7 (OAuth Fix)
+- Supabase Client: detectSessionInUrl + flowType PKCE
+- Build Pipeline: bazar_bold → dist → iphone_app/www
+- Capacitor Sync durchgeführt
+
+### Testing
+- OAuth Flow mit Google getestet
+- Session Detection verifiziert
+- Deep Link Callback funktioniert
+
+---
+
 ## [1.0.0] - 2025-10-11
 
 ### Added
