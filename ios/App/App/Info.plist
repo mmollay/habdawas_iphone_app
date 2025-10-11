@@ -66,5 +66,16 @@
 	</dict>
 	<key>UIRequiresPersistentWiFi</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>at.habdawas.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>at.habdawas.app</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

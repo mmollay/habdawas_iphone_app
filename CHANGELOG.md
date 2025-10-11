@@ -75,6 +75,46 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ---
 
+## [1.0.2] - 2025-10-11
+
+### Added
+- 🔐 **Google OAuth Login für iOS**: Vollständige Integration
+  - Capacitor Browser Plugin für native OAuth im Safari
+  - Deep Link Handling für OAuth Callbacks
+  - Platform Detection (Web vs Native)
+  - Custom URL Scheme: `at.habdawas.app://oauth-callback`
+  - Automatisches Browser-Schließen nach erfolgreicher Auth
+
+### Changed
+- 📱 **AuthContext erweitert** (bazar_bold Projekt):
+  - Capacitor-spezifische OAuth-Logik
+  - Deep Link Listener für iOS
+  - Native Browser vs WebView Detection
+
+- 🔧 **iOS Konfiguration**:
+  - Info.plist: CFBundleURLTypes hinzugefügt
+  - URL Scheme registriert für Deep Linking
+  - Capacitor Browser Plugin zu Podfile
+
+### Technical Details
+- @capacitor/browser v7.0.2 installiert
+- @capacitor/app v7.1.0 installiert
+- bazar_bold Source Code angepasst
+- Build von bazar_bold in iphone_app/www/ integriert
+- iOS native dependencies mit CocoaPods aktualisiert
+
+### Documentation
+- GOOGLE-LOGIN-SETUP.md: Vollständige Setup-Anleitung
+- Supabase Dashboard Konfiguration dokumentiert
+- Debugging und Troubleshooting Guide
+
+### Security
+- OAuth-Flow über nativen Safari Browser (nicht WebView blockiert)
+- App-specific URL Scheme verhindert Callback-Abfangen
+- Token-Handling über Supabase sichere Mechanismen
+
+---
+
 ## [Unreleased]
 
 ### Geplante Features
@@ -97,5 +137,6 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - `Fixed` - Bug Fixes
 - `Security` - Sicherheits-Updates
 
+[1.0.2]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.0
