@@ -58,6 +58,23 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ---
 
+## [1.0.1] - 2025-10-11
+
+### Changed
+- 🎨 **App Icons & Favicon**: Hand-Icon von beta.habdawas.at übernommen
+  - Favicon in www/ aktualisiert (192x192px)
+  - iOS App Icons neu generiert mit Hand-Icon (alle Größen)
+  - PWA Icons generiert (48-512px in WebP)
+  - Splash Screens aktualisiert
+
+### Technical Details
+- Capacitor Assets verwendung für automatische Icon-Generierung
+- 10 iOS Icons generiert (15.29 MB total)
+- 7 PWA Icons generiert (446.11 KB total)
+- Icons synchronisiert mit `npx cap sync ios`
+
+---
+
 ## [Unreleased]
 
 ### Geplante Features
@@ -80,4 +97,5 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - `Fixed` - Bug Fixes
 - `Security` - Sicherheits-Updates
 
-[1.0.0]: https://github.com/username/iphone_app/releases/tag/v1.0.0
+[1.0.1]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.1
+[1.0.0]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.0
