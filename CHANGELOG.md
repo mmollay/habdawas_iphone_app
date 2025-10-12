@@ -5,6 +5,36 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.7] - 2025-10-12
+
+### Fixed
+- 🔐 **OAuth Consent Screen konfiguriert**: "invalid_client" Fehler behoben
+  - Neuer OAuth Client in Google Cloud Console erstellt
+  - Authorized Domains hinzugefügt (habdawas.at, beta.habdawas.at, supabase.co)
+  - Scopes konfiguriert (email, profile, openid)
+  - Testnutzer hinzugefügt
+  - Supabase mit neuen Credentials aktualisiert
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Neueste Version von bazar_bold (v1.4.2) integriert
+  - OAuth Consent Screen Setup dokumentiert
+  - Neue Client ID: `60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1.apps.googleusercontent.com`
+  - Web OAuth Login funktioniert einwandfrei
+
+### Documentation
+- OAUTH-CONSENT-SCREEN-SETUP.md: Vollständige deutsche Anleitung erstellt
+- Schnellstart-Guide für 5-Minuten-Setup
+- Detaillierte Schritt-für-Schritt Anleitung für Google Cloud Console
+- Checkliste und Troubleshooting
+
+### Technical Details
+- Web-App Version: 1.4.2 (OAuth Consent Screen Fix)
+- OAuth Consent Screen Status: Testing
+- Redirect URIs konfiguriert für alle Plattformen
+- Capacitor Sync durchgeführt
+
+---
+
 ## [1.0.5] - 2025-10-12
 
 ### Fixed

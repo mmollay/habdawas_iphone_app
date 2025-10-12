@@ -5,17 +5,18 @@
   "server": {
     "androidScheme": "https",
     "iosScheme": "https",
-    "hostname": "beta.habdawas.at",
     "allowNavigation": [
       "beta.habdawas.at",
-      "*.habdawas.at"
+      "*.habdawas.at",
+      "*.supabase.co",
+      "accounts.google.com"
     ]
   },
   "ios": {
     "contentInset": "never",
     "scrollEnabled": true,
     "allowsBackForwardNavigationGestures": true,
-    "limitsNavigationsToAppBoundDomains": true
+    "limitsNavigationsToAppBoundDomains": false
   },
   "plugins": {
     "SplashScreen": {
