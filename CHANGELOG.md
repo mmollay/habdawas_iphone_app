@@ -5,6 +5,46 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.11] - 2025-10-12
+
+### Fixed
+- 🔐 **Native iOS OAuth "Custom URL Scheme" Fix**
+  - ASWebAuthenticationSession öffnet erfolgreich mit `habdawas://auth/callback`
+  - "USER_CANCELLED" zeigt dass OAuth-Fenster funktioniert
+  - Custom URL Scheme aus Info.plist wird genutzt
+  - Native iOS OAuth-Experience (wie Spotify, Twitter, Canva)
+  - Google akzeptiert Custom URL Schemes für native Apps
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.4.6 integriert
+  - OAuth Redirect URL: `habdawas://auth/callback`
+  - GenericOAuth2 mit ASWebAuthenticationSession
+  - PKCE OAuth Flow mit `exchangeCodeForSession()`
+  - App öffnet sich automatisch nach Google Login
+
+### Documentation
+- 📝 **SUPABASE-CUSTOM-URL-SCHEME.md**: Vollständige Setup-Anleitung
+  - Schritt-für-Schritt Guide für Supabase Redirect URL Konfiguration
+  - Troubleshooting für alle OAuth-Fehler
+  - Technische Details zum OAuth Flow
+  - Vergleich: Vorher vs. Nachher
+
+### Technical Details
+- Web-App Version: 1.4.6 (Custom URL Scheme Fix)
+- GenericOAuth2.authenticate() mit nativer OAuth-Session
+- redirectUrl: 'habdawas://auth/callback'
+- Custom URL Scheme bereits in Info.plist registriert: `habdawas`
+- PKCE OAuth Flow für erhöhte Sicherheit
+- Capacitor Sync durchgeführt
+
+### Next Step
+- ⚙️ **Supabase Konfiguration erforderlich**:
+  - `habdawas://auth/callback` zu Supabase Redirect URLs hinzufügen
+  - Siehe SUPABASE-CUSTOM-URL-SCHEME.md für Anleitung
+  - Nach Konfiguration sollte OAuth Flow komplett funktionieren
+
+---
+
 ## [1.0.10] - 2025-10-12
 
 ### Fixed
