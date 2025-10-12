@@ -5,6 +5,41 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.8] - 2025-10-12
+
+### Fixed
+- 🔐 **Native iOS Google OAuth**: "Fehler 400" bei iPhone App endgültig behoben
+  - Umstellung von GenericOAuth2 Plugin auf Capacitor App URL Listener
+  - `capacitor://localhost` als Redirect URL statt https://
+  - Manuelle Token-Extraktion aus OAuth-Callback URL-Fragmenten
+  - Direct `setSession()` Aufruf für Session-Etablierung
+  - Entspricht offizieller Supabase + Capacitor OAuth-Dokumentation
+  - Web OAuth bleibt unverändert und funktioniert weiterhin
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Neueste Version von bazar_bold (v1.4.3) integriert
+  - AuthContext komplett überarbeitet für native iOS
+  - App URL Listener für OAuth-Callbacks
+  - Automatische Token-Extraktion via URLSearchParams
+  - Verbessertes Error Handling und Logging
+  - Cleanup von Event Listenern beim Component Unmount
+
+### Technical Details
+- Web-App Version: 1.4.3 (Native iOS OAuth Fix)
+- Import: `@capacitor/app` statt `@capacitor-community/generic-oauth2`
+- Event Handler: `appUrlOpen` für OAuth-Callback-URLs
+- Token Extraction: URL hash parsing mit URLSearchParams
+- Supabase API: `setSession()` statt `exchangeCodeForSession()`
+- Capacitor Sync durchgeführt
+
+### Architecture
+- Web Platform: Standard OAuth mit Browser-Redirect
+- Native iOS: App URL Listener + manuelle Token-Verarbeitung
+- Unified Codebase mit Platform-Detection
+- Konsistente User Experience auf allen Plattformen
+
+---
+
 ## [1.0.7] - 2025-10-12
 
 ### Fixed
