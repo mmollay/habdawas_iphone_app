@@ -1,6 +1,6 @@
 {
   "name": "habdawas-ios-app",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "HabDaWas iOS App - Native wrapper for beta.habdawas.at",
   "author": "HabDaWas Team",
   "license": "ISC",
@@ -21,6 +21,7 @@
     "habdawas"
   ],
   "dependencies": {
+    "@capacitor-community/generic-oauth2": "^7.0.0",
     "@capacitor/browser": "^7.0.2",
     "@capacitor/cli": "^7.4.3",
     "@capacitor/core": "^7.4.3",
