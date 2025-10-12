@@ -5,6 +5,57 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.12] - 2025-10-12
+
+### Fixed
+- 🔐 **CRITICAL OAuth Fix: Fehler 400 endgültig behoben!**
+  - Root Cause gefunden: PKCE wurde doppelt hinzugefügt
+  - Supabase URL enthält bereits PKCE Parameter
+  - GenericOAuth2 Plugin hat mit `pkceEnabled: true` nochmal PKCE hinzugefügt
+  - Google sah widersprüchliche Parameter → 400 Bad Request
+  - **Lösung**: `pkceEnabled: false` im Code gesetzt
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.4.7 integriert
+  - pkceEnabled: false in GenericOAuth2.authenticate()
+  - Plugin öffnet Supabase URL jetzt unverändert
+  - Nur ein PKCE Challenge → Google akzeptiert
+
+### Documentation
+- 📝 **GOOGLE-OAUTH-IOS-SETUP.md**: Vollständige Anleitung
+  - Schritt 1: iOS Client in Google Cloud Console erstellen (Bundle ID: at.habdawas.app)
+  - Schritt 2: Beide Client IDs in Supabase eintragen (WEB_ID,IOS_ID kommasepariert)
+  - Schritt 3: Code-Fix erklärt (pkceEnabled: false)
+  - Schritt 4: Build & Test Anleitung
+  - Troubleshooting für alle OAuth-Fehler
+  - Technische Erklärung warum PKCE doppelt das Problem war
+
+### Technical Details
+- Web-App Version: 1.4.7 (PKCE Fix)
+- pkceEnabled: false ist KRITISCH - Supabase URL hat schon code_challenge
+- GenericOAuth2 öffnet Supabase URL unverändert in ASWebAuthenticationSession
+- Google sieht nur einen PKCE Challenge → funktioniert
+- exchangeCodeForSession() prüft PKCE Code Verifier
+
+### Next Steps (Manual erforderlich)
+1. ⚙️ **iOS Client in Google Cloud Console erstellen**:
+   - Application type: iOS
+   - Bundle ID: at.habdawas.app
+   - Client ID kopieren
+
+2. ⚙️ **Supabase Google Provider konfigurieren**:
+   - Client ID: WEB_CLIENT_ID,IOS_CLIENT_ID (kommasepariert, Web zuerst!)
+   - Client Secret: Nur Web Client Secret
+   - Redirect URLs: habdawas://auth/callback hinzufügen
+
+3. 🧪 **Test in Xcode**:
+   - Google Login sollte jetzt funktionieren
+   - Kein 400 Fehler mehr
+
+**Siehe GOOGLE-OAUTH-IOS-SETUP.md für detaillierte Anleitung!**
+
+---
+
 ## [1.0.11] - 2025-10-12
 
 ### Fixed
