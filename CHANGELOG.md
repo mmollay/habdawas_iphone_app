@@ -5,6 +5,31 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.10] - 2025-10-12
+
+### Fixed
+- 🔐 **Native iOS OAuth "403 Disallowed_useragent" Fehler behoben**
+  - ASWebAuthenticationSession statt Safari WebView
+  - GenericOAuth2 Plugin mit https:// Redirect URL
+  - Google akzeptiert nur native Browser-Fenster für OAuth
+  - Native iOS OAuth-Fenster zeigt Google Login korrekt
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.4.5 integriert
+  - ASWebAuthenticationSession Implementation
+  - skipBrowserRedirect: true für manuelle URL-Verarbeitung
+  - PKCE OAuth Flow aktiviert
+  - App URL Listener extrahiert Tokens aus Callback
+
+### Technical Details
+- Web-App Version: 1.4.5 (ASWebAuthenticationSession Fix)
+- GenericOAuth2.authenticate() mit nativer OAuth-Session
+- redirectUrl: 'https://beta.habdawas.at/auth/callback'
+- App öffnet sich automatisch nach OAuth
+- Capacitor Sync durchgeführt
+
+---
+
 ## [1.0.9] - 2025-10-12
 
 ### Fixed
