@@ -5,6 +5,30 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.9] - 2025-10-12
+
+### Fixed
+- 🔐 **Native iOS OAuth "Zugriff blockiert" Fehler behoben**
+  - Redirect URL zurück auf https://beta.habdawas.at/auth/callback
+  - Google akzeptiert nur https:// URLs, nicht capacitor://localhost
+  - Universal Links funktionieren korrekt mit https:// URLs
+  - App URL Listener für /auth/callback angepasst
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.4.4 integriert
+  - OAuth Redirect auf https:// URL umgestellt
+  - Token-Extraktion aus Universal Link Callback
+  - App öffnet sich automatisch nach Google OAuth
+
+### Technical Details
+- Web-App Version: 1.4.4 (OAuth Redirect Fix)
+- redirectTo: 'https://beta.habdawas.at/auth/callback'
+- App URL Listener prüft auf '/auth/callback' mit '#' Fragment
+- Universal Links öffnen App mit Token-Fragmenten
+- Capacitor Sync durchgeführt
+
+---
+
 ## [1.0.8] - 2025-10-12
 
 ### Fixed
