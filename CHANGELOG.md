@@ -5,6 +5,94 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.13] - 2025-10-12
+
+### Fixed
+- 🔐 **Alternative OAuth Lösung: Reversed Client ID (iOS Standard)**
+  - Umstellung von Custom URL Scheme (`habdawas://`) auf Google's offiziellen iOS OAuth Standard
+  - Reversed Client ID: `com.googleusercontent.apps.60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q:/oauth2redirect`
+  - Wie von Apple und Google empfohlen (verwendet von Spotify, Twitter, Canva, Slack)
+  - Google erkennt Reversed Client ID automatisch als native iOS OAuth
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.4.8 integriert
+  - AuthContext mit Reversed Client ID implementiert
+  - redirectUrl verwendet jetzt iOS Standard Format
+  - `com.googleusercontent.apps.{CLIENT_ID}:/oauth2redirect` Schema
+
+- 📱 **Info.plist erweitert**: Google OAuth URL Scheme hinzugefügt
+  - CFBundleURLSchemes mit Reversed Client ID registriert
+  - Zusätzlich zu bestehendem `habdawas` Schema
+  - Ermöglicht native iOS OAuth Callbacks
+
+### Technical Details
+- Web-App Version: 1.4.8 (Reversed Client ID)
+- Reversed Client ID als URL Scheme in Info.plist registriert
+- iOS Client als Primary Client ID in Supabase erforderlich
+- Kein Client Secret erforderlich (iOS Client hat keinen Secret)
+- pkceEnabled: false bleibt kritisch (Supabase hat PKCE bereits)
+
+### Supabase Konfiguration (manuell erforderlich)
+
+**WICHTIG**: Folgende Änderungen in Supabase Dashboard vornehmen:
+
+1. **Authentication → Providers → Google**:
+   ```
+   Client ID (for OAuth): 60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q.apps.googleusercontent.com
+   ```
+   (iOS Client als Primary!)
+
+2. **Client Secret**: LEER LASSEN (iOS Client hat keinen Secret)
+
+3. **Additional Client IDs** (optional, für Web OAuth):
+   ```
+   60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1.apps.googleusercontent.com
+   ```
+
+4. **Redirect URLs**:
+   ```
+   com.googleusercontent.apps.60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q:/oauth2redirect
+   https://beta.habdawas.at/auth/callback
+   http://localhost:5173/auth/callback
+   ```
+
+### Why Reversed Client ID?
+
+**Custom URL Scheme (bisherig)**:
+- ❌ `habdawas://auth/callback`
+- ❌ Google lehnt als OAuth Redirect ab
+- ❌ 400 Bad Request Error
+
+**Reversed Client ID (iOS Standard)**:
+- ✅ `com.googleusercontent.apps.{CLIENT_ID}:/oauth2redirect`
+- ✅ Google erkennt automatisch als iOS OAuth
+- ✅ Offizieller Standard von Apple & Google
+- ✅ Verwendet von allen großen Apps (Spotify, Twitter, etc.)
+
+### OAuth Flow
+```
+App → Supabase (mit iOS Client ID) → Google (erkennt iOS OAuth) → Supabase → App
+```
+
+### Documentation
+- 📝 **ALTERNATIVE-FIX-REVERSED-CLIENT-ID.md**: Vollständige Anleitung
+  - Warum Reversed Client ID besser ist
+  - Supabase Konfiguration Schritt-für-Schritt
+  - Code-Änderungen erklärt
+  - Info.plist Anpassungen
+  - Build & Deploy Prozess
+
+### Next Steps
+1. ⚙️ **Supabase Konfiguration ändern** (siehe oben)
+2. 🧪 **In Xcode testen**:
+   - Clean Build Folder (Cmd+Shift+K)
+   - Build & Run
+   - Google Login sollte jetzt funktionieren
+
+**Siehe ALTERNATIVE-FIX-REVERSED-CLIENT-ID.md für detaillierte Anleitung!**
+
+---
+
 ## [1.0.12] - 2025-10-12
 
 ### Fixed
@@ -30,6 +118,19 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
   - Troubleshooting für alle OAuth-Fehler
   - Technische Erklärung warum PKCE doppelt das Problem war
 
+- 📝 **GOOGLE-CLOUD-CONSOLE-VERIFICATION.md**: Umfassende Verifikations-Checkliste
+  - KRITISCH: Web Client Redirect URI Konfiguration
+  - Schritt-für-Schritt Guide für Google Cloud Console
+  - OAuth Consent Screen Test User Verifikation
+  - Detaillierte Troubleshooting-Anleitung nach Priorität
+  - OAuth Flow Analyse und Debug Informationen
+
+- 📝 **QUICK-FIX-400-ERROR.md**: Schnellanleitung für 400 Error
+  - Ein-Seiten Guide für häufigsten Fehler
+  - Web Client Redirect URI: https://hsbjflixgavjqxvnkivi.supabase.co/auth/v1/callback
+  - Erklärt warum Web Client (nicht iOS Client) die Redirect URIs braucht
+  - Quick-Check für OAuth Consent Screen Test Users
+
 ### Technical Details
 - Web-App Version: 1.4.7 (PKCE Fix)
 - pkceEnabled: false ist KRITISCH - Supabase URL hat schon code_challenge
@@ -37,22 +138,39 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - Google sieht nur einen PKCE Challenge → funktioniert
 - exchangeCodeForSession() prüft PKCE Code Verifier
 
-### Next Steps (Manual erforderlich)
-1. ⚙️ **iOS Client in Google Cloud Console erstellen**:
-   - Application type: iOS
-   - Bundle ID: at.habdawas.app
-   - Client ID kopieren
+### OAuth Flow Analysis
+```
+App → Supabase → Google (prüft Web Client Redirect URIs!) → Supabase → App
+                    ↑
+            Hier kommt 400 Error wenn Redirect URI fehlt!
+```
 
-2. ⚙️ **Supabase Google Provider konfigurieren**:
-   - Client ID: WEB_CLIENT_ID,IOS_CLIENT_ID (kommasepariert, Web zuerst!)
-   - Client Secret: Nur Web Client Secret
-   - Redirect URLs: habdawas://auth/callback hinzufügen
+**Key Insight**: Der 400 Error kommt von Google, nicht von der App. Google lehnt die redirect_uri von Supabase ab. Die Supabase Callback URL muss im **Web Client** (nicht iOS Client!) whitelisted sein.
 
-3. 🧪 **Test in Xcode**:
+### Next Steps (Manual erforderlich - HÖCHSTE PRIORITÄT)
+1. 🚨 **KRITISCH: Web Client Redirect URI hinzufügen**:
+   - Google Cloud Console → APIs & Services → Credentials
+   - **Web Client** (60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1) editieren
+   - Authorized redirect URIs → Hinzufügen:
+     ```
+     https://hsbjflixgavjqxvnkivi.supabase.co/auth/v1/callback
+     ```
+   - 5-10 Minuten warten (Google Propagation)
+
+2. ⚙️ **OAuth Consent Screen Test User prüfen**:
+   - OAuth consent screen → Test users
+   - E-Mail Adresse hinzufügen (falls Status = Testing)
+
+3. ✅ **Supabase Konfiguration (bereits erledigt)**:
+   - Client ID: 60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1.apps.googleusercontent.com,60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q.apps.googleusercontent.com
+   - Redirect URLs: habdawas://auth/callback
+
+4. 🧪 **Test in Xcode nach Config-Änderung**:
+   - Clean Build Folder (Cmd+Shift+K)
+   - Neu builden und testen
    - Google Login sollte jetzt funktionieren
-   - Kein 400 Fehler mehr
 
-**Siehe GOOGLE-OAUTH-IOS-SETUP.md für detaillierte Anleitung!**
+**Siehe QUICK-FIX-400-ERROR.md für schnelle Lösung oder GOOGLE-CLOUD-CONSOLE-VERIFICATION.md für vollständige Verifikation!**
 
 ---
 

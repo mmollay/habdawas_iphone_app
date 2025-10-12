@@ -76,6 +76,14 @@
 				<string>habdawas</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.google.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>
