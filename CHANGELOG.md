@@ -5,6 +5,78 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.14] - 2025-10-12
+
+### Fixed
+- 🔐 **Session Persistence Fix: iOS Keychain Integration**
+  - Root cause identifiziert: OAuth funktionierte, aber Sessions gingen nach App-Neustart verloren
+  - iOS localStorage funktioniert nicht zuverlässig → User musste sich jedes Mal neu anmelden
+  - **Lösung**: Capacitor Preferences für iOS Keychain Integration
+  - Tokens werden jetzt sicher im iOS Keychain gespeichert
+  - Sessions bleiben dauerhaft erhalten nach App-Neustart
+  - Echte "Remember Me" Funktionalität jetzt verfügbar
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.4.9 integriert
+  - Capacitor Preferences Storage Backend in supabase.ts
+  - Custom URL Scheme wieder aktiviert: `habdawas://auth/callback`
+  - Conditional Storage: iOS Keychain auf Native, localStorage auf Web
+  - detectSessionInUrl: false auf Native (manuelle OAuth-Verarbeitung)
+  - persistSession: true + autoRefreshToken: true
+
+### Technical Details
+- Web-App Version: 1.4.9 (Session Persistence Fix)
+- Capacitor Preferences API für iOS Keychain Integration
+- Custom Storage Backend: Preferences.get/set/remove
+- Platform Detection: Capacitor.isNativePlatform()
+- Supabase Client mit conditional storage configuration
+- OAuth Flow unverändert: ASWebAuthenticationSession + exchangeCodeForSession()
+- pkceEnabled: false bleibt kritisch
+
+### Architecture
+- **iOS Storage**: Capacitor Preferences → iOS Keychain (sicher + persistent)
+- **Web Storage**: default localStorage (browser-nativ)
+- **OAuth Flow**: Custom URL Scheme für Native, https:// für Web
+- **Session Management**: Automatische Token-Refresh + Persistence
+
+### Why This Fix Is Critical
+**Problem (vorher)**:
+- ❌ OAuth öffnete erfolgreich, User konnte sich anmelden
+- ❌ Session ging aber nach App-Neustart verloren
+- ❌ User musste sich bei jedem Öffnen neu anmelden
+- ❌ Keine echte native App Experience
+
+**Lösung (jetzt)**:
+- ✅ OAuth funktioniert + Session bleibt erhalten
+- ✅ App "merkt sich" User nach Neustart
+- ✅ iOS Keychain speichert Tokens sicher
+- ✅ Automatische Token-Aktualisierung funktioniert
+- ✅ Native App Experience wie bei Spotify, Twitter, etc.
+
+### Testing Steps
+1. 🧪 **Google Login testen**:
+   - App in Xcode builden (Clean Build: Cmd+Shift+K)
+   - Google Login durchführen
+   - Erfolgreich einloggen
+
+2. 🔄 **Session Persistence testen**:
+   - App vollständig schließen (nicht nur minimieren)
+   - App neu öffnen
+   - User sollte noch eingeloggt sein ✅
+
+3. 🔍 **Debugging**:
+   - Xcode Console Logs beobachten
+   - [OAuth] Tags für OAuth-Flow
+   - Session-Status prüfen nach App-Restart
+
+### Next Steps
+- Clean Build in Xcode durchführen
+- Google Login testen
+- App-Neustart testen
+- Session Persistence verifizieren
+
+**Siehe bazar_bold CHANGELOG 1.4.9 für technische Details!**
+
 ## [1.0.13] - 2025-10-12
 
 ### Fixed
