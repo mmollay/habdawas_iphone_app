@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.at.habdawas.app",
+        "paths": [
+          "/auth/callback"
+        ]
+      }
+    ]
+  }
+}
