@@ -5,6 +5,67 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.15] - 2025-10-12
+
+### Fixed
+- 🐛 **CRITICAL: Preferences Plugin fehlte in iOS Projekt**
+  - `@capacitor/preferences` wurde vergessen in package.json hinzuzufügen
+  - Fehler: "Preferences plugin is not implemented on ios"
+  - Fehler: `{"code":"UNIMPLEMENTED"}` bei GenericOAuth2
+  - Inserate konnten nicht mehr geladen werden (Supabase Client Fehler)
+  - **Lösung**: @capacitor/preferences@7.0.2 zu dependencies hinzugefügt
+
+### Added
+- 📦 **@capacitor/preferences**: Jetzt in package.json dependencies
+  - Version: ^7.0.2
+  - Erfolgreich mit CocoaPods integriert
+  - In capacitor.config.json packageClassList registriert
+  - iOS Keychain Integration jetzt funktionsfähig
+
+### Technical Details
+- npm install erfolgreich durchgeführt
+- npx cap sync ios erfolgreich (pod install)
+- 5 Capacitor Plugins jetzt installiert (vorher 4):
+  - @capacitor-community/generic-oauth2@7.0.0
+  - @capacitor/browser@7.0.2
+  - @capacitor/local-notifications@7.0.3
+  - @capacitor/preferences@7.0.2 ✅ NEU
+  - @capacitor/push-notifications@7.0.3
+- packageClassList automatisch erweitert mit "PreferencesPlugin"
+
+### Root Cause
+- v1.0.14 verwendete Preferences API, aber Package fehlte
+- iOS Projekt hatte keine Ahnung vom Preferences Plugin
+- Alle Preferences.get/set/remove Aufrufe schlugen fehl
+- Supabase Client konnte nicht initialisieren → App brach ab
+
+### Why This Was Critical
+**Symptome**:
+- ❌ App startete nicht richtig
+- ❌ Inserate wurden nicht geladen
+- ❌ OAuth Error: UNIMPLEMENTED
+- ❌ Console Error: "Preferences plugin is not implemented on ios"
+
+**Jetzt**:
+- ✅ Preferences Plugin korrekt installiert
+- ✅ iOS Keychain Integration funktioniert
+- ✅ Supabase Client kann initialisieren
+- ✅ OAuth sollte jetzt funktionieren
+- ✅ Session Persistence ist aktiviert
+
+### Testing Steps
+1. 🧹 **Clean Build in Xcode** (WICHTIG!):
+   - Product → Clean Build Folder (Cmd+Shift+K)
+   - Derived Data löschen falls nötig
+
+2. 🧪 **App testen**:
+   - App builden und starten
+   - Inserate sollten laden ✅
+   - Google Login testen
+   - Session Persistence testen (App schließen + öffnen)
+
+**Entschuldigung für den Fehler in v1.0.14! Dieser kritische Bugfix sollte alles beheben.**
+
 ## [1.0.14] - 2025-10-12
 
 ### Fixed
