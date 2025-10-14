@@ -5,6 +5,49 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.34] - 2025-10-14
+
+### Added
+- 📱 **App-Version Anzeige in Settings**: Neue Sektion in DisplaySection
+  - Zeigt die aktuelle iOS App-Version an (aus package.json)
+  - Zeigt Build-Nummer an (falls unterschiedlich zur Version)
+  - Verwendet Capacitor App Plugin (`@capacitor/app`)
+  - Automatisches Auslesen der App-Informationen über `getInfo()`
+  - Fallback auf "Web" wenn nicht in nativer App-Umgebung
+  - Elegantes Design mit Smartphone-Icon (Lucide React)
+  - Informationstext zur automatischen Versionserkennung
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.6.7
+  - DisplaySection.tsx erweitert mit App-Version Feature
+  - useState und useEffect Hooks für Version-Management
+  - Neue Imports: Smartphone Icon und Capacitor App API
+  - Nur in nativer App sichtbar (conditional rendering)
+  - Build Hash: index-BBZpnkdV.js
+
+### Technical Details
+- Web-App Version: 1.6.7 (App Version Display)
+- iOS App Version: 1.0.34
+- Capacitor App Plugin: `@capacitor/app@^7.1.0`
+- Platform Detection: Capacitor.App.getInfo()
+- Build erfolgreich: 1.96s
+- Alle Assets aktualisiert in www/
+
+### UI/UX Improvements
+- Konsistentes Design mit anderen Settings-Sektionen
+- Graue Info-Box für Versions-Details
+- Responsive Layout (Mobile & Desktop)
+- Nur auf iOS sichtbar (automatische Plattformerkennung)
+- Zeigt Version & Build separat an
+
+### Integration
+- Nahtlose Integration in bestehende DisplaySection
+- Keine Breaking Changes
+- Funktioniert sowohl in Web (zeigt "Web") als auch iOS (zeigt echte Version)
+- Mit Playwright getestet
+
+---
+
 ## [1.0.32] - 2025-10-14
 
 ### Changed
