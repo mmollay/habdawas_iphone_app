@@ -5,6 +5,47 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.30] - 2025-10-14
+
+### Fixed
+- 🔧 **CRITICAL FIX: GenericOAuth2 appId Parameter fehlt**
+  - Fehler `ERR_PARAM_NO_APP_ID` behoben
+  - GenericOAuth2.authenticate() benötigt `appId` Parameter
+  - `appId: 'at.habdawas.app'` hinzugefügt
+  - ASWebAuthenticationSession öffnet jetzt korrekt
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.6.4 (appId Fix)
+  - AuthContext.tsx: GenericOAuth2.authenticate() mit appId Parameter
+  - Capacitor Sync durchgeführt: 5 Plugins installiert
+  - Build Hash: index-BuAgU3zd.js (neu)
+
+### Technical Details
+- Web-App Version: 1.6.4 (GenericOAuth2 appId Fix)
+- appId: 'at.habdawas.app' (Bundle Identifier)
+- GenericOAuth2 Plugin: @capacitor-community/generic-oauth2@7.0.0
+- ASWebAuthenticationSession öffnet jetzt korrekt natives OAuth-Fenster
+
+### Testing
+Nach diesem Fix sollte OAuth funktionieren:
+1. Clean Build in Xcode (Cmd+Shift+K)
+2. Build & Run
+3. "Mit Google anmelden" klicken
+4. Natives OAuth-Fenster sollte erscheinen
+5. Google Account auswählen
+6. App sollte User als eingeloggt zeigen
+
+**Console Logs**:
+```
+[OAuth] Opening ASWebAuthenticationSession...
+[OAuth] ASWebAuthenticationSession returned!
+[OAuth] Session established successfully!
+```
+
+**Dieser Fix ist kritisch! v1.0.29 hatte den appId Parameter vergessen!**
+
+---
+
 ## [1.0.29] - 2025-10-14
 
 ### Fixed
