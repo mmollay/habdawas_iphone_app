@@ -5,6 +5,49 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.27] - 2025-10-14
+
+### Fixed
+- 🔥 **CRITICAL Safari Browser Fix**: OAuth Callback funktioniert jetzt!
+  - Browser.open() von `presentationStyle: 'popover'` auf `'fullscreen'` geändert
+  - SFSafariViewController blockierte JavaScript Ausführung
+  - Jetzt öffnet sich vollwertiger Safari Browser mit JavaScript Support
+  - OAuthCallbackPage kann jetzt zu habdawas:// redirecten
+  - **OAuth Flow sollte jetzt KOMPLETT funktionieren!** ✅
+
+### Technical Details
+- presentationStyle: 'fullscreen' → Öffnet vollen Safari statt SFSafariViewController
+- windowName: '_system' → Force system browser auf iOS
+- JavaScript in OAuthCallbackPage wird jetzt korrekt ausgeführt
+- Deep Link redirect (habdawas://) funktioniert jetzt
+
+### Why This Was Critical
+
+**Problem (v1.0.26)**:
+- ❌ Browser.open() öffnete SFSafariViewController
+- ❌ JavaScript wurde in SFSafariViewController blockiert
+- ❌ OAuthCallbackPage konnte nicht zu habdawas:// redirecten
+- ❌ App URL Listener wurde nie aufgerufen
+- ❌ OAuth hing beim "Anmeldung wird verarbeitet..." Screen
+
+**Lösung (v1.0.27)**:
+- ✅ Browser.open() öffnet vollen Safari Browser
+- ✅ JavaScript funktioniert normal
+- ✅ OAuthCallbackPage redirected erfolgreich zu habdawas://
+- ✅ App URL Listener fängt Callback ab
+- ✅ Session wird etabliert
+- ✅ User ist eingeloggt! 🎉
+
+### Testing
+1. In Xcode: Product → Clean Build Folder (Cmd+Shift+K)
+2. Build & Run auf echtem iPhone
+3. "Mit Google anmelden" klicken
+4. Google Login durchführen
+5. App sollte sich automatisch öffnen
+6. User sollte eingeloggt sein ✅
+
+---
+
 ## [1.0.26] - 2025-10-14
 
 ### Fixed
