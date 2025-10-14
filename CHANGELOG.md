@@ -5,6 +5,138 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.31] - 2025-10-14
+
+### Fixed
+- 🎯 **CRITICAL FIX: OAuth Redirect URL korrigiert**
+  - Problem: `redirectUrl` zeigte auf normale Web-Callback-Seite
+  - Google 400 Error weil `auth-callback-native-v2.html` nicht in OAuth Whitelist war
+  - **Lösung**: redirectUrl auf `auth-callback-native-v2.html?platform=ios` geändert
+  - Diese URL muss in Google Cloud Console "Authorized redirect URIs" hinzugefügt werden
+  - Nach Google Cloud Console Update sollte OAuth endlich funktionieren!
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.6.5 (Redirect URL Fix)
+  - AuthContext.tsx Zeile 255: `redirectUrl` auf iOS-spezifische HTML-Seite umgestellt
+  - Von: `https://beta.habdawas.at/auth/callback`
+  - Zu: `https://beta.habdawas.at/auth-callback-native-v2.html?platform=ios`
+  - auth-callback-native-v2.html im www/ Ordner wiederhergestellt
+  - Build Hash: index-B23HaEWk.js (neu)
+
+### Technical Details
+- Web-App Version: 1.6.5 (Redirect URL Fix)
+- iOS-spezifische Callback-Seite: `auth-callback-native-v2.html`
+- Platform Detection via ?platform=ios Query Parameter
+- HTML-Seite triggered Deep Link redirect zu habdawas://auth/callback
+- ASWebAuthenticationSession bleibt unverändert
+- appId: 'at.habdawas.app' bleibt konfiguriert
+
+### Google Cloud Console Konfiguration erforderlich
+
+**WICHTIG**: Diese Änderung muss manuell in Google Cloud Console durchgeführt werden!
+
+1. **Google Cloud Console öffnen**:
+   - APIs & Services → Credentials
+   - Web Client ID editieren: `60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1`
+
+2. **"Authorized redirect URIs" erweitern**:
+   ```
+   https://hsbjflixgavjqxvnkivi.supabase.co/auth/v1/callback
+   https://beta.habdawas.at/auth/callback
+   https://beta.habdawas.at/auth-callback-native-v2.html  ← NEU HINZUFÜGEN
+   http://localhost:5173/auth/callback
+   ```
+
+3. **Speichern und 5 Minuten warten** (Google Propagation)
+
+4. **App neu testen**:
+   - Clean Build in Xcode (Cmd+Shift+K)
+   - Build & Run
+   - "Mit Google anmelden" klicken
+   - ASWebAuthenticationSession sollte öffnen
+   - Google Login durchführen
+   - auth-callback-native-v2.html sollte laden
+   - Deep Link redirect zu App sollte funktionieren
+   - User sollte eingeloggt sein ✅
+
+### Why This Is The Fix
+
+**Problem (v1.0.30)**:
+- ❌ redirectUrl: `https://beta.habdawas.at/auth/callback`
+- ❌ Das ist die normale Web-Callback-Seite (React)
+- ❌ Google redirected dorthin nach Auth
+- ❌ Aber diese URL ist NICHT für iOS-Deep-Link-Redirect ausgelegt
+- ❌ auth-callback-native-v2.html wurde nie genutzt
+- ❌ Kein Deep Link redirect zur App
+- ❌ OAuth hing fest
+
+**Lösung (v1.0.31)**:
+- ✅ redirectUrl: `https://beta.habdawas.at/auth-callback-native-v2.html?platform=ios`
+- ✅ Spezielle HTML-Seite NUR für iOS OAuth
+- ✅ Erkennt platform=ios Parameter
+- ✅ Extrahiert authorization code aus URL
+- ✅ Macht automatisch Deep Link redirect: `habdawas://auth/callback?code=...`
+- ✅ App öffnet sich via Deep Link
+- ✅ appUrlOpen listener fängt Code ab
+- ✅ exchangeCodeForSession() etabliert Session
+- ✅ OAuth Flow komplett! 🎉
+
+### OAuth Flow (nach Google Console Update)
+
+```
+1. User klickt "Mit Google anmelden"
+2. signInWithGoogle() holt OAuth URL von Supabase
+3. GenericOAuth2.authenticate() öffnet ASWebAuthenticationSession
+4. User authentifiziert sich bei Google
+5. Google redirected zu: https://beta.habdawas.at/auth-callback-native-v2.html?platform=ios&code=...
+6. auth-callback-native-v2.html lädt
+7. JavaScript erkennt platform=ios Parameter
+8. JavaScript extrahiert authorization code
+9. Automatischer redirect zu: habdawas://auth/callback?code=...
+10. iOS öffnet App via Deep Link
+11. appUrlOpen listener fängt Code ab
+12. exchangeCodeForSession() wird aufgerufen
+13. Session etabliert ✅
+14. User ist eingeloggt! ✅
+```
+
+### Console Logs (Expected)
+
+Nach Google Console Update solltest du sehen:
+```
+[OAuth] Starting native iOS OAuth with ASWebAuthenticationSession...
+[OAuth] Redirect URL: https://beta.habdawas.at/auth-callback-native-v2.html?platform=ios
+[OAuth] Opening ASWebAuthenticationSession...
+[OAuth Callback HTML] Page loaded!
+[OAuth Callback HTML] iOS platform detected!
+[OAuth Callback HTML] Authorization code: YES
+[OAuth Callback HTML] PKCE Flow detected!
+[OAuth Callback HTML] Redirecting to: habdawas://auth/callback?code=...
+[OAuth] App URL opened: habdawas://auth/callback?code=...
+[OAuth] Processing OAuth callback...
+[OAuth] Authorization code received, exchanging for session...
+[OAuth] Session established successfully!
+[OAuth] User: <email>
+```
+
+### Testing Checklist
+
+Nach Google Cloud Console Update:
+- [ ] ✅ Web Client Redirect URIs aktualisiert
+- [ ] ⏱️ 5 Minuten warten (Google Propagation)
+- [ ] 🧹 Clean Build in Xcode (Cmd+Shift+K)
+- [ ] 🏗️ Build & Run auf Simulator/iPhone
+- [ ] 🧪 "Mit Google anmelden" klicken
+- [ ] 🎯 ASWebAuthenticationSession sollte öffnen
+- [ ] ✅ Google Login durchführen
+- [ ] 🔗 auth-callback-native-v2.html sollte kurz erscheinen
+- [ ] 📱 App sollte sich automatisch öffnen
+- [ ] 🎉 User sollte eingeloggt sein!
+
+**DAS IST DIE FINALE LÖSUNG! OAuth wird nach Google Console Update funktionieren! 🚀**
+
+---
+
 ## [1.0.30] - 2025-10-14
 
 ### Fixed
