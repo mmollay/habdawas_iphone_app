@@ -7,6 +7,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:beta.habdawas.at</string>
+		<string>applinks:www.habdawas.at</string>
 	</array>
 </dict>
 </plist>

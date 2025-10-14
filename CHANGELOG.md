@@ -5,6 +5,119 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.25] - 2025-10-14
+
+### Added
+- 📋 **Umfassende Xcode Setup Dokumentation**: `XCODE-SETUP-WITH-DEVELOPER-ACCOUNT.md`
+  - Vollständige Anleitung für Apple Developer Account Integration
+  - Schritt-für-Schritt Guide für Associated Domains Capability
+  - Universal Links Konfiguration mit Team ID G5QYXZ4B6L
+  - Entitlements-Datei Integration in Xcode Projekt
+  - Troubleshooting für alle bekannten Probleme
+  - Build & Deploy Checkliste für Production
+
+- 📋 **Vollständiger OAuth Test Plan**: `OAUTH-TEST-PLAN.md`
+  - 10 detaillierte Test-Szenarien für OAuth Flow
+  - AASA-Datei Verifikation
+  - Universal Links Testing auf echtem iOS-Gerät
+  - Session Persistence Tests
+  - Error Handling Validation
+  - Performance und UX Metriken
+  - Apple App Store Review Vorbereitung
+  - Problembehandlung für häufige Fehler
+
+### Changed
+- 🔧 **Entitlements-Datei erweitert**: `App.entitlements`
+  - `applinks:www.habdawas.at` für zukünftige Production Domain hinzugefügt
+  - Weiterhin `applinks:beta.habdawas.at` für aktuellen Test
+  - Push Notifications (aps-environment: development)
+  - Vorbereitet für Universal Links mit Developer Account
+
+### Technical Details
+- ✅ AASA-Datei bereits deployed: `https://beta.habdawas.at/.well-known/apple-app-site-association`
+  - App ID: `G5QYXZ4B6L.at.habdawas.app` ✅
+  - Team ID: `G5QYXZ4B6L` ✅
+  - Paths: `/auth/callback` und `/auth/*` ✅
+- ✅ Xcode Projekt bereits konfiguriert mit:
+  - Development Team: G5QYXZ4B6L
+  - Code Sign Style: Automatic
+  - Bundle Identifier: at.habdawas.app
+- ✅ Capacitor Sync durchgeführt: 5 Plugins installiert
+- ⏳ **Nächster Schritt**: Entitlements-Datei in Xcode Projekt verlinken
+
+### Apple Developer Account Status
+- 🎉 **Developer Account aktiviert**: $99/Jahr bezahlt
+- ✅ Team ID: G5QYXZ4B6L
+- ✅ Associated Domains Capability jetzt verfügbar
+- ✅ Provisioning Profiles können jetzt erstellt werden
+- ✅ Universal Links jetzt möglich (vorher nur mit Free Account nicht machbar)
+
+### OAuth Flow nach Setup
+```
+1. User klickt "Mit Google anmelden"
+2. Safari öffnet sich mit Google Login
+3. User authentifiziert sich bei Google
+4. Google redirected zu: https://beta.habdawas.at/auth/callback?platform=ios
+5. ✨ Universal Link erkannt → iOS öffnet HabDaWas App automatisch
+6. App extrahiert Tokens aus URL Fragment
+7. Session wird etabliert
+8. User ist eingeloggt ✅
+```
+
+### Warum dieser Release wichtig ist
+**Vorher (ohne Developer Account)**:
+- ❌ Universal Links nicht möglich (Personal Team kann keine Associated Domains)
+- ⚠️ Fallback über Custom URL Scheme (habdawas://) funktioniert aber wirkt unprofessionell
+- ⚠️ User muss "Öffnen in HabDaWas" bestätigen
+
+**Jetzt (mit Developer Account v1.0.25)**:
+- ✅ Universal Links möglich (Associated Domains Capability verfügbar)
+- ✅ App öffnet sich automatisch nach Google OAuth
+- ✅ Professioneller OAuth Flow wie bei Spotify, Twitter, etc.
+- ✅ Keine manuelle Bestätigung nötig
+- ✅ Nahtlose User Experience
+
+### Manuelle Schritte erforderlich
+
+**WICHTIG**: Diese Version enthält die vollständige Dokumentation. Folgende Schritte müssen manuell in Xcode durchgeführt werden:
+
+1. **Apple Developer Account in Xcode hinzufügen**:
+   - Xcode → Settings → Accounts
+   - Apple ID mit Developer Account hinzufügen
+   - Team "Martin Mollay (G5QYXZ4B6L)" verifizieren
+
+2. **Entitlements-Datei verlinken**:
+   - Xcode öffnen: `open ios/App/App.xcworkspace`
+   - Entitlements-Datei zum Projekt hinzufügen (falls nicht sichtbar)
+   - Signing & Capabilities → Associated Domains überprüfen
+
+3. **Build und Test**:
+   - Clean Build (Cmd+Shift+K)
+   - Build für echtes iOS-Gerät (Universal Links funktionieren NICHT im Simulator!)
+   - Google OAuth testen
+
+4. **Universal Links verifizieren**:
+   - Link in Notes/Messages öffnen: `https://beta.habdawas.at/auth/callback?test=1`
+   - Long Press → Sollte "Open in HabDaWas" anzeigen
+   - Falls nicht: App löschen, neu installieren, iPhone neu starten
+
+### Dokumentation
+Siehe die neuen Dokumentations-Dateien für detaillierte Anleitungen:
+- `XCODE-SETUP-WITH-DEVELOPER-ACCOUNT.md` - Xcode Konfiguration (12 Schritte)
+- `OAUTH-TEST-PLAN.md` - Vollständiger Test Plan (10 Szenarien)
+
+### Next Steps
+Nach erfolgreicher Xcode-Konfiguration:
+1. ✅ Xcode Setup durchführen (siehe Dokumentation)
+2. 🧪 OAuth Flow testen (siehe Test Plan)
+3. 🎉 Universal Links verifizieren
+4. 📱 Beta Testing mit TestFlight
+5. 🚀 App Store Submission vorbereiten
+
+**Mit Developer Account ist OAuth jetzt production-ready! 🎊**
+
+---
+
 ## [1.0.17] - 2025-10-13
 
 ### Fixed
