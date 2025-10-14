@@ -5,6 +5,36 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.26] - 2025-10-14
+
+### Fixed
+- 🔄 **Web-App Build aktualisiert**: Version 1.4.21 aus bazar_bold integriert
+  - Neueste Password Reset Fixes (Session Validation)
+  - Neueste OAuthCallbackPage Implementierung
+  - Alle aktuellen Features und Bugfixes synchronisiert
+  - Capacitor Sync durchgeführt (5 Plugins)
+
+### Technical Details
+- Web-App Version: 1.4.21 (Latest from bazar_bold)
+- Build Hash: index-DG5NoF05.js (neu)
+- Assets erfolgreich synchronisiert
+- iOS native dependencies aktualisiert
+
+### Why This Was Important
+**Problem**: v1.0.25 hatte die alten www/ Assets von v1.4.20, aber bazar_bold war bereits bei v1.4.21 mit wichtigen Fixes:
+- ❌ Password Reset Session Validation fehlte
+- ❌ Neueste OAuth Fixes nicht enthalten
+- ❌ Code-Inkonsistenz zwischen Web und iOS
+
+**Jetzt (v1.0.26)**:
+- ✅ Web-App Version 1.4.21 korrekt integriert
+- ✅ Password Reset mit Session Validation
+- ✅ Alle neuesten Features synchronisiert
+- ✅ Code-Konsistenz zwischen Web und iOS
+- ✅ Bereit für Xcode Setup und Universal Links Testing
+
+---
+
 ## [1.0.25] - 2025-10-14
 
 ### Added
