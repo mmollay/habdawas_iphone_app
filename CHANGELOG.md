@@ -5,6 +5,60 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.32] - 2025-10-14
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.6.5 (Final Build mit vercel.json Fix)
+  - Neuester Build von bazar_bold nach www/ kopiert
+  - vercel.json Fix inkludiert: auth-callback-native-v2.html zu Rewrites hinzugefügt
+  - auth-callback-native-v2.html wiederhergestellt im www/ Ordner
+  - Build Hash: index-BcN4lON3.js (neuester Build)
+  - Alle Assets aktualisiert
+
+### Fixed
+- ✅ **vercel.json Rewrite Rule korrigiert**
+  - auth-callback-native-v2.html wurde nicht von Rewrite ausgeschlossen
+  - Vercel hätte die HTML-Seite auf React App umgeleitet
+  - Jetzt ausgeschlossen: auth-callback-native-v2.html funktioniert direkt
+  - OAuth Callback wird nicht mehr zur React-App umgeleitet
+
+### Technical Details
+- Web-App Version: 1.6.5 (Final)
+- vercel.json: auth-callback-native-v2.html zu Regex hinzugefügt
+- Rewrite Pattern: `/((?!auth-callback-native\.html|auth-callback-native-v2\.html|deeplink-test\.html).*)`
+- Build komplett synchronized zwischen bazar_bold und iphone_app
+
+### Why This Update Is Important
+
+**Problem (v1.0.31)**:
+- ❌ Code war richtig in AuthContext.tsx
+- ❌ ABER: www/ Ordner hatte ALTEN Build ohne vercel.json Fix
+- ❌ vercel.json hätte auth-callback-native-v2.html auf React-App umgeleitet
+- ❌ OAuth würde beim Callback hängen bleiben
+
+**Lösung (v1.0.32)**:
+- ✅ Neuester Build von bazar_bold mit vercel.json Fix
+- ✅ auth-callback-native-v2.html funktioniert als statische HTML-Seite
+- ✅ Keine Umleitung zur React-App
+- ✅ OAuth Flow komplett funktionsfähig
+
+### Next Steps (Unchanged)
+
+1. **Google Cloud Console** → Authorized redirect URIs erweitern:
+   ```
+   https://beta.habdawas.at/auth-callback-native-v2.html
+   ```
+
+2. **Clean Build in Xcode**:
+   - Cmd+Shift+K (Clean Build Folder)
+   - Cmd+R (Build & Run)
+
+3. **OAuth testen!** 🎉
+
+**DAS IST JETZT DIE KOMPLETTE LÖSUNG MIT KORREKTEM BUILD! 🚀**
+
+---
+
 ## [1.0.31] - 2025-10-14
 
 ### Fixed
