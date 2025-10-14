@@ -95,10 +95,13 @@
                             document.querySelector('p').innerHTML = 'Falls kein Dialog erschienen ist, tippe hier:';
                             document.querySelector('.spinner').style.display = 'none';
 
-                            // Erstelle Button
-                            const button = document.createElement('a');
-                            button.href = deepLink;
-                            button.style.cssText = 'display:inline-block;margin-top:20px;padding:12px 24px;background:#1976d2;color:white;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;';
+                            // Erstelle Button mit onclick Handler (funktioniert nach OAuth!)
+                            const button = document.createElement('button');
+                            button.onclick = function() {
+                                log('Button clicked! Opening app...');
+                                window.location.href = deepLink;
+                            };
+                            button.style.cssText = 'margin-top:20px;padding:12px 24px;background:#1976d2;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;';
                             button.textContent = 'Zur App wechseln';
                             document.querySelector('.container').appendChild(button);
                         }, 2000);
@@ -142,10 +145,13 @@
                                 document.querySelector('p').innerHTML = 'Falls kein Dialog erschienen ist, tippe hier:';
                                 document.querySelector('.spinner').style.display = 'none';
 
-                                // Erstelle Button
-                                const button = document.createElement('a');
-                                button.href = deepLink;
-                                button.style.cssText = 'display:inline-block;margin-top:20px;padding:12px 24px;background:#1976d2;color:white;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;';
+                                // Erstelle Button mit onclick Handler (funktioniert nach OAuth!)
+                                const button = document.createElement('button');
+                                button.onclick = function() {
+                                    log('Button clicked! Opening app...');
+                                    window.location.href = deepLink;
+                                };
+                                button.style.cssText = 'margin-top:20px;padding:12px 24px;background:#1976d2;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;';
                                 button.textContent = 'Zur App wechseln';
                                 document.querySelector('.container').appendChild(button);
                             }, 2000);
