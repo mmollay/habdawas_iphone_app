@@ -5,6 +5,40 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.37] - 2025-10-17
+
+### Changed
+- 🔄 **Web-App Build aktualisiert**: Version 1.5.6 aus bazar_bold integriert
+  - **Menü-Button aktualisiert**: "Credits & Community" statt "Token kaufen/spenden"
+  - **Vollständig dynamische /tokens Seite**: Alle Werte basieren auf Admin-Einstellungen
+    - Personal Credit Pakete werden dynamisch berechnet mit `powerUserCreditPrice`
+    - Community Spenden-Pakete werden dynamisch berechnet mit `costPerListing`
+    - Hero-Sektion zeigt `settings.dailyFreeListings` statt hardcoded 5
+    - Alle Texte verwenden dynamische Settings-Werte
+  - **Bug-Fix**: ReferenceError behoben - Funktionen vor Verwendung in Arrays definiert
+  - Build Hash: index-BSUU9nrj.js (aktualisiert)
+  - Alle Assets neu synchronisiert
+
+### Fixed
+- 🔧 **JavaScript Runtime Error behoben**: "Cannot access 'calculateCredits' before initialization"
+  - Helper-Funktionen müssen vor ihrer Verwendung definiert werden
+  - Verhindert App-Crashes auf /tokens Seite
+
+### Technical Details
+- Web-App Version: 1.5.6 (Dynamic Tokens Page & Menu Update)
+- iOS App Version: 1.0.37
+- Capacitor Sync durchgeführt: 5 Plugins
+- Build erfolgreich
+- Alle Assets aktualisiert in www/
+
+### Integration
+- Nahtlose Integration der neuesten Web-Features
+- Keine Breaking Changes
+- Funktioniert sowohl in Web als auch iOS
+- Mit lokalem Build getestet
+
+---
+
 ## [1.0.34] - 2025-10-14
 
 ### Added
