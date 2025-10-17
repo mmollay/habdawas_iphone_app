@@ -2,1105 +2,1461 @@
 
 Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert.
 
-Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
-und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
+Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
-## [1.0.37] - 2025-10-17
+## [1.0.39] - 2025-10-17
+
+### Synced from bazar_bold v1.5.14
+- ✨ **Community-Topf Modal deutlich verbessert**: Klarere Erklärungen und bessere UX
+  - Info-Box erklärt "Wie funktioniert der Community-Topf?"
+  - Klarere Labels: "Credits im Topf", "Gut gefüllt", "Credits verwendet"
+  - Tooltips bei allen Statistiken mit detaillierten Erklärungen
+  - Info-Icons (ℹ️) für kontextuelle Hilfe
+  - Beide Varianten (compact/full) aktualisiert
+
+### Synced from bazar_bold v1.5.13
+- 🐛 **Community-Topf zeigt 0 für nicht angemeldete User**: RLS Policy & Foreign Key Fixes
+  - RLS Policy für anonymen Zugriff auf Community Pot Balance
+  - Foreign Key Syntax-Fehler behoben (PGRST200)
+  - Anonyme User sehen jetzt korrekten Balance-Wert
+
+### iOS App Details
+- **Web Content Version**: 1.5.14
+- **iOS Wrapper Version**: 1.0.39
+- **Build**: Synced via rsync from bazar_bold
+- **Testing**: Community Pot improvements verified in iOS wrapper
+
+## [1.5.12] - 2025-10-17
 
 ### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.5.6 aus bazar_bold integriert
-  - **Menü-Button aktualisiert**: "Credits & Community" statt "Token kaufen/spenden"
-  - **Vollständig dynamische /tokens Seite**: Alle Werte basieren auf Admin-Einstellungen
-    - Personal Credit Pakete werden dynamisch berechnet mit `powerUserCreditPrice`
-    - Community Spenden-Pakete werden dynamisch berechnet mit `costPerListing`
-    - Hero-Sektion zeigt `settings.dailyFreeListings` statt hardcoded 5
-    - Alle Texte verwenden dynamische Settings-Werte
-  - **Bug-Fix**: ReferenceError behoben - Funktionen vor Verwendung in Arrays definiert
-  - Build Hash: index-BSUU9nrj.js (aktualisiert)
-  - Alle Assets neu synchronisiert
+- 🎨 **/create Seite zeigt Personal Credits statt Legacy Tokens**: Konsistenz
+  - **Hook**: Von `useTokens()` zu `useCreditsStats()` gewechselt
+  - **Anzeige**: "Credits" statt "Tokens"
+  - **Button**: Vereinfacht von "~2.500 Tokens" zu "Mit KI erzeugen"
+  - **Refetch entfernt**: Credits refreshen automatisch alle 2 Minuten
+  - **Konsistenz**: /create zeigt jetzt gleiche Werte wie Header und Settings
 
 ### Fixed
-- 🔧 **JavaScript Runtime Error behoben**: "Cannot access 'calculateCredits' before initialization"
-  - Helper-Funktionen müssen vor ihrer Verwendung definiert werden
-  - Verhindert App-Crashes auf /tokens Seite
+- 🐛 **Community-Topf zeigt gleichen Wert für alle User**: Synchronisations-Fix
+  - **Problem**: User A sah 150, User B sah 0 (sollte für alle gleich sein)
+  - **Ursache**: `useCommunityStats` hatte kein Auto-Refresh
+  - **Lösung**: Auto-Refresh alle 2 Minuten hinzugefügt (wie `useCreditsStats`)
+  - **Ergebnis**: Beide Hooks synchronisiert, alle User sehen gleichen globalen Wert
 
 ### Technical Details
-- Web-App Version: 1.5.6 (Dynamic Tokens Page & Menu Update)
-- iOS App Version: 1.0.37
-- Capacitor Sync durchgeführt: 5 Plugins
-- Build erfolgreich
-- Alle Assets aktualisiert in www/
 
-### Integration
-- Nahtlose Integration der neuesten Web-Features
-- Keine Breaking Changes
-- Funktioniert sowohl in Web als auch iOS
-- Mit lokalem Build getestet
+**/create Credits-Anzeige** (`ItemCreatePage.tsx`):
+```typescript
+// Vorher (v1.5.11 - Legacy Tokens):
+import { useTokens } from '../../hooks/useTokens';
+const { balance, refetch: refetchTokens } = useTokens();
 
----
+<Chip label={`${balance} Tokens`} />
+<Button disabled={balance < 1}>
+  {balance < 2500 ? 'Nicht genügend Tokens' : 'Mit KI erzeugen (~2.500 Tokens)'}
+</Button>
 
-## [1.0.34] - 2025-10-14
+// Nach Analyse
+await refetchTokens();
+
+// Jetzt (v1.5.12 - Personal Credits):
+import { useCreditsStats } from '../../hooks/useCreditsStats';
+const { personalCredits } = useCreditsStats();
+
+<Chip label={`${personalCredits} Credits`} />
+<Button disabled={personalCredits < 1}>
+  Mit KI erzeugen
+</Button>
+
+// Automatisches Refresh alle 2 Minuten (kein manueller Refetch nötig)
+```
+
+**Community Pot Synchronisation** (`useCommunityStats.ts`):
+```typescript
+// Vorher (v1.5.11 - Kein Auto-Refresh):
+useEffect(() => {
+  fetchStats();
+}, [user?.id]);
+
+// Problem: Wert wird nur beim Mount geladen
+// User A lädt Seite um 10:00 → sieht 150
+// User B lädt Seite um 10:05 → sieht 0 (weil DB-Wert inzwischen geändert)
+
+// Jetzt (v1.5.12 - Auto-Refresh):
+useEffect(() => {
+  fetchStats();
+
+  // Auto-refresh every 2 minutes (120000ms) to stay in sync with useCreditsStats
+  const interval = setInterval(fetchStats, 120000);
+
+  return () => clearInterval(interval);
+}, [user?.id]);
+
+// Ergebnis: Beide Hooks holen alle 2 Minuten aktuelle Werte aus DB
+// → Alle User sehen immer den gleichen, aktuellen Community Pot Balance
+```
+
+### Why These Changes?
+
+**Problem (v1.5.11)**:
+- /create Seite zeigte noch Legacy Token Balance (5000)
+- Community-Topf zeigte unterschiedliche Werte für verschiedene User
+- Inkonsistenz zwischen verschiedenen Komponenten
+
+**Lösung (v1.5.12)**:
+- 🎨 /create verwendet jetzt `useCreditsStats` wie Header und Settings
+- 🐛 Community Pot refresht automatisch alle 2 Minuten
+- 📦 Einheitliches Credits-System über alle Komponenten
+
+**Impact**:
+- **Konsistenz**: Gleiche Credits-Anzeige überall (Header, Settings, /create)
+- **Synchronisation**: Community Pot zeigt für ALLE User den gleichen Wert
+- **UX**: Einfachere, klarere Button-Texte auf /create Seite
+
+**User Story erfüllt**:
+1. ✅ "/create soll aktuelle Credits zeigen, nicht alte Tokens"
+2. ✅ "Community-Topf sollte für alle User gleich sein (globaler Wert)"
+
+## [1.5.11] - 2025-10-17
 
 ### Added
-- 📱 **App-Version Anzeige in Settings**: Neue Sektion in DisplaySection
-  - Zeigt die aktuelle iOS App-Version an (aus package.json)
-  - Zeigt Build-Nummer an (falls unterschiedlich zur Version)
-  - Verwendet Capacitor App Plugin (`@capacitor/app`)
-  - Automatisches Auslesen der App-Informationen über `getInfo()`
-  - Fallback auf "Web" wenn nicht in nativer App-Umgebung
-  - Elegantes Design mit Smartphone-Icon (Lucide React)
-  - Informationstext zur automatischen Versionserkennung
+- 🔐 **Passwort setzen für OAuth-User**: Neue Sicherheits-Sektion in Settings
+  - **OAuth-Erkennung**: Automatische Erkennung von Google-Login-Usern
+  - **Passwort setzen**: OAuth-User können jetzt ein Passwort hinzufügen
+  - **Dual-Login**: Nach Passwort-Setzen Login mit Google ODER Email/Passwort möglich
+  - **Passwortstärke-Anzeige**: Echtzeit-Feedback (Schwach/Mittel/Stark)
+  - **Validierung**: Min. 8 Zeichen, Groß-/Kleinbuchstaben, Zahlen empfohlen
+  - **Passwort ändern**: Benutzer mit bestehendem Passwort können es ändern
+  - **Anmeldemethoden-Übersicht**: Zeigt aktive Login-Methoden (Google, Email/Passwort)
+  - **Neue Sidebar-Option**: "Sicherheit" mit Schloss-Icon
+  - **Location**: `/settings?section=security`
 
 ### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.6.7
-  - DisplaySection.tsx erweitert mit App-Version Feature
-  - useState und useEffect Hooks für Version-Management
-  - Neue Imports: Smartphone Icon und Capacitor App API
-  - Nur in nativer App sichtbar (conditional rendering)
-  - Build Hash: index-BBZpnkdV.js
+- 💰 **Header zeigt Personal Credits statt Legacy Tokens**: Modernisierung
+  - **Vorher**: `useTokens()` → Legacy Token Balance (z.B. 5000)
+  - **Jetzt**: `useCreditsStats()` → Personal Credits aus neuem System
+  - **Konsistenz**: Header-Anzeige passt jetzt zu Settings und /tokens Seite
+
+- 📦 **Community-Topf Widget kompakter**: Optimierte Darstellung im Header
+  - **Padding**: Von 1.5 auf 1 reduziert
+  - **Gap**: Von 1.5 auf 1 reduziert
+  - **Icon**: Von 24px auf 20px verkleinert
+  - **Typography**: Von h6 auf body1 (fontSize 1rem)
+  - **Caption**: Von 0.75rem auf 0.7rem
+  - **Chip Height**: Von 20px auf 18px
+  - **Ergebnis**: Kompakteres Widget ohne Informationsverlust
+
+### Fixed
+- 🐛 **Community Pot Balance Error behoben**: `.single()` → `.maybeSingle()`
+  - **Problem**: `PGRST116` Fehler bei fehlender `community_pot_balance` in DB
+  - **Ursache**: `.single()` erwartet genau 1 Row, aber Tabelle war leer
+  - **Lösung 1**: `useCommunityStats.ts` - `.maybeSingle()` mit Null-Check
+  - **Lösung 2**: `useCreditsStats.ts` - `.maybeSingle()` mit Null-Check
+  - **Fallback**: Wenn kein Eintrag existiert → Balance = 0
+  - **Ergebnis**: Keine Fehler mehr bei leerer Settings-Tabelle
 
 ### Technical Details
-- Web-App Version: 1.6.7 (App Version Display)
-- iOS App Version: 1.0.34
-- Capacitor App Plugin: `@capacitor/app@^7.1.0`
-- Platform Detection: Capacitor.App.getInfo()
-- Build erfolgreich: 1.96s
-- Alle Assets aktualisiert in www/
+
+**Security Section** (`SecuritySection.tsx`):
+```typescript
+// Prüft OAuth-Status
+const checkUserAuth = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  const providers = user.app_metadata.providers || [];
+  const hasOAuthProvider = providers.some((p: string) => p !== 'email');
+  const hasEmailProvider = providers.includes('email');
+
+  setIsOAuthUser(hasOAuthProvider);
+  setHasPassword(hasEmailProvider && !hasOAuthProvider);
+};
+
+// Passwort setzen
+const handleSetPassword = async () => {
+  const { error } = await supabase.auth.updateUser({
+    password: password,
+  });
+  // User kann sich jetzt mit Email/Passwort anmelden
+};
+
+// Passwortstärke berechnen
+const calculatePasswordStrength = (pwd: string): 'weak' | 'medium' | 'strong' => {
+  let strength = 0;
+  if (pwd.length >= 8) strength++;
+  if (pwd.length >= 12) strength++;
+  if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) strength++;
+  if (/\d/.test(pwd)) strength++;
+  if (/[^a-zA-Z\d]/.test(pwd)) strength++;
+
+  if (strength <= 2) return 'weak';
+  if (strength <= 3) return 'medium';
+  return 'strong';
+};
+```
+
+**Settings Integration**:
+```typescript
+// SettingsSidebar.tsx - Neuer Menüpunkt
+{ id: 'security' as SettingsSection, label: 'Sicherheit', icon: <Lock size={20} /> }
+
+// SettingsPage.tsx - Neue Section
+case 'security':
+  return user ? <SecuritySection userId={user.id} /> : null;
+
+// Type erweitert
+type SettingsSection = 'overview' | 'profile' | 'security' | 'addresses' | ...
+```
+
+**Header Credits Update** (`Header.tsx`):
+```typescript
+// Vorher (v1.5.10):
+import { useTokens } from '../../hooks/useTokens';
+const { balance: tokenBalance } = useTokens();
+<Typography>({tokenBalance})</Typography>  // Legacy Tokens
+
+// Jetzt (v1.5.11):
+import { useCreditsStats } from '../../hooks/useCreditsStats';
+const { personalCredits } = useCreditsStats();
+<Typography>({personalCredits})</Typography>  // Neue Credits
+```
+
+**Community Pot Error Fix**:
+```typescript
+// useCommunityStats.ts & useCreditsStats.ts
+// Vorher (v1.5.10 - Error):
+const { data: potData, error: potError } = await supabase
+  .from('credit_system_settings')
+  .select('setting_value')
+  .eq('setting_key', 'community_pot_balance')
+  .single();  // ❌ Wirft Fehler bei 0 rows
+
+if (potError) throw potError;
+const communityPotBalance = parseInt(potData.setting_value);
+
+// Jetzt (v1.5.11 - Fixed):
+const { data: potData, error: potError } = await supabase
+  .from('credit_system_settings')
+  .select('setting_value')
+  .eq('setting_key', 'community_pot_balance')
+  .maybeSingle();  // ✅ Gibt null bei 0 rows zurück
+
+if (potError) throw potError;
+// Null-Check mit Fallback
+const communityPotBalance = potData ? (parseInt(potData.setting_value) || 0) : 0;
+```
+
+**Community Pot Widget Kompaktierung** (`CommunityPotWidget.tsx`):
+```typescript
+// Vorher (v1.5.10):
+<Paper elevation={2} sx={{ p: 1.5, gap: 1.5 }}>
+  <Coins size={24} />
+  <Box sx={{ flex: 1 }}>
+    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>...</Typography>
+    <Typography variant="h6">...</Typography>
+  </Box>
+  <Chip sx={{ height: 20 }} />
+</Paper>
+
+// Jetzt (v1.5.11 - Kompakter):
+<Paper elevation={2} sx={{ p: 1, gap: 1 }}>
+  <Coins size={20} />
+  <Box>
+    <Typography variant="caption" sx={{ fontSize: '0.7rem', lineHeight: 1 }}>...</Typography>
+    <Typography variant="body1" sx={{ fontSize: '1rem', lineHeight: 1.2 }}>...</Typography>
+  </Box>
+  <Chip sx={{ height: 18, fontSize: '0.65rem' }} />
+</Paper>
+```
+
+### Why These Changes?
+
+**Problem (v1.5.10)**:
+- OAuth-User (Google-Login) konnten sich nicht mit Email/Passwort anmelden
+- Header zeigte alte Token-Balance statt neue Credits
+- Community Pot Error bei fehlender DB-Initialisierung
+- Community Pot Widget zu groß im Header
+
+**Lösung (v1.5.11)**:
+- 🔐 Neue Security-Section ermöglicht Passwort-Setzen für OAuth-User
+- 💰 Header zeigt konsistent Personal Credits aus neuem System
+- 🐛 `.maybeSingle()` mit Null-Check verhindert Fehler bei leerer DB
+- 📦 Kompakteres Widget spart Platz im Header
+
+**Impact**:
+- **Flexibilität**: User können zwischen Login-Methoden wählen
+- **Konsistenz**: Einheitliche Credits-Anzeige über alle Komponenten
+- **Robustheit**: Keine Fehler mehr bei fehlenden Settings-Einträgen
+- **UX**: Kompakterer Header mit besserem Platzmanagement
+
+**User Stories erfüllt**:
+1. ✅ "Ich habe mich mit Google angemeldet, möchte aber auch Email/Passwort-Login"
+2. ✅ "Die Zahl im Header soll meine aktuellen Credits zeigen, nicht alte Tokens"
+3. ✅ "Community Pot zeigt Fehler, wenn keine DB-Einträge vorhanden"
+4. ✅ "Das Community Pot Widget nimmt zu viel Platz im Header ein"
+
+## [1.5.10] - 2025-10-17
+
+### Added
+- 🏪 **Community-Topf im Header für alle sichtbar**: Transparenz und Engagement-Förderung
+  - **Sichtbarkeit**: Community-Topf Widget jetzt für ALLE Benutzer sichtbar (nicht nur eingeloggte)
+  - **Navigation**: Widget navigiert zu `/tokens?tab=community` statt `/donate`
+  - **Position**: Desktop-Header rechts neben Suchfeld
+  - **Ergebnis**: Höhere Community-Awareness und Spendenbereitschaft
+
+### Changed
+- ⚙️ **Settings Credits-Integration**: Vollständige Einbindung des neuen Credits-Systems
+  - **Neue Anzeige**: 3-Karten-Layout mit Personal Credits, Community-Topf und Aktions-Buttons
+  - **Personal Credits**: Zeigt `creditsStats.personalCredits` mit lila Gradient
+  - **Community-Topf**: Zeigt `creditsStats.communityPotBalance` mit rosa Akzent
+  - **Aktions-Buttons**:
+    - "Credits kaufen" → navigiert zu `/tokens`
+    - "Community spenden" → navigiert zu `/tokens?tab=community`
+  - **Überschrift**: Von "Token-Guthaben" zu "Credits-Guthaben"
+  - **Legacy-Bereich**: Token-Transaktionen bleiben als "Legacy Token-Transaktionen" erhalten
+  - **Ergebnis**: Einheitliches Credits-Erlebnis mit direktem Kaufzugang
+
+### Fixed
+- 🦊 **Firefox White-Screen behoben**: Vite-Optimierung korrigiert
+  - **Problem**: Firefox lud 60+ einzelne lucide-react Icon-Dateien
+  - **Ursache**: `optimizeDeps.exclude: ['lucide-react']` in vite.config.ts
+  - **Lösung**: Geändert zu `optimizeDeps.include: ['lucide-react']`
+  - **Ergebnis**: Icons werden gebündelt, Firefox funktioniert wie Chrome/Safari
+
+### Technical Details
+**Community-Topf Header-Sichtbarkeit** (`Header.tsx`):
+```typescript
+// Vorher (v1.5.9 - nur für eingeloggte):
+{!isMobile && user && (
+  <Box sx={{ mr: 2 }}>
+    <CommunityPotWidget
+      variant="compact"
+      onDonate={() => navigate('/donate')}
+    />
+  </Box>
+)}
+
+// Jetzt (v1.5.10 - für alle):
+{!isMobile && (
+  <Box sx={{ mr: 2 }}>
+    <CommunityPotWidget
+      variant="compact"
+      onDonate={() => navigate('/tokens?tab=community')}
+    />
+  </Box>
+)}
+```
+
+**Settings Credits-Integration** (`TokensSection.tsx`):
+```typescript
+// Neue Imports:
+import { Heart } from 'lucide-react';
+import { useCreditsStats } from '../../../hooks/useCreditsStats';
+import { formatNumber } from '../../../utils/formatNumber';
+
+// Neue 3-Karten-Struktur:
+const creditsStats = useCreditsStats();
+
+<Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 4 }}>
+  {/* Karte 1: Personal Credits */}
+  <Paper sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+    <Typography variant="h3">
+      {creditsStats.loading ? <CircularProgress /> : formatNumber(creditsStats.personalCredits)}
+    </Typography>
+  </Paper>
+
+  {/* Karte 2: Community-Topf */}
+  <Paper sx={{ border: '1px solid rgba(233, 30, 99, 0.3)', bgcolor: 'rgba(233, 30, 99, 0.05)' }}>
+    <Typography variant="h4" sx={{ color: '#e91e63' }}>
+      {creditsStats.loading ? <CircularProgress /> : formatNumber(creditsStats.communityPotBalance)}
+    </Typography>
+  </Paper>
+
+  {/* Karte 3: Aktions-Buttons */}
+  <Paper>
+    <Button onClick={() => navigate('/tokens')}>Credits kaufen</Button>
+    <Button onClick={() => navigate('/tokens?tab=community')}>Community spenden</Button>
+  </Paper>
+</Box>
+```
+
+**Firefox Kompatibilität** (`vite.config.ts`):
+```typescript
+// Vorher (v1.5.9 - Problem):
+export default defineConfig({
+  plugins: [react()],
+  optimizeDeps: {
+    exclude: ['lucide-react'],  // ❌ Firefox lädt 60+ einzelne Dateien
+  },
+});
+
+// Jetzt (v1.5.10 - Gelöst):
+export default defineConfig({
+  plugins: [react()],
+  optimizeDeps: {
+    // lucide-react is now included for better Firefox compatibility
+    include: ['lucide-react'],  // ✅ Icons werden gebündelt
+  },
+});
+```
+
+### Why These Changes?
+**Problem (v1.5.9)**:
+- Community-Topf im Header nur für eingeloggte Nutzer sichtbar
+- Settings-Seite zeigte nur Legacy-Token-System, keine Credits-Integration
+- Keine direkte Kaufmöglichkeit aus Settings heraus
+- Firefox zeigte weiße Seite wegen 60+ einzelnen Icon-Loads
+
+**Lösung (v1.5.10)**:
+- Community-Topf für ALLE sichtbar → höhere Transparenz und Engagement
+- Settings vollständig mit Credits-System integriert → einheitliches UX
+- Direkte Kauf- und Spenden-Buttons in Settings → bessere Conversion
+- Vite-Optimierung korrigiert → Firefox funktioniert einwandfrei
+
+**Impact**:
+- Bessere Community-Sichtbarkeit und Teilnahme
+- Konsistente Credits-Darstellung über alle Seiten
+- Plattform-übergreifende Browser-Kompatibilität
+
+## [1.5.9] - 2025-10-17
+
+### Changed
+- 🎨 **Credits-Counter kompakter**: Übersichtlichere Darstellung auf /tokens Seite
+  - **maxWidth reduziert**: Von 800px auf 600px
+  - **Padding optimiert**: Von 2 auf 1.5
+  - **Icon-Größe**: Von 40x40 auf 32x32 reduziert
+  - **Icon SVG**: Von 20 auf 16 reduziert
+  - **Gap optimiert**: Von 2 auf 1.5
+  - **Typography**: Von h6 auf body1 mit fontSize 1.1rem
+  - **Caption kleiner**: Von 0.7rem auf 0.65rem
+  - **Ergebnis**: Kompaktere, aufgeräumtere Anzeige ohne Informationsverlust
+
+- 📇 **Kontaktbereich auf /about mit Grid modernisiert**: Professionellere Darstellung
+  - **Grid-Layout**: 3-spaltig auf Desktop, 1-spaltig auf Mobile
+  - **Icon-Boxen**: Gradient-Hintergründe für Adresse, Telefon, E-Mail
+    - 🗺️ Adresse: MapPin Icon mit Lila-Gradient
+    - 📞 Telefon: Phone Icon mit Grün-Gradient + Öffnungszeiten "Mo-Fr: 9:00-18:00 Uhr"
+    - ✉️ E-Mail: Mail Icon mit Pink-Gradient + "Antwort binnen 24h"
+  - **Hover-Effekt**: Border färbt sich bei Hover primary
+  - **Zentrierte Überschrift**: "Kontakt" als H4
+  - **maxWidth**: 900px für optimale Lesbarkeit
+  - **Ergebnis**: Moderne, card-basierte Kontakt-Sektion statt einfacher 2-Spalten Liste
+
+### Technical Details
+**Credits-Counter Kompaktierung** (`CreditPurchasePage.tsx`):
+```typescript
+// Vorher (v1.5.8):
+<Box sx={{ mb: 4, maxWidth: 800, mx: 'auto', display: 'flex', gap: 2 }}>
+  <Card sx={{ flex: 1, p: 2 }}>
+    <Box sx={{ width: 40, height: 40 }}>
+      <Coins size={20} />
+    </Box>
+    <Typography variant="h6">...</Typography>
+    <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>...</Typography>
+  </Card>
+</Box>
+
+// Jetzt (v1.5.9 - Kompakter):
+<Box sx={{ mb: 4, maxWidth: 600, mx: 'auto', display: 'flex', gap: 1.5 }}>
+  <Card sx={{ flex: 1, p: 1.5 }}>
+    <Box sx={{ width: 32, height: 32 }}>
+      <Coins size={16} />
+    </Box>
+    <Typography variant="body1" sx={{ fontSize: '1.1rem' }}>...</Typography>
+    <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>...</Typography>
+  </Card>
+</Box>
+```
+
+**Kontaktbereich Grid-Modernisierung** (`AboutPage.tsx`):
+```typescript
+// Vorher (v1.5.8 - Einfach):
+<Grid container spacing={4}>
+  <Grid item xs={12} md={6}>
+    <Typography variant="h6">Kontakt</Typography>
+    <Typography>...</Typography>
+  </Grid>
+  <Grid item xs={12} md={6}>
+    <Typography variant="h6">Erreichbarkeit</Typography>
+    <Typography>...</Typography>
+  </Grid>
+</Grid>
+
+// Jetzt (v1.5.9 - Modern):
+<Box sx={{ mt: 8 }}>
+  <Typography variant="h4" sx={{ textAlign: 'center', mb: 4 }}>
+    Kontakt
+  </Typography>
+  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3, maxWidth: 900 }}>
+    <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', '&:hover': { borderColor: 'primary.main' } }}>
+      <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
+        <Box sx={{ width: 40, height: 40, borderRadius: 1.5, background: 'linear-gradient(...)', }}>
+          <MapPin size={20} />
+        </Box>
+        <Typography variant="h6">Adresse</Typography>
+      </Box>
+      <Typography>...</Typography>
+    </Paper>
+    {/* Telefon & E-Mail analog */}
+  </Box>
+</Box>
+```
+
+**Icons hinzugefügt**:
+```typescript
+import { MapPin, Phone, Mail } from 'lucide-react';
+```
+
+### Why These Changes?
+**Problem (v1.5.8)**:
+- Credits-Counter wirkte etwas zu groß/sperrig
+- Kontaktbereich auf /about war zu einfach und altbacken gestaltet
+- Fehlende visuelle Hierarchie im Kontaktbereich
+
+**Lösung (v1.5.9)**:
+- Kompakterer Counter spart Platz ohne Funktionalität zu verlieren
+- Moderner Grid-basierter Kontaktbereich mit Icon-Cards
+- Bessere visuelle Hierarchie und Hover-Effekte
+- Zusätzliche Infos: Öffnungszeiten und Antwortzeit
+
+### Testing
+- ✅ /tokens Seite: Counter ist kompakter und übersichtlicher
+- ✅ /about Seite: Kontaktbereich mit modernem Grid-Layout
+- ✅ Hover-Effekte funktionieren einwandfrei
+- ✅ Responsive: Mobile zeigt 1 Spalte, Desktop 3 Spalten
+- ✅ Beide Tabs auf /tokens funktionieren
+- ✅ Playwright Tests erfolgreich
+
+## [1.5.8] - 2025-10-17
+
+### Changed
+- 🎨 **/tokens Seite Header vereinfacht**: Übersichtlichere und klarere Darstellung
+  - **Entfernt**: Redundante Info-Boxen für "Personal Credits" und "Community Spenden"
+  - **Neuer Titel**: "HabDaWas Credits" statt "Credits & Spenden"
+  - **Fokussierter Subtitle**: "5 Gratis-Inserate jeden Monat" grün hervorgehoben
+  - **Kurze Beschreibung**: "Credits für Power-User • Spenden für die Community"
+  - **Ergebnis**: Weniger visueller Lärm, klarer Fokus auf das Wesentliche
+
+- 🌱 **/about Seite ans neue Konzept angepasst**: Credits-System transparent kommuniziert
+  - **Hero-Text**: "5 Gratis-Inserate jeden Monat. Schnell und intelligent."
+  - **Feature-Box "Fair & Transparent"**: Neuer Text passt zum Credit-System
+    - "5 Gratis-Inserate jeden Monat. Credits für Power-User, Spenden für die Community."
+  - **Ergebnis**: Konsistente Kommunikation des neuen Konzepts über die gesamte Plattform
+
+### Technical Details
+**Header-Vereinfachung** (`CreditPurchasePage.tsx`):
+```typescript
+// Vorher (v1.5.7 - Überladen):
+<Typography>5 Gratis-Inserate</Typography> + <br/>
+<Typography>Credits für Power-User • Community-Spenden</Typography>
++ 2 Info-Boxen mit Icons
+
+// Jetzt (v1.5.8 - Klar):
+<Typography variant="h3">HabDaWas Credits</Typography>
+<Typography><strong>5 Gratis-Inserate</strong> jeden Monat</Typography>
+<Typography>Credits für Power-User • Spenden für die Community</Typography>
+```
+
+**About-Seite** (`AboutPage.tsx`):
+```typescript
+// Feature-Box Text aktualisiert:
+description: '5 Gratis-Inserate jeden Monat. Credits für Power-User, Spenden für die Community.'
+
+// Hero-Text aktualisiert:
+"5 Gratis-Inserate jeden Monat. Schnell und intelligent."
+```
+
+### Why These Changes?
+**Problem (v1.5.7)**:
+- /tokens Seite hatte zu viele redundante Elemente
+- Info-Boxen wiederholten, was die Tabs bereits zeigten
+- Header war überladen mit Information
+- /about Seite erwähnte noch altes Konzept
+
+**Lösung (v1.5.8)**:
+- Fokus auf das Wesentliche: "5 Gratis-Inserate"
+- Redundanz entfernt
+- Konsistente Kommunikation über alle Seiten
+- Klare, ehrliche Credits-Darstellung
+
+### Testing
+- ✅ /tokens Seite Header zeigt neues, klares Design
+- ✅ /about Seite kommuniziert neues Konzept
+- ✅ Beide Seiten mit Playwright getestet
+- ✅ Responsive Design funktioniert einwandfrei
+
+## [1.5.7] - 2025-10-17
+
+### Changed
+- 🎨 **Credits-Darstellung ehrlich und transparent**: Keine irreführenden "~X Inserate" mehr
+  - **Personal Credits Packages**:
+    - ✅ "1 Credit = 1 Basic-Inserat" statt irreführendem "~25 Inserate erstellen"
+    - ✅ "Premium-Features kosten zusätzlich" macht variable Kosten transparent
+    - ✅ Keine Suggestion mehr, dass alle Inserate gleich viel kosten
+  - **Informativer Hinweis**: Neuer Tipp-Text unter Credit-Paketen
+    - "💡 So funktionieren Credits: 1 Credit = 1 Basic-Inserat. Premium-Features (z.B. Hervorhebung, Top-Platzierung) kosten zusätzliche Credits. Credits verfallen nie!"
+  - **User Feedback**: Alte Darstellung war verwirrend, da Premium-Features mehr kosten
+  - **Transparenz First**: Ehrliche Kommunikation statt Marketing-Versprechen
+
+### Technical Details
+**Vorher (v1.5.6 - IRREFÜHREND)**:
+```typescript
+features: [
+  `${formatNumber(calculateCredits(5))} Personal Credits`,
+  `~${formatNumber(calculateCredits(5))} Inserate erstellen`,  // ❌ IRREFÜHREND
+  'Keine monatlichen Limits',
+  'Credits verfallen nicht',
+]
+```
+
+**Jetzt (v1.5.7 - EHRLICH)**:
+```typescript
+features: [
+  '1 Credit = 1 Basic-Inserat',              // ✅ KLAR
+  'Premium-Features kosten zusätzlich',      // ✅ TRANSPARENT
+  'Keine monatlichen Limits',
+  'Credits verfallen nicht',
+]
+```
+
+### Why This Change?
+**Problem**:
+- "~25 Inserate erstellen" suggerierte, dass alle Inserate gleich 1 Credit kosten
+- User erwarteten 25 Inserate mit allen Features
+- Realität: Premium-Features (Hervorhebung, Top-Platzierung) kosten mehr
+- Irreführende Darstellung = verlorenes Vertrauen
+
+**Lösung**:
+- Ehrliche Kommunikation: "1 Credit = 1 Basic-Inserat"
+- Transparenz: "Premium-Features kosten zusätzlich"
+- Detaillierter Hinweis mit Beispielen
+- Keine falschen Versprechen
+
+### Testing
+- ✅ /tokens Seite lädt ohne Fehler
+- ✅ Personal Credits Tab zeigt ehrliche Darstellung
+- ✅ Community Tab unverändert (dort ist es transparent)
+- ✅ Neuer Hinweis-Text korrekt angezeigt
+- ✅ Alle drei Pakete (STARTER, POPULAR, PRO) aktualisiert
+
+## [1.5.6] - 2025-10-17
+
+### Changed
+- 🎨 **Menü-Button aktualisiert**: "Credits & Community" statt "Token kaufen/spenden"
+  - Menü-Eintrag im Header passt jetzt zum neuen Konzept
+  - Klarere Benennung für Nutzererkennung
+
+- 📊 **Vollständig dynamische /tokens Seite**: Alle Werte basieren auf Admin-Einstellungen
+  - **Personal Credit Pakete**: Dynamisch berechnet mit `powerUserCreditPrice`
+    - STARTER: `calculateCredits(5€)`
+    - POPULAR: `calculateCredits(10€)` + 10% Bonus
+    - PRO: `calculateCredits(20€)` + 15% Bonus
+  - **Community Spenden-Pakete**: Dynamisch berechnet mit `costPerListing`
+    - SUPPORTER: `calculateListings(5€)`
+    - CONTRIBUTOR: `calculateListings(10€)`
+    - CHAMPION: `calculateListings(25€)`
+  - **Hero-Sektion**: Zeigt `settings.dailyFreeListings` statt hardcoded 5
+  - **Beschreibungen**: Alle Texte verwenden dynamische Settings-Werte
+  - **Preis pro Unit**: Wird korrekt berechnet und angezeigt
+
+### Fixed
+- 🔧 **ReferenceError behoben**: "Cannot access 'calculateCredits' before initialization"
+  - `calculateCredits()` und `calculateListings()` vor Array-Definitionen verschoben
+  - Funktionen müssen definiert sein, bevor sie in Arrays verwendet werden
+  - Keine Runtime-Fehler mehr auf /tokens Seite
+
+### Technical Details
+**Dynamische Berechnung:**
+```typescript
+// Helper Funktionen MÜSSEN vor Verwendung definiert sein
+const calculateCredits = (euros: number): number => {
+  if (!settings) return 0;
+  return Math.floor(euros / settings.powerUserCreditPrice);
+};
+
+const calculateListings = (euros: number): number => {
+  if (!settings) return 0;
+  return Math.floor(euros / settings.costPerListing);
+};
+
+// Danach können sie in Arrays verwendet werden
+const personalPackages = settings ? [
+  { credits: calculateCredits(5), ... },
+  ...
+] : [];
+```
+
+**Vorher vs. Nachher:**
+```typescript
+// ❌ VORHER (Hardcoded):
+credits: 25,
+features: ["25 Personal Credits", "~25 Inserate erstellen"]
+
+// ✅ JETZT (Dynamisch):
+credits: calculateCredits(5),
+features: [
+  `${formatNumber(calculateCredits(5))} Personal Credits`,
+  `~${formatNumber(calculateCredits(5))} Inserate erstellen`
+]
+```
+
+### Testing
+- ✅ /tokens Seite lädt ohne Fehler
+- ✅ Personal Credits Tab zeigt dynamische Werte
+- ✅ Community Spenden Tab zeigt dynamische Werte
+- ✅ Counter auto-update funktioniert
+- ✅ Alle Texte verwenden Settings-Werte
+- ✅ Preis pro Credit/Listing korrekt berechnet
+
+## [1.5.5] - 2025-10-17
+
+### Fixed
+- 🔧 **Spendenbetrag und Preis speichern**: Euro-Betrag und Preis pro Unit werden jetzt korrekt in der Datenbank gespeichert
+  - **Problem**: Bei Admin-Grants wurde `amount: 0` gespeichert statt echtem Euro-Betrag
+  - **Problem**: Kein Preis pro Inserat/Credit zum Zeitpunkt der Spende gespeichert
+  - **Impact**: Bei Änderung des Preises (z.B. von 0.20€ auf 0.25€) war historische Zuordnung verloren
+  - **Lösung**: Neues Feld `price_per_unit` in donations Tabelle
+  - **Lösung**: `euroAmount` und `pricePerUnit` werden jetzt korrekt übergeben und gespeichert
+  - Betroffene Dateien:
+    - `useAdminCredits.ts`: Speichert jetzt echten Euro-Betrag und Preis
+    - `ManualCreditGrant.tsx`: Übergibt Euro-Betrag und berechneten Preis pro Unit
+    - `donations` Tabelle: Neues Feld `price_per_unit` (numeric, NOT NULL, default 0.20)
+
+### Added
+- 📊 **Live Counter auf /tokens Seite**: Automatisch aktualisierender Counter mit 2-Minuten-Intervall
+  - Zeigt Personal Credits des angemeldeten Users
+  - Zeigt Community-Topf Balance (verfügbare Inserate)
+  - Kompaktes Design mit Icons (Coins & TrendingUp)
+  - Auto-Update alle 2 Minuten (120000ms)
+  - Refresh-Symbol (↻) zeigt letztes Update an
+  - Neuer Hook: `useCreditsStats.ts` für Datenabfrage
+  - Integration in `CreditPurchasePage.tsx`
+
+### Database Migration
+- 📊 **Migration: 20251017162647_add_price_per_unit_to_donations.sql**
+  - `price_per_unit` Feld hinzugefügt (numeric, NOT NULL, default 0.20)
+  - Check Constraint: `price_per_unit >= 0`
+  - Alle existierenden Einträge auf 0.20€ gesetzt
+  - Comment: "Price per credit or listing at the time of donation (in EUR)"
+
+### Technical Details
+**Problem Analyse:**
+```typescript
+// Alt (FALSCH):
+amount: 0,  // Admin granted, no payment - FALSCH!
+// Dies verlor den echten Euro-Betrag
+
+// Neu (KORREKT):
+amount: euroAmount,  // Real Euro amount - 5, 10, 20, etc.
+price_per_unit: pricePerUnit,  // 0.20€ zum Zeitpunkt der Spende
+```
+
+**Warum wichtig?**
+- Admin spendet 10€ bei Preis 0.20€/Inserat = 50 Inserate
+- Später ändert Admin Preis auf 0.25€/Inserat
+- **Vorher**: 10€ ÷ 0.25€ = 40 Inserate (FALSCH!)
+- **Jetzt**: 10€ gespeichert mit 0.20€/Inserat = 50 Inserate (KORREKT!)
+
+**useCreditsStats Hook:**
+```typescript
+- Fetch Personal Credits (wenn eingeloggt)
+- Fetch Community Pot Balance
+- Auto-Refresh alle 2 Minuten
+- Loading States für smooth UX
+- lastUpdated Timestamp tracking
+```
+
+**Counter Design:**
+- Zwei kompakte Cards (Personal & Community)
+- 40x40px Icons mit colored Background
+- Kleine Labels (0.7rem)
+- Große Zahlen (h6, fontWeight 700)
+- Responsive: Column auf xs, Row auf sm+
+
+### Testing
+- ✅ Migration erfolgreich angewendet
+- ✅ Admin Grant speichert korrekt Euro-Betrag und Preis
+- ✅ Counter lädt Personal Credits und Community Balance
+- ✅ Auto-Update alle 2 Minuten funktioniert
+- ✅ Kompaktes Design passt perfekt unter die Tabs
+
+## [1.5.4] - 2025-10-17
+
+### Fixed
+- 🔧 **Credit System Database Constraints**: Foreign Key und Check Constraint Fehler behoben
+  - **Problem 1**: `donations` und `community_pot_transactions` referenzierten `auth.users` statt `profiles`
+    - Supabase Queries mit `.select('*, user:profiles!user_id')` schlugen fehl
+    - Fehler: "Could not find a relationship between tables in the schema cache"
+    - **Lösung**: Foreign Keys jetzt auf `profiles(id)` statt `auth.users(id)`
+
+  - **Problem 2**: `donations.amount` Check Constraint zu streng (`amount > 0`)
+    - Admin-Grants mit `amount = 0` wurden blockiert (useAdminCredits.ts:49)
+    - Fehler: "new row violates check constraint donations_amount_check"
+    - **Lösung**: Constraint geändert zu `amount >= 0` für Admin-Grant-Unterstützung
+
+### Database Migration
+- 📊 **Migration: 20251017_fix_credit_system_constraints_and_fkeys.sql**
+  - Foreign Keys für `donations` und `community_pot_transactions` zu `profiles` migriert
+  - `donations_amount_check` Constraint von `> 0` zu `>= 0` geändert
+  - `donations_credits_granted_check` Constraint hinzugefügt (`>= 0`)
+  - Automatische Verifizierung mit RAISE NOTICE am Ende
+
+### Technical Details
+**Betroffene Hooks/Components:**
+- `useDonations.ts` - Funktioniert jetzt mit Foreign Key zu profiles
+- `useCommunityPotTransactions.ts` - Funktioniert jetzt mit Foreign Key zu profiles
+- `useAdminCredits.ts` - Kann jetzt Credits mit `amount = 0` vergeben
+
+**SQL Changes:**
+```sql
+-- Foreign Keys auf profiles umgestellt
+ALTER TABLE donations
+ADD CONSTRAINT donations_user_id_profiles_fkey
+FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+
+ALTER TABLE community_pot_transactions
+ADD CONSTRAINT community_pot_transactions_user_id_profiles_fkey
+FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL;
+
+-- Amount Constraint gelockert
+ALTER TABLE donations
+ADD CONSTRAINT donations_amount_check CHECK (amount >= 0);
+```
+
+### Testing
+- ✅ Supabase Migration erfolgreich angewendet
+- ✅ Foreign Key Relationships verifiziert
+- ✅ Check Constraints validiert
+
+## [1.5.3] - 2025-10-17
+
+### Changed
+- 🔄 **Admin-Bereich Navigation**: Vertikale Sidebar statt horizontale Tabs
+  - AdminSidebar Komponente im Stil von SettingsSidebar erstellt
+  - 4 Sektionen: Benutzerverwaltung, Rollen & Berechtigungen, Aufgaben, Credit-System
+  - Collapsible Sidebar für mehr Platz auf Desktop
+  - Mobile Drawer mit Hamburger-Menü
+  - Konsistentes Navigation-Design über die gesamte App
+
+- 🔗 **Settings → Admin Link**: Direkter Link zur Admin-Seite
+  - "Administration" in Settings-Sidebar navigiert jetzt zu `/admin` Route
+  - Kein eingebetteter Admin-Bereich mehr in den Einstellungen
+  - Separate, dedizierte Admin-Seite mit eigener Navigation
+  - Bessere Übersichtlichkeit und Trennung der Bereiche
+
+### Added
+- 📦 **AdminSidebar Component**: Neue Sidebar-Navigation für Admin-Bereich
+  - AdminSection Type: 'users' | 'roles' | 'tasks' | 'credits'
+  - Collapsible auf Desktop mit Toggle-Button
+  - Mobile Drawer-Integration
+  - Icon-basierte Navigation (Users, Shield, ListTodo, Coins)
+  - Tooltip-Support im collapsed Mode
+
+### Technical Details
+- AdminSidebar Props: currentSection, onSectionChange, collapsed, onToggleCollapse, isMobile
+- AdminPage Layout umgestellt: Sidebar + Content statt horizontale Tabs
+- Mobile Drawer mit MUI Drawer Component
+- Responsive Breakpoints für Desktop/Mobile-Unterscheidung (md)
+- Section-based Rendering statt Tab-Index
 
 ### UI/UX Improvements
-- Konsistentes Design mit anderen Settings-Sektionen
-- Graue Info-Box für Versions-Details
-- Responsive Layout (Mobile & Desktop)
-- Nur auf iOS sichtbar (automatische Plattformerkennung)
-- Zeigt Version & Build separat an
-
-### Integration
-- Nahtlose Integration in bestehende DisplaySection
-- Keine Breaking Changes
-- Funktioniert sowohl in Web (zeigt "Web") als auch iOS (zeigt echte Version)
-- Mit Playwright getestet
-
----
-
-## [1.0.32] - 2025-10-14
-
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.6.5 (Final Build mit vercel.json Fix)
-  - Neuester Build von bazar_bold nach www/ kopiert
-  - vercel.json Fix inkludiert: auth-callback-native-v2.html zu Rewrites hinzugefügt
-  - auth-callback-native-v2.html wiederhergestellt im www/ Ordner
-  - Build Hash: index-BcN4lON3.js (neuester Build)
-  - Alle Assets aktualisiert
-
-### Fixed
-- ✅ **vercel.json Rewrite Rule korrigiert**
-  - auth-callback-native-v2.html wurde nicht von Rewrite ausgeschlossen
-  - Vercel hätte die HTML-Seite auf React App umgeleitet
-  - Jetzt ausgeschlossen: auth-callback-native-v2.html funktioniert direkt
-  - OAuth Callback wird nicht mehr zur React-App umgeleitet
-
-### Technical Details
-- Web-App Version: 1.6.5 (Final)
-- vercel.json: auth-callback-native-v2.html zu Regex hinzugefügt
-- Rewrite Pattern: `/((?!auth-callback-native\.html|auth-callback-native-v2\.html|deeplink-test\.html).*)`
-- Build komplett synchronized zwischen bazar_bold und iphone_app
-
-### Why This Update Is Important
-
-**Problem (v1.0.31)**:
-- ❌ Code war richtig in AuthContext.tsx
-- ❌ ABER: www/ Ordner hatte ALTEN Build ohne vercel.json Fix
-- ❌ vercel.json hätte auth-callback-native-v2.html auf React-App umgeleitet
-- ❌ OAuth würde beim Callback hängen bleiben
-
-**Lösung (v1.0.32)**:
-- ✅ Neuester Build von bazar_bold mit vercel.json Fix
-- ✅ auth-callback-native-v2.html funktioniert als statische HTML-Seite
-- ✅ Keine Umleitung zur React-App
-- ✅ OAuth Flow komplett funktionsfähig
-
-### Next Steps (Unchanged)
-
-1. **Google Cloud Console** → Authorized redirect URIs erweitern:
-   ```
-   https://beta.habdawas.at/auth-callback-native-v2.html
-   ```
-
-2. **Clean Build in Xcode**:
-   - Cmd+Shift+K (Clean Build Folder)
-   - Cmd+R (Build & Run)
-
-3. **OAuth testen!** 🎉
-
-**DAS IST JETZT DIE KOMPLETTE LÖSUNG MIT KORREKTEM BUILD! 🚀**
-
----
-
-## [1.0.31] - 2025-10-14
-
-### Fixed
-- 🎯 **CRITICAL FIX: OAuth Redirect URL korrigiert**
-  - Problem: `redirectUrl` zeigte auf normale Web-Callback-Seite
-  - Google 400 Error weil `auth-callback-native-v2.html` nicht in OAuth Whitelist war
-  - **Lösung**: redirectUrl auf `auth-callback-native-v2.html?platform=ios` geändert
-  - Diese URL muss in Google Cloud Console "Authorized redirect URIs" hinzugefügt werden
-  - Nach Google Cloud Console Update sollte OAuth endlich funktionieren!
-
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.6.5 (Redirect URL Fix)
-  - AuthContext.tsx Zeile 255: `redirectUrl` auf iOS-spezifische HTML-Seite umgestellt
-  - Von: `https://beta.habdawas.at/auth/callback`
-  - Zu: `https://beta.habdawas.at/auth-callback-native-v2.html?platform=ios`
-  - auth-callback-native-v2.html im www/ Ordner wiederhergestellt
-  - Build Hash: index-B23HaEWk.js (neu)
-
-### Technical Details
-- Web-App Version: 1.6.5 (Redirect URL Fix)
-- iOS-spezifische Callback-Seite: `auth-callback-native-v2.html`
-- Platform Detection via ?platform=ios Query Parameter
-- HTML-Seite triggered Deep Link redirect zu habdawas://auth/callback
-- ASWebAuthenticationSession bleibt unverändert
-- appId: 'at.habdawas.app' bleibt konfiguriert
-
-### Google Cloud Console Konfiguration erforderlich
-
-**WICHTIG**: Diese Änderung muss manuell in Google Cloud Console durchgeführt werden!
-
-1. **Google Cloud Console öffnen**:
-   - APIs & Services → Credentials
-   - Web Client ID editieren: `60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1`
-
-2. **"Authorized redirect URIs" erweitern**:
-   ```
-   https://hsbjflixgavjqxvnkivi.supabase.co/auth/v1/callback
-   https://beta.habdawas.at/auth/callback
-   https://beta.habdawas.at/auth-callback-native-v2.html  ← NEU HINZUFÜGEN
-   http://localhost:5173/auth/callback
-   ```
-
-3. **Speichern und 5 Minuten warten** (Google Propagation)
-
-4. **App neu testen**:
-   - Clean Build in Xcode (Cmd+Shift+K)
-   - Build & Run
-   - "Mit Google anmelden" klicken
-   - ASWebAuthenticationSession sollte öffnen
-   - Google Login durchführen
-   - auth-callback-native-v2.html sollte laden
-   - Deep Link redirect zu App sollte funktionieren
-   - User sollte eingeloggt sein ✅
-
-### Why This Is The Fix
-
-**Problem (v1.0.30)**:
-- ❌ redirectUrl: `https://beta.habdawas.at/auth/callback`
-- ❌ Das ist die normale Web-Callback-Seite (React)
-- ❌ Google redirected dorthin nach Auth
-- ❌ Aber diese URL ist NICHT für iOS-Deep-Link-Redirect ausgelegt
-- ❌ auth-callback-native-v2.html wurde nie genutzt
-- ❌ Kein Deep Link redirect zur App
-- ❌ OAuth hing fest
-
-**Lösung (v1.0.31)**:
-- ✅ redirectUrl: `https://beta.habdawas.at/auth-callback-native-v2.html?platform=ios`
-- ✅ Spezielle HTML-Seite NUR für iOS OAuth
-- ✅ Erkennt platform=ios Parameter
-- ✅ Extrahiert authorization code aus URL
-- ✅ Macht automatisch Deep Link redirect: `habdawas://auth/callback?code=...`
-- ✅ App öffnet sich via Deep Link
-- ✅ appUrlOpen listener fängt Code ab
-- ✅ exchangeCodeForSession() etabliert Session
-- ✅ OAuth Flow komplett! 🎉
-
-### OAuth Flow (nach Google Console Update)
-
 ```
-1. User klickt "Mit Google anmelden"
-2. signInWithGoogle() holt OAuth URL von Supabase
-3. GenericOAuth2.authenticate() öffnet ASWebAuthenticationSession
-4. User authentifiziert sich bei Google
-5. Google redirected zu: https://beta.habdawas.at/auth-callback-native-v2.html?platform=ios&code=...
-6. auth-callback-native-v2.html lädt
-7. JavaScript erkennt platform=ios Parameter
-8. JavaScript extrahiert authorization code
-9. Automatischer redirect zu: habdawas://auth/callback?code=...
-10. iOS öffnet App via Deep Link
-11. appUrlOpen listener fängt Code ab
-12. exchangeCodeForSession() wird aufgerufen
-13. Session etabliert ✅
-14. User ist eingeloggt! ✅
+Admin-Bereich → Sidebar Navigation:
+├── Benutzerverwaltung (Users Icon)
+├── Rollen & Berechtigungen (Shield Icon)
+├── Aufgaben (ListTodo Icon)
+└── Credit-System (Coins Icon)
+
+Settings → Administration:
+• Klick auf "Administration" → Navigation zu /admin
+• Keine eingebettete Admin-Ansicht mehr
+• Separate Route für bessere URL-Struktur
 ```
 
-### Console Logs (Expected)
-
-Nach Google Console Update solltest du sehen:
-```
-[OAuth] Starting native iOS OAuth with ASWebAuthenticationSession...
-[OAuth] Redirect URL: https://beta.habdawas.at/auth-callback-native-v2.html?platform=ios
-[OAuth] Opening ASWebAuthenticationSession...
-[OAuth Callback HTML] Page loaded!
-[OAuth Callback HTML] iOS platform detected!
-[OAuth Callback HTML] Authorization code: YES
-[OAuth Callback HTML] PKCE Flow detected!
-[OAuth Callback HTML] Redirecting to: habdawas://auth/callback?code=...
-[OAuth] App URL opened: habdawas://auth/callback?code=...
-[OAuth] Processing OAuth callback...
-[OAuth] Authorization code received, exchanging for session...
-[OAuth] Session established successfully!
-[OAuth] User: <email>
-```
-
-### Testing Checklist
-
-Nach Google Cloud Console Update:
-- [ ] ✅ Web Client Redirect URIs aktualisiert
-- [ ] ⏱️ 5 Minuten warten (Google Propagation)
-- [ ] 🧹 Clean Build in Xcode (Cmd+Shift+K)
-- [ ] 🏗️ Build & Run auf Simulator/iPhone
-- [ ] 🧪 "Mit Google anmelden" klicken
-- [ ] 🎯 ASWebAuthenticationSession sollte öffnen
-- [ ] ✅ Google Login durchführen
-- [ ] 🔗 auth-callback-native-v2.html sollte kurz erscheinen
-- [ ] 📱 App sollte sich automatisch öffnen
-- [ ] 🎉 User sollte eingeloggt sein!
-
-**DAS IST DIE FINALE LÖSUNG! OAuth wird nach Google Console Update funktionieren! 🚀**
-
----
-
-## [1.0.30] - 2025-10-14
-
-### Fixed
-- 🔧 **CRITICAL FIX: GenericOAuth2 appId Parameter fehlt**
-  - Fehler `ERR_PARAM_NO_APP_ID` behoben
-  - GenericOAuth2.authenticate() benötigt `appId` Parameter
-  - `appId: 'at.habdawas.app'` hinzugefügt
-  - ASWebAuthenticationSession öffnet jetzt korrekt
-
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.6.4 (appId Fix)
-  - AuthContext.tsx: GenericOAuth2.authenticate() mit appId Parameter
-  - Capacitor Sync durchgeführt: 5 Plugins installiert
-  - Build Hash: index-BuAgU3zd.js (neu)
-
-### Technical Details
-- Web-App Version: 1.6.4 (GenericOAuth2 appId Fix)
-- appId: 'at.habdawas.app' (Bundle Identifier)
-- GenericOAuth2 Plugin: @capacitor-community/generic-oauth2@7.0.0
-- ASWebAuthenticationSession öffnet jetzt korrekt natives OAuth-Fenster
-
-### Testing
-Nach diesem Fix sollte OAuth funktionieren:
-1. Clean Build in Xcode (Cmd+Shift+K)
-2. Build & Run
-3. "Mit Google anmelden" klicken
-4. Natives OAuth-Fenster sollte erscheinen
-5. Google Account auswählen
-6. App sollte User als eingeloggt zeigen
-
-**Console Logs**:
-```
-[OAuth] Opening ASWebAuthenticationSession...
-[OAuth] ASWebAuthenticationSession returned!
-[OAuth] Session established successfully!
-```
-
-**Dieser Fix ist kritisch! v1.0.29 hatte den appId Parameter vergessen!**
-
----
-
-## [1.0.29] - 2025-10-14
-
-### Fixed
-- 🎉 **BREAKTHROUGH: OAuth funktioniert jetzt wie Airbnb, Spotify & Co.!**
-  - Web-App Build v1.6.3 mit ASWebAuthenticationSession Integration deployed
-  - **GenericOAuth2 Plugin** nutzt jetzt **ASWebAuthenticationSession** (Apple's native OAuth API)
-  - Kein Safari Browser.open() mehr - OAuth öffnet sich in nativem iOS Fenster
-  - Authorization Code kommt **direkt zur App zurück** (keine JavaScript-Redirects mehr)
-  - PKCE OAuth Flow bleibt sicher - Supabase handled PKCE automatisch
-  - **DAS IST DIE PROFESSIONELLE LÖSUNG** die alle großen Apps verwenden!
-
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.6.3 (Final OAuth Solution)
-  - AuthContext.tsx Zeile 244-326: ASWebAuthenticationSession Implementation
-  - GenericOAuth2.authenticate() mit pkceEnabled: false
-  - Redirect URL: https://beta.habdawas.at/auth/callback (für ASWebAuthenticationSession)
-  - Callback URL wird direkt an App zurückgegeben (kein Safari mehr)
-  - exchangeCodeForSession() extrahiert Code aus Callback URL
-
-### Technical Details
-- Web-App Version: 1.6.3 (ASWebAuthenticationSession OAuth)
-- Native OAuth Window: ASWebAuthenticationSession (iOS 12+)
-- GenericOAuth2 Plugin: @capacitor-community/generic-oauth2@7.0.0
-- Capacitor Sync durchgeführt: 5 Plugins erfolgreich installiert
-- Build Hash: index-D_GwWYAM.js (neu)
-
-### OAuth Flow (Jetzt wie bei Airbnb!)
-
-```
-1. User klickt "Mit Google anmelden"
-2. signInWithGoogle() holt OAuth URL von Supabase
-3. GenericOAuth2.authenticate() öffnet ASWebAuthenticationSession
-4. Natives OAuth-Fenster erscheint (nicht Safari!)
-5. User authentifiziert sich bei Google
-6. Google redirected zu https://beta.habdawas.at/auth/callback?code=...
-7. ASWebAuthenticationSession gibt URL DIREKT an App zurück
-8. ✅ KEIN Safari, KEIN JavaScript, KEINE Zwischenseite!
-9. App extrahiert code aus result.url
-10. exchangeCodeForSession() etabliert Session
-11. User ist eingeloggt! 🎉
-```
-
-### Why This Is The Professional Solution
-
-**Vorher (v1.0.27, v1.0.28):**
-- ❌ Browser.open() → öffnet Safari
-- ❌ OAuthCallbackPage muss JavaScript ausführen
-- ❌ window.location.href zu habdawas:// redirect
-- ❌ Safari muss Deep Link erkennen
-- ❌ 4 Schritte, viele Fehlerquellen
-- ❌ Nutzer sieht Safari Browser öffnen/schließen
-
-**Jetzt (v1.0.29):**
-- ✅ GenericOAuth2.authenticate() → öffnet ASWebAuthenticationSession
-- ✅ Native OAuth Window (wie bei System Password Manager)
-- ✅ Google OAuth → URL kommt DIREKT zur App zurück
-- ✅ 2 Schritte, keine Zwischenseiten
-- ✅ Nutzer sieht professionellen OAuth Dialog
-- ✅ Genau wie Airbnb, Spotify, Twitter, Instagram!
-
-### Comparison to Other Apps
-
-| App | OAuth Method | User Experience |
-|-----|-------------|-----------------|
-| **Airbnb** | ASWebAuthenticationSession | ✅ Native OAuth Window |
-| **Spotify** | ASWebAuthenticationSession | ✅ Native OAuth Window |
-| **Twitter** | ASWebAuthenticationSession | ✅ Native OAuth Window |
-| **HabDaWas v1.0.28** | Browser.open() + Safari | ❌ Safari öffnet sich |
-| **HabDaWas v1.0.29** | ASWebAuthenticationSession | ✅ Native OAuth Window |
-
-### Testing Instructions
-
-1. **Xcode öffnen**:
-   ```bash
-   cd /Users/martinmollay/Development/iphone_app
-   open ios/App/App.xcworkspace
-   ```
-
-2. **Clean Build** (KRITISCH!):
-   ```
-   Product → Clean Build Folder (Cmd+Shift+K)
-   ```
-
-3. **Build & Run**:
-   - iPhone Simulator ODER echtes iPhone auswählen
-   - Build & Run (Cmd+R)
-
-4. **Google Login testen**:
-   - App öffnet sich
-   - "Mit Google anmelden" klicken
-   - **ACHTE**: Natives OAuth-Fenster erscheint (nicht Safari!)
-   - Google Account auswählen
-   - App sollte automatisch weitermachen
-   - User ist eingeloggt ✅
-
-5. **In Xcode Console schauen nach**:
-   ```
-   [OAuth] Starting native iOS OAuth with ASWebAuthenticationSession...
-   [OAuth] OAuth URL received
-   [OAuth] Opening ASWebAuthenticationSession...
-   [OAuth] ASWebAuthenticationSession returned!
-   [OAuth] Authorization code received, exchanging for session...
-   [OAuth] Session established successfully!
-   [OAuth] User: <email>
-   ```
-
-### Expected Behavior
-
-**Wenn alles funktioniert:**
-- ✅ Native OAuth Window öffnet sich (overlay auf der App)
-- ✅ Google Login erscheint
-- ✅ Nach Login schließt sich Window automatisch
-- ✅ App zeigt eingeloggten User
-- ✅ KEIN Safari wird geöffnet
-- ✅ Smooth, professionelle UX
-
-**Wenn USER_CANCELLED:**
-- ⚠️ User hat auf "Abbrechen" geklickt im OAuth Window
-- ✅ Das ist OK! Einfach nochmal versuchen und auf Google Account klicken
-
-### Why This Finally Works
-
-**Das Problem mit v1.0.27 & v1.0.28:**
-Die vorherigen Versionen haben versucht, OAuth über Safari zu machen:
-1. Browser.open() öffnet Safari
-2. Safari lädt OAuthCallbackPage (Pure HTML oder React)
-3. JavaScript macht redirect zu habdawas://
-4. iOS soll Deep Link erkennen und App öffnen
-
-**ABER**: Dieser Ansatz ist kompliziert und fehleranfällig:
-- Safari blockiert manchmal JavaScript
-- Deep Links funktionieren nicht immer zuverlässig
-- User sieht Safari öffnen und schließen (schlechte UX)
-- Viele Schritte = viele Fehlerquellen
-
-**Die Lösung mit v1.0.29:**
-ASWebAuthenticationSession ist **speziell für OAuth** entwickelt:
-- Native iOS API von Apple
-- Öffnet sichere OAuth WebView (kein volles Safari)
-- Callback URL kommt DIREKT zur App zurück
-- Keine Deep Links, kein JavaScript-Redirect nötig
-- **So machen es ALLE professionellen Apps**
-
-### Credit
-
-💡 **ChatGPT Insight**: "Wie macht Airbnb das mit Google Login?"
-→ ASWebAuthenticationSession ist die Antwort!
-
-**Glücklicherweise** war der richtige Code bereits in bazar_bold v1.6.3 implementiert - musste nur den aktuellen Build in die iOS App kopieren!
-
-**DAS IST DIE FINALE LÖSUNG! OAuth funktioniert jetzt wie bei Airbnb! 🎊**
-
----
-
-## [1.0.28] - 2025-10-14
-
-### Fixed
-- 🚀 **BREAKTHROUGH: Pure HTML OAuth Callback implementiert!**
-  - Problem identifiziert: React-basiertes OAuthCallbackPage führte KEIN JavaScript aus
-  - **KEINE** `[OAuth Callback]` Logs erschienen in Xcode Console
-  - React-App lud nicht schnell genug oder wurde von Safari blockiert
-  - **Lösung**: Neue `auth-callback-native.html` Datei - **PURE HTML ohne React!**
-  - Instant JavaScript Execution - kein Framework-Overhead
-  - Sichtbares Debug Output direkt auf der Seite
-  - Redirect zu habdawas:// funktioniert jetzt GARANTIERT ✅
+## [1.5.2] - 2025-10-17
 
 ### Added
-- 📄 **auth-callback-native.html**: Revolutionärer Ansatz für iOS OAuth
-  - Pure HTML + Vanilla JavaScript (keine Dependencies)
-  - Lädt SOFORT (keine React-Initialisierung)
-  - Sichtbare Debug-Ausgabe: User sieht genau was passiert
-  - Spinner Animation während Verarbeitung
-  - `[OAuth Callback HTML]` Logs für eindeutige Identifikation
-  - Redirect nach 1 Sekunde (genug Zeit für Debugging)
+- 🎁 **Admin: Spenden & Credits Verwaltung**: Vollständiger Admin-Bereich für Community Credit System
+  - **Spenden-Übersicht**: Alle Donations mit Stats (Gesamtspenden, Credits, Anzahl)
+  - **Manuelle Credit-Vergabe**: Admin kann Credits direkt an User vergeben
+  - **Community-Topf Transaktionen**: Vollständiges Transaktionslog mit Filter
+  - **Sub-Tabs**: Einstellungen, Spenden, Credits vergeben, Transaktionen
+  - Integration in Credit-System Tab (4 Unterseiten)
+
+### Added (Components & Hooks)
+- 📦 **DonationsOverview Component**: Spenden-Dashboard mit Stats
+  - Total Donations, Credits Granted, Anzahl Spenden
+  - Tabelle mit Benutzer, Betrag, Credits, Typ, Status
+  - Refresh-Button und responsive Design
+
+- 📦 **ManualCreditGrant Component**: Admin Credit-Vergabe
+  - User-Suche mit Autocomplete
+  - Credits an User oder Community-Topf vergeben
+  - Grund für Vergabe optional
+
+- 📦 **CommunityPotTransactions Component**: Transaktionslog
+  - Filter nach Typ (Alle, Spenden, Nutzung, Anpassungen)
+  - Stats: Gesamte Spenden, Gesamte Nutzung, Netto
+  - Detaillierte Transaktionsliste
+
+- 🪝 **useDonations Hook**: Donations vom Supabase laden
+- 🪝 **useCommunityPotTransactions Hook**: Transaktionen vom Supabase laden
+- 🪝 **useAdminCredits Hook**: Credits vergeben (Personal + Community Pot)
+
+### Technical Details
+- Migration bereits im Supabase ausgeführt ✅
+  - credit_system_settings (7 Einträge)
+  - donations (0 Einträge)
+  - community_pot_transactions (0 Einträge)
+  - profiles erweitert mit Credit-Feldern
+
+- TypeScript Types vollständig (credit-system.ts):
+  - SystemSettings, Donation, CommunityPotTransaction
+  - ProfileWithCredits, CommunityStats, CreditCheckResult
+
+- Dependencies hinzugefügt:
+  - date-fns@^4.1.0 für Datum-Formatierung
+
+### Admin UI Flow
+```
+Admin-Bereich → Credit-System Tab → Sub-Tabs:
+1. Einstellungen: System-Konfiguration (vorher schon da)
+2. Spenden: Übersicht aller Donations
+3. Credits vergeben: Manuelle Vergabe an User/Community
+4. Transaktionen: Vollständiges Log aller Vorgänge
+```
+
+### Database Schema (Credit System)
+```sql
+-- Tabellen
+credit_system_settings: Globale System-Einstellungen
+donations: Alle Spenden (Community + Personal)
+community_pot_transactions: Transparenz-Log
+profiles: Erweitert mit Credit-Feldern
+
+-- Functions
+get_community_pot_balance()
+update_community_pot_balance()
+process_donation()
+check_daily_reset()
+can_create_free_listing()
+```
+
+## [1.5.1] - 2025-10-17
+
+### Fixed
+- 🔧 **Google OAuth PKCE Flow behoben**: Localhost OAuth funktioniert jetzt einwandfrei
+  - Problem: "invalid request: both auth code and code verifier should be non-empty"
+  - Umstellung von PKCE auf Implicit Flow für bessere Localhost-Kompatibilität
+  - `flowType: 'implicit'` in Supabase Client konfiguriert
+  - Tokens werden direkt in URL Hash geliefert statt Code Exchange
+  - Keine "code_verifier" Probleme mehr zwischen Browser-Redirects
+
+- 🎯 **OAuthCallbackPage verbessert**: Unterstützt beide OAuth-Flows
+  - Prüft zuerst auf Hash-Fragment (Implicit Flow)
+  - Falls vorhanden: Extrahiert Tokens und setzt Session via `setSession()`
+  - Fallback auf PKCE Flow mit `exchangeCodeForSession()`
+  - Robuste Fehlerbehandlung für beide Szenarien
+  - Detaillierte Console-Logs für einfaches Debugging
 
 ### Changed
-- 🔄 **AuthContext.tsx**: Redirect URL auf neue HTML-Seite umgestellt
-  - Von: `https://beta.habdawas.at/auth/callback?platform=ios`
-  - Zu: `https://beta.habdawas.at/auth-callback-native.html?platform=ios`
-  - Log-Message angepasst: "pure HTML callback strategy"
-  - Google redirected jetzt zu statischer HTML-Datei
+- ♻️ **Login-Dialog**: Auto-Focus auf Email-Feld entfernt
+  - User-Feedback: Focus war störend
+  - Alle Auto-Focus-Mechanismen entfernt
+  - `disableAutoFocus` und `inputRef` entfernt
+  - Natürlicheres Verhalten ohne erzwungenen Focus
 
 ### Technical Details
-- Web-App Version: 1.4.21 (Pure HTML Callback)
-- Neue Datei: `public/auth-callback-native.html` (3.8 KB)
-- Bypass: Komplette React-Anwendung wird für iOS OAuth umgangen
-- JavaScript: Synchron + Inline (keine Async-Probleme)
-- Debug Output: Sichtbar auf der Seite UND in Console
-- Build Hash: index-BEXk3JX_.js (neu)
+**OAuth Flow (Implicit)**:
+```typescript
+// supabase.ts
+flowType: 'implicit'  // statt 'pkce'
 
-### Why This Is The Solution
-
-**Problem (v1.0.27 und früher)**:
-- ❌ `OAuthCallbackPage.tsx` = React Component
-- ❌ React muss laden, mounten, rendern
-- ❌ Safari blockierte möglicherweise JavaScript von beta.habdawas.at
-- ❌ KEINE Logs erschienen → JavaScript wurde NIE ausgeführt
-- ❌ Redirect zu habdawas:// konnte nie stattfinden
-- ❌ App URL Listener wurde nie getriggert
-
-**Lösung (v1.0.28)**:
-- ✅ Pure HTML Datei ohne Framework
-- ✅ JavaScript führt SOFORT aus (inline im <script>)
-- ✅ Kein React-Overhead, keine Dependencies
-- ✅ Debug Output SICHTBAR auf der Seite
-- ✅ `[OAuth Callback HTML]` Logs eindeutig identifizierbar
-- ✅ Redirect zu habdawas:// garantiert nach 1 Sekunde
-- ✅ App öffnet sich zuverlässig
-
-### How auth-callback-native.html Works
-
-```
-1. Google OAuth erfolgreich → redirect zu auth-callback-native.html
-2. HTML lädt INSTANT (3.8 KB, keine Dependencies)
-3. JavaScript startet SOFORT (keine Initialisierung nötig)
-4. Platform Detection: ?platform=ios Parameter prüfen
-5. Token Extraction: URL Fragment (#access_token=...) parsen
-6. Debug Output: Alle Schritte SICHTBAR auf der Seite
-7. Redirect: window.location.href = 'habdawas://auth/callback#...'
-8. iOS öffnet App via Deep Link
-9. App URL Listener fängt Callback ab
-10. Session wird etabliert ✅
+// OAuthCallbackPage.tsx
+const hashFragment = window.location.hash.substring(1);
+const params = new URLSearchParams(hashFragment);
+const accessToken = params.get('access_token');
+await supabase.auth.setSession({ access_token, refresh_token });
 ```
 
-### Testing Instructions
+**Warum Implicit Flow?**
+- ✅ PKCE funktioniert nicht zuverlässig bei localhost
+- ✅ `code_verifier` geht zwischen Redirects verloren
+- ✅ Implicit Flow liefert Tokens direkt in URL Hash
+- ✅ Keine komplexe Code-Exchange-Logik nötig
+- ✅ Perfekt für Development und localhost
 
-1. **Clean Build in Xcode** (KRITISCH!):
-   ```
-   Product → Clean Build Folder (Cmd+Shift+K)
-   ```
-
-2. **Build & Run auf echtem iPhone**
-
-3. **Google Login testen**:
-   - "Mit Google anmelden" klicken
-   - Google Login durchführen
-   - **ACHTE auf Safari nach Google Login**:
-     - Du solltest "Anmeldung wird verarbeitet..." sehen
-     - Darunter Debug-Output mit grünen Meldungen
-     - "iOS platform detected!"
-     - "Redirecting to: habdawas://..."
-
-4. **In Xcode Console schauen nach**:
-   ```
-   [OAuth Callback HTML] Page loaded!
-   [OAuth Callback HTML] iOS platform detected!
-   [OAuth Callback HTML] Redirecting to: habdawas://...
-   [OAuth] App URL opened: habdawas://auth/callback#...
-   [OAuth] Session established successfully!
-   ```
-
-### Expected Behavior
-
-**Vorher (v1.0.27)**:
-```
-[OAuth] Safari opened. User will authenticate with Google...
-(keine weiteren Logs - React Page lud nie)
-```
-
-**Jetzt (v1.0.28)**:
-```
-[OAuth] Safari opened. User will authenticate with Google...
-[OAuth Callback HTML] Page loaded!
-[OAuth Callback HTML] iOS platform detected!
-[OAuth Callback HTML] Access token: YES
-[OAuth Callback HTML] Refresh token: YES
-[OAuth Callback HTML] Redirecting to: habdawas://...
-[OAuth] App URL opened: habdawas://auth/callback#access_token=...
-[OAuth] Processing OAuth callback...
-[OAuth] Session established successfully!
-```
-
-### Why Pure HTML Works
-
-1. **No Framework Overhead**: Kein React, kein Bundler, keine Initialisierung
-2. **Instant Execution**: JavaScript im <script> Tag führt sofort aus
-3. **No External Dependencies**: Alles inline, keine CDN-Calls
-4. **Safari-Compatible**: Pure HTML/JS funktioniert überall
-5. **Visible Debug**: User UND Entwickler sehen was passiert
-6. **Small File Size**: 3.8 KB laden in Millisekunden
-
-### Fallback for Web Users
-
-Die React-basierte `OAuthCallbackPage.tsx` bleibt erhalten für Web-User:
-- Web OAuth: weiterhin `/auth/callback` (React)
-- iOS OAuth: jetzt `/auth-callback-native.html` (Pure HTML)
-- Best of Both Worlds!
-
-### Credit
-
-💡 **Root Cause Analysis**: Nach 3 Versuchen (v1.0.25, v1.0.26, v1.0.27) wurde klar, dass das Problem NICHT der Browser-Typ war, sondern die React-App selbst. Pure HTML = Die ultimative Lösung!
-
-**DAS IST DIE LÖSUNG! OAuth wird jetzt 100% funktionieren! 🎉**
-
----
-
-## [1.0.27] - 2025-10-14
-
-### Fixed
-- 🔥 **CRITICAL Safari Browser Fix**: OAuth Callback funktioniert jetzt!
-  - Browser.open() von `presentationStyle: 'popover'` auf `'fullscreen'` geändert
-  - SFSafariViewController blockierte JavaScript Ausführung
-  - Jetzt öffnet sich vollwertiger Safari Browser mit JavaScript Support
-  - OAuthCallbackPage kann jetzt zu habdawas:// redirecten
-  - **OAuth Flow sollte jetzt KOMPLETT funktionieren!** ✅
-
-### Technical Details
-- presentationStyle: 'fullscreen' → Öffnet vollen Safari statt SFSafariViewController
-- windowName: '_system' → Force system browser auf iOS
-- JavaScript in OAuthCallbackPage wird jetzt korrekt ausgeführt
-- Deep Link redirect (habdawas://) funktioniert jetzt
-
-### Why This Was Critical
-
-**Problem (v1.0.26)**:
-- ❌ Browser.open() öffnete SFSafariViewController
-- ❌ JavaScript wurde in SFSafariViewController blockiert
-- ❌ OAuthCallbackPage konnte nicht zu habdawas:// redirecten
-- ❌ App URL Listener wurde nie aufgerufen
-- ❌ OAuth hing beim "Anmeldung wird verarbeitet..." Screen
-
-**Lösung (v1.0.27)**:
-- ✅ Browser.open() öffnet vollen Safari Browser
-- ✅ JavaScript funktioniert normal
-- ✅ OAuthCallbackPage redirected erfolgreich zu habdawas://
-- ✅ App URL Listener fängt Callback ab
-- ✅ Session wird etabliert
-- ✅ User ist eingeloggt! 🎉
-
-### Testing
-1. In Xcode: Product → Clean Build Folder (Cmd+Shift+K)
-2. Build & Run auf echtem iPhone
-3. "Mit Google anmelden" klicken
-4. Google Login durchführen
-5. App sollte sich automatisch öffnen
-6. User sollte eingeloggt sein ✅
-
----
-
-## [1.0.26] - 2025-10-14
-
-### Fixed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.21 aus bazar_bold integriert
-  - Neueste Password Reset Fixes (Session Validation)
-  - Neueste OAuthCallbackPage Implementierung
-  - Alle aktuellen Features und Bugfixes synchronisiert
-  - Capacitor Sync durchgeführt (5 Plugins)
-
-### Technical Details
-- Web-App Version: 1.4.21 (Latest from bazar_bold)
-- Build Hash: index-DG5NoF05.js (neu)
-- Assets erfolgreich synchronisiert
-- iOS native dependencies aktualisiert
-
-### Why This Was Important
-**Problem**: v1.0.25 hatte die alten www/ Assets von v1.4.20, aber bazar_bold war bereits bei v1.4.21 mit wichtigen Fixes:
-- ❌ Password Reset Session Validation fehlte
-- ❌ Neueste OAuth Fixes nicht enthalten
-- ❌ Code-Inkonsistenz zwischen Web und iOS
-
-**Jetzt (v1.0.26)**:
-- ✅ Web-App Version 1.4.21 korrekt integriert
-- ✅ Password Reset mit Session Validation
-- ✅ Alle neuesten Features synchronisiert
-- ✅ Code-Konsistenz zwischen Web und iOS
-- ✅ Bereit für Xcode Setup und Universal Links Testing
-
----
-
-## [1.0.25] - 2025-10-14
+## [1.5.0] - 2025-10-17
 
 ### Added
-- 📋 **Umfassende Xcode Setup Dokumentation**: `XCODE-SETUP-WITH-DEVELOPER-ACCOUNT.md`
-  - Vollständige Anleitung für Apple Developer Account Integration
-  - Schritt-für-Schritt Guide für Associated Domains Capability
-  - Universal Links Konfiguration mit Team ID G5QYXZ4B6L
-  - Entitlements-Datei Integration in Xcode Projekt
-  - Troubleshooting für alle bekannten Probleme
-  - Build & Deploy Checkliste für Production
+- 🔐 **Admin-Bereich in Einstellungen**: Administration-Menüpunkt für Admin-User
+  - Nur sichtbar für User mit `is_admin = true` in der Datenbank
+  - Voller Zugriff auf Admin-Funktionen über Settings-Menü
+  - Integration des bestehenden AdminPage-Components
+  - Shield-Icon für visuelle Kennzeichnung
 
-- 📋 **Vollständiger OAuth Test Plan**: `OAUTH-TEST-PLAN.md`
-  - 10 detaillierte Test-Szenarien für OAuth Flow
-  - AASA-Datei Verifikation
-  - Universal Links Testing auf echtem iOS-Gerät
-  - Session Persistence Tests
-  - Error Handling Validation
-  - Performance und UX Metriken
-  - Apple App Store Review Vorbereitung
-  - Problembehandlung für häufige Fehler
+- 🎯 **Login-Dialog UX-Verbesserungen**: Optimierte Benutzererfahrung
+  - Auto-Focus auf E-Mail-Feld beim Öffnen des Dialogs
+  - Google-Login nach unten verschoben (weniger prominent)
+  - Plattform-spezifische Behandlung (Web vs. iOS App)
+  - Info-Alert auf iOS: "Google-Anmeldung nur im Web-Browser verfügbar"
+  - Capacitor-Integration für native Plattformerkennung
+
+### Fixed
+- 🔧 **Sign Out Error behoben**: 403 Fehler bei abgelaufener Session
+  - Session-Validierung vor Supabase signOut API-Aufruf
+  - Lokaler State wird immer gelöscht, auch bei API-Fehler
+  - Manuelles Löschen des localStorage-Tokens
+  - Keine Console-Errors mehr beim Abmelden
+  - Funktioniert zuverlässig auch mit ungültigen Sessions
 
 ### Changed
-- 🔧 **Entitlements-Datei erweitert**: `App.entitlements`
-  - `applinks:www.habdawas.at` für zukünftige Production Domain hinzugefügt
-  - Weiterhin `applinks:beta.habdawas.at` für aktuellen Test
-  - Push Notifications (aps-environment: development)
-  - Vorbereitet für Universal Links mit Developer Account
+- 🔄 **AdminPage Import**: Korrektur von named zu default import
+  - Verhindert Build-Fehler bei Production-Build
+  - Konsistente Import-Strategie
 
 ### Technical Details
-- ✅ AASA-Datei bereits deployed: `https://beta.habdawas.at/.well-known/apple-app-site-association`
-  - App ID: `G5QYXZ4B6L.at.habdawas.app` ✅
-  - Team ID: `G5QYXZ4B6L` ✅
-  - Paths: `/auth/callback` und `/auth/*` ✅
-- ✅ Xcode Projekt bereits konfiguriert mit:
-  - Development Team: G5QYXZ4B6L
-  - Code Sign Style: Automatic
-  - Bundle Identifier: at.habdawas.app
-- ✅ Capacitor Sync durchgeführt: 5 Plugins installiert
-- ⏳ **Nächster Schritt**: Entitlements-Datei in Xcode Projekt verlinken
+- `useAdmin` Hook für Admin-Rechte-Prüfung
+- Erweiterte `SettingsSection` Types um 'admin'
+- `Capacitor.isNativePlatform()` für Plattformerkennung
+- Session-Check mit `supabase.auth.getSession()` vor signOut
+- localStorage Token-Bereinigung für 100% zuverlässiges Abmelden
 
-### Apple Developer Account Status
-- 🎉 **Developer Account aktiviert**: $99/Jahr bezahlt
-- ✅ Team ID: G5QYXZ4B6L
-- ✅ Associated Domains Capability jetzt verfügbar
-- ✅ Provisioning Profiles können jetzt erstellt werden
-- ✅ Universal Links jetzt möglich (vorher nur mit Free Account nicht machbar)
+## [1.4.21] - 2025-01-13
 
-### OAuth Flow nach Setup
+### Fixed
+- 🎯 **Password Reset Flow verbessert**
+  - `ResetPasswordPage` mit Session-Validierung erweitert
+  - `PASSWORD_RECOVERY` Event erkennt jetzt Session korrekt
+  - Fehlerbehandlung für abgelaufene Reset-Links
+  - Detaillierte Console-Logs für Debugging
+  - Subscription Cleanup für Memory Leaks verhindert
+
+### Added
+- 📝 **Comprehensive Documentation**: Zwei neue Setup-Anleitungen
+  - `SUPABASE-AUTH-SETUP.md`: Password Reset Flow Dokumentation
+  - `BREVO-CUSTOM-TRACKING-DOMAIN-SETUP.md`: Custom Tracking Domain Setup
+
+### Identified
+- 🔍 **Root Cause: Brevo Link Tracking**
+  - Problem: Brevo wraps alle Links mit `ihefgba.r.tsp1-brevo.net`
+  - Gmail/Email-Clients warnen: "Link sieht verdächtig aus"
+  - Users klicken nicht auf Password-Reset-Links
+  - **Lösung**: Custom Tracking Domain `tracking.habdawas.at` einrichten
+
+### Technical Details
+
+**Password Reset Problem**:
 ```
-1. User klickt "Mit Google anmelden"
-2. Safari öffnet sich mit Google Login
-3. User authentifiziert sich bei Google
-4. Google redirected zu: https://beta.habdawas.at/auth/callback?platform=ios
-5. ✨ Universal Link erkannt → iOS öffnet HabDaWas App automatisch
-6. App extrahiert Tokens aus URL Fragment
-7. Session wird etabliert
-8. User ist eingeloggt ✅
+❌ Brevo Default Domain: ihefgba.r.tsp1-brevo.net
+❌ Gmail Warnung: "Dieser Link sieht verdächtig aus"
+❌ Users klicken nicht → Password Reset funktioniert nicht
 ```
 
-### Warum dieser Release wichtig ist
-**Vorher (ohne Developer Account)**:
-- ❌ Universal Links nicht möglich (Personal Team kann keine Associated Domains)
-- ⚠️ Fallback über Custom URL Scheme (habdawas://) funktioniert aber wirkt unprofessionell
-- ⚠️ User muss "Öffnen in HabDaWas" bestätigen
+**Lösung - Custom Tracking Domain**:
+```
+✅ DNS CNAME Record: tracking.habdawas.at → brevo.click
+✅ Brevo verifiziert und als Default gesetzt
+✅ Keine Phishing-Warnungen mehr
+✅ Professional & Trustworthy
+```
 
-**Jetzt (mit Developer Account v1.0.25)**:
-- ✅ Universal Links möglich (Associated Domains Capability verfügbar)
-- ✅ App öffnet sich automatisch nach Google OAuth
-- ✅ Professioneller OAuth Flow wie bei Spotify, Twitter, etc.
-- ✅ Keine manuelle Bestätigung nötig
-- ✅ Nahtlose User Experience
+**Code Improvements**:
+```typescript
+// ResetPasswordPage.tsx - Session Validation
+const [recoverySession, setRecoverySession] = useState(false);
 
-### Manuelle Schritte erforderlich
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    if (session) {
+      setRecoverySession(true);
+    } else {
+      setError('Sitzung abgelaufen. Bitte fordern Sie einen neuen Reset-Link an.');
+    }
+  }
+});
+```
 
-**WICHTIG**: Diese Version enthält die vollständige Dokumentation. Folgende Schritte müssen manuell in Xcode durchgeführt werden:
+### Documentation Structure
 
-1. **Apple Developer Account in Xcode hinzufügen**:
-   - Xcode → Settings → Accounts
-   - Apple ID mit Developer Account hinzufügen
-   - Team "Martin Mollay (G5QYXZ4B6L)" verifizieren
+**SUPABASE-AUTH-SETUP.md**:
+- Password Reset Flow Erklärung
+- Email Template Variablen
+- Redirect URLs Konfiguration
+- Troubleshooting Guide
+- Testing Anleitung
 
-2. **Entitlements-Datei verlinken**:
-   - Xcode öffnen: `open ios/App/App.xcworkspace`
-   - Entitlements-Datei zum Projekt hinzufügen (falls nicht sichtbar)
-   - Signing & Capabilities → Associated Domains überprüfen
-
-3. **Build und Test**:
-   - Clean Build (Cmd+Shift+K)
-   - Build für echtes iOS-Gerät (Universal Links funktionieren NICHT im Simulator!)
-   - Google OAuth testen
-
-4. **Universal Links verifizieren**:
-   - Link in Notes/Messages öffnen: `https://beta.habdawas.at/auth/callback?test=1`
-   - Long Press → Sollte "Open in HabDaWas" anzeigen
-   - Falls nicht: App löschen, neu installieren, iPhone neu starten
-
-### Dokumentation
-Siehe die neuen Dokumentations-Dateien für detaillierte Anleitungen:
-- `XCODE-SETUP-WITH-DEVELOPER-ACCOUNT.md` - Xcode Konfiguration (12 Schritte)
-- `OAUTH-TEST-PLAN.md` - Vollständiger Test Plan (10 Szenarien)
+**BREVO-CUSTOM-TRACKING-DOMAIN-SETUP.md**:
+- Schritt-für-Schritt Brevo Setup
+- DNS Konfiguration für alle Provider
+- Domain Verification Process
+- SPF/DKIM/DMARC Setup (optional)
+- Troubleshooting & Testing
 
 ### Next Steps
-Nach erfolgreicher Xcode-Konfiguration:
-1. ✅ Xcode Setup durchführen (siehe Dokumentation)
-2. 🧪 OAuth Flow testen (siehe Test Plan)
-3. 🎉 Universal Links verifizieren
-4. 📱 Beta Testing mit TestFlight
-5. 🚀 App Store Submission vorbereiten
+1. DNS CNAME Record hinzufügen: `tracking.habdawas.at → brevo.click`
+2. In Brevo Dashboard verifizieren
+3. Als Default Tracking Domain setzen
+4. Password Reset erneut testen
 
-**Mit Developer Account ist OAuth jetzt production-ready! 🎊**
-
----
-
-## [1.0.17] - 2025-10-13
-
-### Fixed
-- 🎯 **Safari öffnet sich jetzt explizit für OAuth JavaScript**
-  - User's kritische Frage: "die Frage ist noch öffnet auf safarie damit er weiterleinten kann?"
-  - Problem identifiziert: ASWebAuthenticationSession gibt URL zurück, öffnet sie aber nicht
-  - **Lösung**: Browser.open() explizit aufrufen mit dem Callback-URL
-  - Safari lädt jetzt OAuthCallbackPage
-  - JavaScript kann ausführen und zu habdawas:// redirecten
-  - App öffnet sich wie erwartet via Deep Link
+## [1.4.20] - 2025-10-13
 
 ### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.11 integriert
-  - Browser.open() Implementation in AuthContext
-  - presentationStyle: 'popover' für SFSafariViewController
-  - Kompletter OAuth Flow funktioniert jetzt End-to-End
-  - Alle Puzzle-Teile fügen sich zusammen
+- 🔄 **Custom URL Schemes Test**: Zurück zu `habdawas://` Redirect für Testing
+  - Reverted OAuthCallbackPage zu manuellem Deep Link Redirect
+  - Test bestätigte: Custom URL Schemes funktionieren nicht aus Safari
+  - Universal Links mit Apple Developer Account ist die einzige Lösung
 
 ### Technical Details
-**Kompletter OAuth Flow (jetzt vollständig)**:
+- Temporärer Rollback zu v1.4.17 Flow für Testing
+- Bestätigt: Safari blockiert `habdawas://` Redirects nach OAuth
+- User Decision: Apple Developer Account registrieren ($99/year)
+
+## [1.4.19] - 2025-10-13
+
+### Fixed
+- 🎯 **CRITICAL Universal Links Fix: OAuthCallbackPage kein manueller Redirect mehr**
+  - `window.location.href = 'habdawas://'` entfernt
+  - iOS Universal Links intercepten die URL automatisch
+  - Kein manueller Redirect nötig!
+  - Callback-Page wartet einfach - iOS macht den Rest
+  - test
+
+### Changed
+- 🔄 **OAuthCallbackPage**: Vereinfachter Flow für Universal Links
+  - Tokens werden nur noch verifiziert
+  - Success-Logs hinzugefügt
+  - "Waiting for iOS to open app automatically..." Nachricht
+  - iOS erkennt https://beta.habdawas.at/auth/callback und öffnet App
+
+### Technical Details
+**OAuth Flow (Native iOS mit Universal Links)**:
 ```
 1. User klickt "Mit Google anmelden"
-2. signInWithGoogle() startet
-3. GenericOAuth2.authenticate() öffnet ASWebAuthenticationSession
-4. User authentifiziert sich bei Google
-5. Google redirectet zu https://beta.habdawas.at/auth/callback?code=...
-6. ASWebAuthenticationSession gibt URL zurück (aber navigiert NICHT!)
-7. ← FIX v1.0.17: Browser.open() öffnet Safari mit dieser URL ✅
-8. Safari lädt OAuthCallbackPage
-9. JavaScript erkennt Native Platform
-10. window.location.href = 'habdawas://auth/callback?code=...'
-11. iOS öffnet App via Deep Link
-12. appUrlOpen listener fängt URL
-13. exchangeCodeForSession() etabliert Session
-14. User ist eingeloggt! ✅
+2. Safari öffnet sich mit Google OAuth
+3. Google authentifiziert User
+4. Redirect zu https://beta.habdawas.at/auth/callback#access_token=...
+5. iOS erkennt Universal Link
+6. iOS öffnet App AUTOMATISCH
+7. appUrlOpen listener fängt URL ab
+8. App extrahiert Tokens und etabliert Session
+9. User ist eingeloggt ✅
 ```
 
-### Why This Was The Missing Piece
+### Why This Fix Was Critical
+**Problem (v1.4.18)**:
+- ❌ OAuthCallbackPage machte `window.location.href = 'habdawas://'`
+- ❌ Das ist für Custom URL Schemes, nicht Universal Links
+- ❌ Universal Links funktionieren anders - sie brauchen keinen manuellen Redirect
+
+**Lösung (v1.4.19)**:
+- ✅ Kein `window.location.href` mehr
+- ✅ iOS erkennt Universal Link automatisch
+- ✅ App öffnet sich ohne manuellen Redirect
+- ✅ Callback-Page zeigt nur Success-Message
+
+## [1.4.18] - 2025-10-13
+
+### Changed
+- 🔄 **AuthContext**: Universal Links Support vorbereitet
+  - appUrlOpen listener akzeptiert jetzt `/auth/callback` (nicht nur `habdawas://`)
+  - Kommentare auf Universal Links aktualisiert
+  - "iOS will use Universal Links to open app automatically!"
+  - Vorbereitung für automatisches App-Öffnen
+
+### Technical Details
+- Listener prüft auf `/auth/callback` statt nur auf `habdawas://`
+- Kompatibel mit Universal Links UND Custom URL Schemes (fallback)
+- Flow-Beschreibung aktualisiert für Universal Links
+
+**Hinweis**: v1.4.18 war noch nicht komplett - OAuthCallbackPage brauchte noch Anpassung (siehe v1.4.19)
+
+## [1.4.17] - 2025-10-13
+
+### Fixed
+- 🎯 **Safari Context Fix: Capacitor APIs entfernt aus OAuthCallbackPage**
+  - `Preferences.set()` und `Browser.close()` funktionieren nicht in Safari
+  - OAuthCallbackPage läuft im Safari-Browser, nicht in der App
+  - Zurück zur einfachen `window.location.href` Lösung
+  - Deep Link Redirect zu `habdawas://` statt Preferences Bridge
+
+### Changed
+- 🔄 **OAuthCallbackPage**: Vereinfachter Redirect-Flow
+  - Entfernt: Preferences.set() für Token-Speicherung
+  - Entfernt: Browser.close() Aufruf
+  - Behalten: Einfacher Deep Link Redirect via window.location.href
+  - Funktioniert zuverlässig aus Safari-Kontext
+
+### Technical Details
+**Problem (v1.4.16)**:
+- ❌ OAuthCallbackPage versuchte Capacitor.Preferences.set() zu nutzen
+- ❌ Diese API ist nur in der App verfügbar, nicht im Browser
+- ❌ Safari kann keine Capacitor-Plugins aufrufen
+- ❌ "Anmeldung fehlgeschlagen" Fehler
+
+**Lösung (v1.4.17)**:
+- ✅ Einfacher `window.location.href = 'habdawas://...'` Redirect
+- ✅ Funktioniert aus Safari-Browser
+- ✅ App empfängt Deep Link via appUrlOpen
+- ✅ Tokens werden aus URL Fragment extrahiert
+
+## [1.4.16] - 2025-10-13
+
+### Changed
+- 🔄 **OAuth Flow: Capacitor Preferences Bridge**
+  - OAuthCallbackPage speichert Tokens in Preferences
+  - Browser.close() schließt Safari
+  - App checkt Preferences beim Resume
+  - **FEHLGESCHLAGEN** - Preferences nicht in Safari verfügbar
+
+### Technical Details
+- Versuch: Preferences als Bridge zwischen Safari und App
+- Problem: OAuthCallbackPage läuft in Safari, nicht in App
+- Safari hat keinen Zugriff auf Capacitor APIs
+- Fix in v1.4.17
+
+## [1.4.15] - 2025-10-13
+
+### Changed
+- 🔄 **OAuth Flow: Token-based statt Code Exchange**
+  - OAuthCallbackPage parsed access_token aus URL Fragment
+  - Verwendet setSession() statt exchangeCodeForSession()
+  - Google OAuth params: access_type=offline, prompt=consent
+  - **FEHLGESCHLAGEN** - Deep Links aus Safari unzuverlässig
+
+### Technical Details
+- Tokens direkt aus URL Fragment (#access_token=...)
+- Kein Code Exchange Schritt mehr
+- Problem: Custom URL Schemes (habdawas://) zu unzuverlässig
+
+## [1.4.12-1.4.14] - 2025-10-12/13
+
+### Fixed
+- Verschiedene OAuth-Versuche und Debugging
+- Enhanced Debug Logging
+- URL Parameter Strategy
+- **Alle fehlgeschlagen** - Custom URL Schemes fundamental problematisch
+
+## [1.4.11] - 2025-10-13
+
+### Fixed
+- 🎯 **Safari muss explizit öffnen für JavaScript-Redirect**
+  - ASWebAuthenticationSession gibt URL zurück, navigiert aber nicht
+  - **Lösung**: Browser.open() hinzugefügt nach GenericOAuth2.authenticate()
+  - Safari öffnet sich jetzt mit dem Callback-URL
+  - OAuthCallbackPage JavaScript kann ausführen
+  - Redirect zu habdawas:// funktioniert
+  - App öffnet sich wie erwartet
+  - test
+
+### Changed
+- 🔄 **AuthContext signInWithGoogle**: Browser.open() Integration
+  - Import von @capacitor/browser hinzugefügt
+  - Nach ASWebAuthenticationSession: Browser.open(result.url)
+  - presentationStyle: 'popover' für SFSafariViewController (nicht full Safari)
+  - Komplettiert die Universal Link + Deep Link Hybrid Strategy
+
+### Technical Details
+**OAuth Flow (Kompletter Ablauf)**:
+```
+1. User klickt "Mit Google anmelden"
+2. signInWithGoogle() wird aufgerufen
+3. Supabase: redirectTo = https://beta.habdawas.at/auth/callback
+4. GenericOAuth2.authenticate() öffnet ASWebAuthenticationSession
+5. User authentifiziert sich bei Google
+6. Google redirectet zu https://beta.habdawas.at/auth/callback?code=...
+7. ASWebAuthenticationSession gibt URL zurück (navigiert NICHT!)
+8. ← NEU: Browser.open() öffnet Safari mit dieser URL
+9. Safari lädt OAuthCallbackPage
+10. JavaScript erkennt Native Platform
+11. JavaScript: window.location.href = 'habdawas://auth/callback?code=...'
+12. iOS öffnet App via Deep Link
+13. appUrlOpen listener fängt habdawas:// ab
+14. exchangeCodeForSession() wird aufgerufen
+15. Session etabliert ✅
+16. User eingeloggt ✅
+```
+
+### Why This Fix Was Critical
 **Problem (v1.0.16)**:
-- ❌ Universal Link Strategy war richtig
-- ❌ Deep Link Redirect war implementiert
-- ❌ OAuthCallbackPage war ready
-- ❌ ABER: Safari öffnete sich nie!
-- ❌ JavaScript konnte nie ausführen
-- ❌ OAuth Flow hing beim Loading Screen
+- ❌ ASWebAuthenticationSession gibt URL zurück
+- ❌ Safari öffnet sich NICHT automatisch
+- ❌ OAuthCallbackPage JavaScript läuft nie
+- ❌ Kein Redirect zu habdawas://
+- ❌ App bleibt auf Loading Screen
 
-**Lösung (v1.0.17)**:
+**Lösung (v1.4.11/v1.0.17)**:
 - ✅ Browser.open() öffnet Safari explizit
-- ✅ OAuthCallbackPage lädt und führt aus
+- ✅ OAuthCallbackPage lädt und führt JavaScript aus
 - ✅ Redirect zu habdawas:// funktioniert
-- ✅ App öffnet sich zuverlässig
-- ✅ OAuth Flow ist KOMPLETT! 🎉
+- ✅ App öffnet sich wie erwartet
+- ✅ OAuth Flow ist vollständig ✨
 
-### User's Feedback Led To Solution
-Der User hat die richtige Frage gestellt:
-> "die Frage ist noch öffnet auf safarie damit er weiterleinten kann?"
-
-Das war der entscheidende Hinweis! ASWebAuthenticationSession gibt die URL zurück, navigiert aber nicht automatisch. Browser.open() war der fehlende Link.
-
-### Testing Steps
-1. 🧹 **Clean Build in Xcode**: Cmd+Shift+K
-2. 🏗️ **Build & Run**
-3. 🧪 **Google Login testen**
-4. 🎉 **Sollte ENDLICH funktionieren!**
-5. 🔄 **App schließen + neu öffnen**: Session sollte bleiben (Preferences)
-
-**Nach 17 Versionen ist OAuth komplett! User's Brilliant Idea + User's Critical Question = Success! 🚀**
-
-## [1.0.16] - 2025-10-12
+## [1.4.10] - 2025-10-12
 
 ### Fixed
-- 🎯 **OAuth 400 Error ENDGÜLTIG behoben!**
-  - User's brillante Idee: Zwischenseite als Bridge verwenden
-  - Google akzeptiert habdawas:// nicht als redirect_uri → 400 Error
-  - **Lösung**: https://beta.habdawas.at/auth/callback als Zwischenseite
-  - JavaScript erkennt Native Platform und redirectet zu habdawas://
+- 🎯 **GENIUS OAuth Fix: Universal Link + Deep Link Hybrid**
+  - Google akzeptiert keine Custom URL Schemes (habdawas://) als OAuth redirect
+  - **Lösung**: User's brillante Idee - Zwischenseite verwenden!
+  - OAuth redirect zu https://beta.habdawas.at/auth/callback (Google akzeptiert ✅)
+  - OAuthCallbackPage erkennt Native Platform
+  - JavaScript redirect zu habdawas://auth/callback?code=...
   - App öffnet sich via Deep Link
-  - OAuth Flow funktioniert jetzt wie bei Spotify, Twitter, etc. ✅
+  - appUrlOpen listener ruft exchangeCodeForSession() auf
+  - **Jetzt funktioniert OAuth endlich!** 🎉
 
 ### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.10 integriert
-  - OAuthCallbackPage mit Platform Detection
-  - Native: Auto-redirect zu habdawas://auth/callback?code=...
-  - Web: Normal exchangeCodeForSession()
-  - AuthContext mit https:// redirect statt custom://
-  - appUrlOpen listener verarbeitet habdawas:// Deep Links
+- 🔄 **OAuthCallbackPage**: Platform Detection + Auto-Redirect
+  - Erkennt Capacitor.isNativePlatform()
+  - Native: Extrahiert code und redirectet zu habdawas://
+  - Web: Normal exchangeCodeForSession() wie bisher
+  - Universelle Lösung für beide Plattformen
+
+- 🔄 **AuthContext signInWithGoogle**: https:// statt custom://
+  - redirectTo: 'https://beta.habdawas.at/auth/callback' (Native)
+  - Google akzeptiert diese URL
+  - ASWebAuthenticationSession öffnet Safari
+  - Browser landet auf OAuthCallbackPage
+  - JavaScript macht automatisch Deep Link redirect
+
+- 🔄 **AuthContext appUrlOpen**: Code Exchange statt Token Extraction
+  - Listener wartet auf habdawas://auth/callback?code=...
+  - Ruft exchangeCodeForSession() mit vollständiger URL auf
+  - Secure PKCE OAuth Flow
 
 ### Technical Details
-- Web-App Version: 1.4.10 (Universal Link + Deep Link Hybrid)
-- OAuth Flow jetzt: https:// → JavaScript redirect → habdawas://
-- Google akzeptiert https://beta.habdawas.at/auth/callback ✅
-- OAuthCallbackPage = Smart Bridge zwischen Web und Native
-- Deep Link zu App funktioniert zuverlässig
-- exchangeCodeForSession() mit vollständiger URL
-- PKCE OAuth Flow bleibt sicher
-
-### OAuth Flow (Step by Step)
+**OAuth Flow (Native iOS)**:
 ```
-1. User klickt "Mit Google anmelden"
-2. App öffnet ASWebAuthenticationSession
-3. Safari zeigt Google Login
-4. User authentifiziert sich
-5. Google redirectet zu https://beta.habdawas.at/auth/callback?code=...
-6. Safari öffnet diese Seite (Universal Link)
-7. OAuthCallbackPage lädt und erkennt Native Platform
-8. JavaScript redirectet zu habdawas://auth/callback?code=...
-9. iOS öffnet App (Deep Link)
-10. appUrlOpen listener fängt URL ab
-11. exchangeCodeForSession() wird aufgerufen
-12. Session wird etabliert ✅
-13. User ist eingeloggt ✅
+1. App → signInWithGoogle()
+2. Supabase: redirectTo = https://beta.habdawas.at/auth/callback
+3. GenericOAuth2 öffnet ASWebAuthenticationSession
+4. Google OAuth → Success
+5. Redirect zu https://beta.habdawas.at/auth/callback?code=...
+6. Safari öffnet die Seite
+7. OAuthCallbackPage lädt
+8. Erkennt Native Platform
+9. JavaScript: window.location.href = 'habdawas://auth/callback?code=...'
+10. iOS öffnet App (Deep Link)
+11. appUrlOpen listener fängt habdawas:// ab
+12. exchangeCodeForSession() wird aufgerufen
+13. Session etabliert ✅
+14. User eingeloggt ✅
 ```
 
-### Why This Finally Works
-**Vorherige Versuche**:
-- ❌ v1.0.11-1.0.14: habdawas://auth/callback → Google 400 Error
-- ❌ v1.0.13: Reversed Client ID → Google 400 Error
-- ❌ v1.0.14: Preferences fehlte → UNIMPLEMENTED Error
+### Why This Works
+**Problem (vorher)**:
+- ❌ habdawas://auth/callback → Google: 400 Error (custom schemes nicht erlaubt)
+- ❌ Reversed Client ID → Gleicher 400 Error
+- ❌ Universal Links alleine → Keine Kontrolle über App-Öffnung
 
-**Jetzt (v1.0.16)**:
-- ✅ Google akzeptiert https://beta.habdawas.at/auth/callback
-- ✅ OAuthCallbackPage = intelligente Bridge
-- ✅ JavaScript macht Deep Link redirect
-- ✅ App öffnet sich automatisch
-- ✅ OAuth Flow komplett + Session Persistence funktioniert
-- ✅ Professional implementation wie bei großen Apps
+**Lösung (jetzt)**:
+- ✅ https://beta.habdawas.at/auth/callback → Google akzeptiert
+- ✅ OAuthCallbackPage = Smart Bridge zwischen Web und Native
+- ✅ JavaScript redirect zu habdawas:// → App öffnet sich
+- ✅ Volle Kontrolle über OAuth Flow
+- ✅ Works like Spotify, Twitter, etc.
 
 ### Credit
-💡 **User's Brilliant Idea**: "kann man nicht einfach eine Seite aufrufen die Google akzepiert und von dort dann weiterleitet zu habdawas://auth/callback?"
+💡 **User's Idea**: "kann man nicht einfach eine Seite aufrufen die Google akzepiert und von dort dann weiterleitet zu habdawas://auth/callback?"
 
-**This is the way!** Genau so machen es Spotify, Twitter, Instagram, Facebook, etc.
-Das ist die Standard-Lösung für native App OAuth mit Providern die Custom URL Schemes nicht akzeptieren.
+**Brilliant!** Genau so machen es alle professionellen Apps. Das ist die Standard-Lösung.
 
-### Testing Steps
-1. 🧹 **Clean Build in Xcode**: Cmd+Shift+K
-2. 🧪 **Google Login testen**
-3. 🎉 **Sollte jetzt funktionieren!**
-4. 🔄 **App schließen + öffnen**: Session sollte bleiben
-
-**ENDLICH! Nach 16 Versionen haben wir die Lösung! 🎊**
-
-## [1.0.15] - 2025-10-12
+## [1.4.9] - 2025-10-12
 
 ### Fixed
-- 🐛 **CRITICAL: Preferences Plugin fehlte in iOS Projekt**
-  - `@capacitor/preferences` wurde vergessen in package.json hinzuzufügen
-  - Fehler: "Preferences plugin is not implemented on ios"
-  - Fehler: `{"code":"UNIMPLEMENTED"}` bei GenericOAuth2
-  - Inserate konnten nicht mehr geladen werden (Supabase Client Fehler)
-  - **Lösung**: @capacitor/preferences@7.0.2 zu dependencies hinzugefügt
+- 🔐 **Session Persistence Fix: Capacitor Preferences Storage implementiert**
+  - Root cause gefunden: Sessions persistierten nicht auf iOS
+  - iOS nutzte default localStorage, der auf iOS nicht funktioniert
+  - **Lösung**: Capacitor Preferences API für iOS Keychain Integration
+  - Custom Storage Backend: Preferences.get/set/remove für alle Auth-Tokens
+  - Sessions bleiben jetzt nach App-Neustart erhalten
+  - Automatische Platform-Detection (Native vs Web)
 
 ### Added
-- 📦 **@capacitor/preferences**: Jetzt in package.json dependencies
+- 📦 **@capacitor/preferences**: Neue Dependency für persistente iOS-Speicherung
   - Version: ^7.0.2
-  - Erfolgreich mit CocoaPods integriert
-  - In capacitor.config.json packageClassList registriert
-  - iOS Keychain Integration jetzt funktionsfähig
-
-### Technical Details
-- npm install erfolgreich durchgeführt
-- npx cap sync ios erfolgreich (pod install)
-- 5 Capacitor Plugins jetzt installiert (vorher 4):
-  - @capacitor-community/generic-oauth2@7.0.0
-  - @capacitor/browser@7.0.2
-  - @capacitor/local-notifications@7.0.3
-  - @capacitor/preferences@7.0.2 ✅ NEU
-  - @capacitor/push-notifications@7.0.3
-- packageClassList automatisch erweitert mit "PreferencesPlugin"
-
-### Root Cause
-- v1.0.14 verwendete Preferences API, aber Package fehlte
-- iOS Projekt hatte keine Ahnung vom Preferences Plugin
-- Alle Preferences.get/set/remove Aufrufe schlugen fehl
-- Supabase Client konnte nicht initialisieren → App brach ab
-
-### Why This Was Critical
-**Symptome**:
-- ❌ App startete nicht richtig
-- ❌ Inserate wurden nicht geladen
-- ❌ OAuth Error: UNIMPLEMENTED
-- ❌ Console Error: "Preferences plugin is not implemented on ios"
-
-**Jetzt**:
-- ✅ Preferences Plugin korrekt installiert
-- ✅ iOS Keychain Integration funktioniert
-- ✅ Supabase Client kann initialisieren
-- ✅ OAuth sollte jetzt funktionieren
-- ✅ Session Persistence ist aktiviert
-
-### Testing Steps
-1. 🧹 **Clean Build in Xcode** (WICHTIG!):
-   - Product → Clean Build Folder (Cmd+Shift+K)
-   - Derived Data löschen falls nötig
-
-2. 🧪 **App testen**:
-   - App builden und starten
-   - Inserate sollten laden ✅
-   - Google Login testen
-   - Session Persistence testen (App schließen + öffnen)
-
-**Entschuldigung für den Fehler in v1.0.14! Dieser kritische Bugfix sollte alles beheben.**
-
-## [1.0.14] - 2025-10-12
-
-### Fixed
-- 🔐 **Session Persistence Fix: iOS Keychain Integration**
-  - Root cause identifiziert: OAuth funktionierte, aber Sessions gingen nach App-Neustart verloren
-  - iOS localStorage funktioniert nicht zuverlässig → User musste sich jedes Mal neu anmelden
-  - **Lösung**: Capacitor Preferences für iOS Keychain Integration
-  - Tokens werden jetzt sicher im iOS Keychain gespeichert
-  - Sessions bleiben dauerhaft erhalten nach App-Neustart
-  - Echte "Remember Me" Funktionalität jetzt verfügbar
+  - iOS Keychain Integration
+  - Sichere Token-Speicherung
+  - Plattformübergreifende API
 
 ### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.9 integriert
-  - Capacitor Preferences Storage Backend in supabase.ts
-  - Custom URL Scheme wieder aktiviert: `habdawas://auth/callback`
-  - Conditional Storage: iOS Keychain auf Native, localStorage auf Web
-  - detectSessionInUrl: false auf Native (manuelle OAuth-Verarbeitung)
-  - persistSession: true + autoRefreshToken: true
+- 🔄 **supabase.ts**: Custom Storage Backend implementiert
+  - capacitorStorage mit Preferences API
+  - Conditional Storage: Native → Capacitor, Web → localStorage
+  - detectSessionInUrl: false auf Native (manuelle Verarbeitung)
+  - persistSession: true für Session-Erhaltung
+  - autoRefreshToken: true für automatische Token-Aktualisierung
+
+- 🔄 **AuthContext OAuth Redirect**: Zurück zu Custom URL Scheme
+  - redirectUrl: 'habdawas://auth/callback' (Native)
+  - redirectUrl: window.location.origin (Web)
+  - Kombination aus Session Persistence + Custom URL Scheme
+  - exchangeCodeForSession() für sichere Token-Verarbeitung
 
 ### Technical Details
-- Web-App Version: 1.4.9 (Session Persistence Fix)
-- Capacitor Preferences API für iOS Keychain Integration
-- Custom Storage Backend: Preferences.get/set/remove
-- Platform Detection: Capacitor.isNativePlatform()
-- Supabase Client mit conditional storage configuration
-- OAuth Flow unverändert: ASWebAuthenticationSession + exchangeCodeForSession()
-- pkceEnabled: false bleibt kritisch
-
-### Architecture
-- **iOS Storage**: Capacitor Preferences → iOS Keychain (sicher + persistent)
-- **Web Storage**: default localStorage (browser-nativ)
-- **OAuth Flow**: Custom URL Scheme für Native, https:// für Web
-- **Session Management**: Automatische Token-Refresh + Persistence
+- Supabase Client mit conditional storage backend
+- iOS: Capacitor Preferences → iOS Keychain
+- Web: default localStorage (bleibt unverändert)
+- Custom URL Scheme bereits in Info.plist registriert
+- pkceEnabled: false bleibt kritisch (Supabase hat PKCE bereits)
+- flowType: 'pkce' für OAuth-Sicherheit
 
 ### Why This Fix Is Critical
 **Problem (vorher)**:
-- ❌ OAuth öffnete erfolgreich, User konnte sich anmelden
-- ❌ Session ging aber nach App-Neustart verloren
-- ❌ User musste sich bei jedem Öffnen neu anmelden
-- ❌ Keine echte native App Experience
+- ❌ OAuth funktionierte, aber Session ging verloren nach App-Neustart
+- ❌ User musste sich bei jedem App-Öffnen neu anmelden
+- ❌ Default localStorage funktioniert nicht auf iOS
 
 **Lösung (jetzt)**:
-- ✅ OAuth funktioniert + Session bleibt erhalten
-- ✅ App "merkt sich" User nach Neustart
-- ✅ iOS Keychain speichert Tokens sicher
-- ✅ Automatische Token-Aktualisierung funktioniert
-- ✅ Native App Experience wie bei Spotify, Twitter, etc.
-
-### Testing Steps
-1. 🧪 **Google Login testen**:
-   - App in Xcode builden (Clean Build: Cmd+Shift+K)
-   - Google Login durchführen
-   - Erfolgreich einloggen
-
-2. 🔄 **Session Persistence testen**:
-   - App vollständig schließen (nicht nur minimieren)
-   - App neu öffnen
-   - User sollte noch eingeloggt sein ✅
-
-3. 🔍 **Debugging**:
-   - Xcode Console Logs beobachten
-   - [OAuth] Tags für OAuth-Flow
-   - Session-Status prüfen nach App-Restart
+- ✅ Capacitor Preferences speichert Tokens in iOS Keychain
+- ✅ Sessions bleiben nach App-Neustart erhalten
+- ✅ Automatisches Token-Refresh funktioniert
+- ✅ Echte "Remember Me" Funktionalität
 
 ### Next Steps
-- Clean Build in Xcode durchführen
-- Google Login testen
-- App-Neustart testen
-- Session Persistence verifizieren
+1. 🧪 **In Xcode testen**:
+   - Clean Build Folder (Cmd+Shift+K)
+   - Build & Run
+   - Google Login durchführen
+   - App schließen und neu öffnen
+   - User sollte eingeloggt bleiben
 
-**Siehe bazar_bold CHANGELOG 1.4.9 für technische Details!**
+**Siehe External Source für technische Details zur Session Persistence auf iOS!**
 
-## [1.0.13] - 2025-10-12
-
-### Fixed
-- 🔐 **Alternative OAuth Lösung: Reversed Client ID (iOS Standard)**
-  - Umstellung von Custom URL Scheme (`habdawas://`) auf Google's offiziellen iOS OAuth Standard
-  - Reversed Client ID: `com.googleusercontent.apps.60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q:/oauth2redirect`
-  - Wie von Apple und Google empfohlen (verwendet von Spotify, Twitter, Canva, Slack)
-  - Google erkennt Reversed Client ID automatisch als native iOS OAuth
+## [1.4.8] - 2025-10-12
 
 ### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.8 integriert
-  - AuthContext mit Reversed Client ID implementiert
-  - redirectUrl verwendet jetzt iOS Standard Format
-  - `com.googleusercontent.apps.{CLIENT_ID}:/oauth2redirect` Schema
-
-- 📱 **Info.plist erweitert**: Google OAuth URL Scheme hinzugefügt
-  - CFBundleURLSchemes mit Reversed Client ID registriert
-  - Zusätzlich zu bestehendem `habdawas` Schema
-  - Ermöglicht native iOS OAuth Callbacks
+- 🔄 **Alternative OAuth Lösung: Reversed Client ID (iOS Standard)**
+  - Umstellung von Custom URL Scheme (`habdawas://`) auf Google's offiziellen iOS OAuth Standard
+  - Reversed Client ID: `com.googleusercontent.apps.60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q:/oauth2redirect`
+  - Entspricht Apple und Google Best Practices (wie Spotify, Twitter, Canva, Slack)
+  - Google erkennt Reversed Client ID automatisch als native iOS OAuth
 
 ### Technical Details
-- Web-App Version: 1.4.8 (Reversed Client ID)
-- Reversed Client ID als URL Scheme in Info.plist registriert
-- iOS Client als Primary Client ID in Supabase erforderlich
-- Kein Client Secret erforderlich (iOS Client hat keinen Secret)
+- redirectUrl mit Reversed Client ID statt Custom URL Scheme
+- `const reversedClientId = 'com.googleusercontent.apps.60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q'`
+- URL Format: `{reversedClientId}:/oauth2redirect`
 - pkceEnabled: false bleibt kritisch (Supabase hat PKCE bereits)
 
-### Supabase Konfiguration (manuell erforderlich)
+### Why Reversed Client ID?
 
-**WICHTIG**: Folgende Änderungen in Supabase Dashboard vornehmen:
+**Custom URL Scheme (v1.4.6-1.4.7)**:
+- ❌ `habdawas://auth/callback`
+- ❌ Google lehnt als OAuth Redirect ab
+- ❌ 400 Bad Request Error
 
-1. **Authentication → Providers → Google**:
+**Reversed Client ID (v1.4.8 - iOS Standard)**:
+- ✅ `com.googleusercontent.apps.{CLIENT_ID}:/oauth2redirect`
+- ✅ Google erkennt automatisch als iOS OAuth
+- ✅ Offizieller Standard von Apple & Google
+- ✅ Verwendet von allen großen Apps
+
+### Supabase Configuration Required
+
+**WICHTIG**: Folgende Änderungen in Supabase Dashboard:
+
+1. **Client ID (for OAuth)**: iOS Client als Primary
    ```
-   Client ID (for OAuth): 60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q.apps.googleusercontent.com
+   60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q.apps.googleusercontent.com
    ```
-   (iOS Client als Primary!)
 
 2. **Client Secret**: LEER LASSEN (iOS Client hat keinen Secret)
 
@@ -1116,519 +1472,871 @@ Das ist die Standard-Lösung für native App OAuth mit Providern die Custom URL 
    http://localhost:5173/auth/callback
    ```
 
-### Why Reversed Client ID?
-
-**Custom URL Scheme (bisherig)**:
-- ❌ `habdawas://auth/callback`
-- ❌ Google lehnt als OAuth Redirect ab
-- ❌ 400 Bad Request Error
-
-**Reversed Client ID (iOS Standard)**:
-- ✅ `com.googleusercontent.apps.{CLIENT_ID}:/oauth2redirect`
-- ✅ Google erkennt automatisch als iOS OAuth
-- ✅ Offizieller Standard von Apple & Google
-- ✅ Verwendet von allen großen Apps (Spotify, Twitter, etc.)
-
-### OAuth Flow
-```
-App → Supabase (mit iOS Client ID) → Google (erkennt iOS OAuth) → Supabase → App
-```
-
-### Documentation
-- 📝 **ALTERNATIVE-FIX-REVERSED-CLIENT-ID.md**: Vollständige Anleitung
-  - Warum Reversed Client ID besser ist
-  - Supabase Konfiguration Schritt-für-Schritt
-  - Code-Änderungen erklärt
-  - Info.plist Anpassungen
-  - Build & Deploy Prozess
-
-### Next Steps
-1. ⚙️ **Supabase Konfiguration ändern** (siehe oben)
-2. 🧪 **In Xcode testen**:
-   - Clean Build Folder (Cmd+Shift+K)
-   - Build & Run
-   - Google Login sollte jetzt funktionieren
-
-**Siehe ALTERNATIVE-FIX-REVERSED-CLIENT-ID.md für detaillierte Anleitung!**
-
----
-
-## [1.0.12] - 2025-10-12
+## [1.4.7] - 2025-10-12
 
 ### Fixed
-- 🔐 **CRITICAL OAuth Fix: Fehler 400 endgültig behoben!**
-  - Root Cause gefunden: PKCE wurde doppelt hinzugefügt
-  - Supabase URL enthält bereits PKCE Parameter
-  - GenericOAuth2 Plugin hat mit `pkceEnabled: true` nochmal PKCE hinzugefügt
-  - Google sah widersprüchliche Parameter → 400 Bad Request
-  - **Lösung**: `pkceEnabled: false` im Code gesetzt
-
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.7 integriert
-  - pkceEnabled: false in GenericOAuth2.authenticate()
-  - Plugin öffnet Supabase URL jetzt unverändert
-  - Nur ein PKCE Challenge → Google akzeptiert
+- 🔐 **CRITICAL OAuth Fix: PKCE doppelt behoben**
+  - `pkceEnabled: false` in GenericOAuth2.authenticate()
+  - Supabase URL enthält bereits PKCE → Plugin darf nicht nochmal hinzufügen
+  - Verhindert "400 Bad Request" von Google
+  - Root cause war: Plugin fügte zweite PKCE Parameter hinzu
 
 ### Documentation
-- 📝 **GOOGLE-OAUTH-IOS-SETUP.md**: Vollständige Anleitung
-  - Schritt 1: iOS Client in Google Cloud Console erstellen (Bundle ID: at.habdawas.app)
-  - Schritt 2: Beide Client IDs in Supabase eintragen (WEB_ID,IOS_ID kommasepariert)
-  - Schritt 3: Code-Fix erklärt (pkceEnabled: false)
-  - Schritt 4: Build & Test Anleitung
-  - Troubleshooting für alle OAuth-Fehler
-  - Technische Erklärung warum PKCE doppelt das Problem war
-
-- 📝 **GOOGLE-CLOUD-CONSOLE-VERIFICATION.md**: Umfassende Verifikations-Checkliste
-  - KRITISCH: Web Client Redirect URI Konfiguration
-  - Schritt-für-Schritt Guide für Google Cloud Console
-  - OAuth Consent Screen Test User Verifikation
-  - Detaillierte Troubleshooting-Anleitung nach Priorität
-  - OAuth Flow Analyse und Debug Informationen
-
-- 📝 **QUICK-FIX-400-ERROR.md**: Schnellanleitung für 400 Error
-  - Ein-Seiten Guide für häufigsten Fehler
-  - Web Client Redirect URI: https://hsbjflixgavjqxvnkivi.supabase.co/auth/v1/callback
-  - Erklärt warum Web Client (nicht iOS Client) die Redirect URIs braucht
-  - Quick-Check für OAuth Consent Screen Test Users
+- 📝 **GOOGLE-OAUTH-IOS-SETUP.md**: Vollständige Setup-Anleitung
+  - iOS Client in Google Cloud Console erstellen
+  - Beide Client IDs kommasepariert in Supabase eintragen
+  - Schritt-für-Schritt Troubleshooting
+  - Erklärung warum PKCE doppelt das Problem war
 
 ### Technical Details
-- Web-App Version: 1.4.7 (PKCE Fix)
-- pkceEnabled: false ist KRITISCH - Supabase URL hat schon code_challenge
-- GenericOAuth2 öffnet Supabase URL unverändert in ASWebAuthenticationSession
+- pkceEnabled: false ist KRITISCH - Supabase URL hat schon PKCE
+- GenericOAuth2 öffnet Supabase URL unverändert
 - Google sieht nur einen PKCE Challenge → funktioniert
-- exchangeCodeForSession() prüft PKCE Code Verifier
+- iOS Client + Web Client IDs müssen beide in Supabase sein
 
-### OAuth Flow Analysis
-```
-App → Supabase → Google (prüft Web Client Redirect URIs!) → Supabase → App
-                    ↑
-            Hier kommt 400 Error wenn Redirect URI fehlt!
-```
+### Next Steps
+- iOS Client in Google Console erstellen (Bundle ID: at.habdawas.app)
+- Client IDs in Supabase: WEB_ID,IOS_ID (kommasepariert, Web zuerst)
+- Dann sollte OAuth funktionieren
 
-**Key Insight**: Der 400 Error kommt von Google, nicht von der App. Google lehnt die redirect_uri von Supabase ab. Die Supabase Callback URL muss im **Web Client** (nicht iOS Client!) whitelisted sein.
-
-### Next Steps (Manual erforderlich - HÖCHSTE PRIORITÄT)
-1. 🚨 **KRITISCH: Web Client Redirect URI hinzufügen**:
-   - Google Cloud Console → APIs & Services → Credentials
-   - **Web Client** (60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1) editieren
-   - Authorized redirect URIs → Hinzufügen:
-     ```
-     https://hsbjflixgavjqxvnkivi.supabase.co/auth/v1/callback
-     ```
-   - 5-10 Minuten warten (Google Propagation)
-
-2. ⚙️ **OAuth Consent Screen Test User prüfen**:
-   - OAuth consent screen → Test users
-   - E-Mail Adresse hinzufügen (falls Status = Testing)
-
-3. ✅ **Supabase Konfiguration (bereits erledigt)**:
-   - Client ID: 60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1.apps.googleusercontent.com,60326895721-uo4pph6u9jncm9n37ldr0v246ci97l8q.apps.googleusercontent.com
-   - Redirect URLs: habdawas://auth/callback
-
-4. 🧪 **Test in Xcode nach Config-Änderung**:
-   - Clean Build Folder (Cmd+Shift+K)
-   - Neu builden und testen
-   - Google Login sollte jetzt funktionieren
-
-**Siehe QUICK-FIX-400-ERROR.md für schnelle Lösung oder GOOGLE-CLOUD-CONSOLE-VERIFICATION.md für vollständige Verifikation!**
-
----
-
-## [1.0.11] - 2025-10-12
+## [1.4.6] - 2025-10-12
 
 ### Fixed
-- 🔐 **Native iOS OAuth "Custom URL Scheme" Fix**
-  - ASWebAuthenticationSession öffnet erfolgreich mit `habdawas://auth/callback`
-  - "USER_CANCELLED" zeigt dass OAuth-Fenster funktioniert
-  - Custom URL Scheme aus Info.plist wird genutzt
-  - Native iOS OAuth-Experience (wie Spotify, Twitter, Canva)
+- **Native iOS OAuth "USER_CANCELLED" behoben**
+  - Custom URL Scheme `habdawas://auth/callback` implementiert
+  - ASWebAuthenticationSession öffnet jetzt erfolgreich
+  - Native iOS OAuth-Fenster funktioniert (kein 403 mehr)
+  - Nutzt registriertes URL Scheme aus Info.plist
   - Google akzeptiert Custom URL Schemes für native Apps
 
 ### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.6 integriert
-  - OAuth Redirect URL: `habdawas://auth/callback`
-  - GenericOAuth2 mit ASWebAuthenticationSession
-  - PKCE OAuth Flow mit `exchangeCodeForSession()`
+- 🔄 **OAuth Redirect URL umgestellt**
+  - Von `https://beta.habdawas.at/auth/callback` zu `habdawas://auth/callback`
+  - Entspricht Best Practices für native iOS OAuth
+  - Echte Native-App-Experience wie Spotify, Twitter, etc.
   - App öffnet sich automatisch nach Google Login
 
-### Documentation
-- 📝 **SUPABASE-CUSTOM-URL-SCHEME.md**: Vollständige Setup-Anleitung
-  - Schritt-für-Schritt Guide für Supabase Redirect URL Konfiguration
-  - Troubleshooting für alle OAuth-Fehler
-  - Technische Details zum OAuth Flow
-  - Vergleich: Vorher vs. Nachher
-
 ### Technical Details
-- Web-App Version: 1.4.6 (Custom URL Scheme Fix)
-- GenericOAuth2.authenticate() mit nativer OAuth-Session
+- GenericOAuth2.authenticate() mit Custom URL Scheme
 - redirectUrl: 'habdawas://auth/callback'
-- Custom URL Scheme bereits in Info.plist registriert: `habdawas`
-- PKCE OAuth Flow für erhöhte Sicherheit
-- Capacitor Sync durchgeführt
+- PKCE OAuth Flow aktiviert
+- Custom URL Scheme bereits in Info.plist registriert
+- Supabase `exchangeCodeForSession()` für Code-to-Session Exchange
 
-### Next Step
-- ⚙️ **Supabase Konfiguration erforderlich**:
-  - `habdawas://auth/callback` zu Supabase Redirect URLs hinzufügen
-  - Siehe SUPABASE-CUSTOM-URL-SCHEME.md für Anleitung
-  - Nach Konfiguration sollte OAuth Flow komplett funktionieren
+### Documentation
+- SUPABASE-CUSTOM-URL-SCHEME.md: Vollständige Konfigurationsanleitung
+- Schritt-für-Schritt Guide für Supabase Redirect URL Setup
+- Troubleshooting für alle OAuth-Probleme
 
----
-
-## [1.0.10] - 2025-10-12
+## [1.4.5] - 2025-10-12
 
 ### Fixed
-- 🔐 **Native iOS OAuth "403 Disallowed_useragent" Fehler behoben**
+- **Native iOS OAuth "403 Disallowed_useragent" Fehler behoben**
   - ASWebAuthenticationSession statt Safari WebView
   - GenericOAuth2 Plugin mit https:// Redirect URL
   - Google akzeptiert nur native Browser-Fenster für OAuth
-  - Native iOS OAuth-Fenster zeigt Google Login korrekt
-
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.5 integriert
-  - ASWebAuthenticationSession Implementation
   - skipBrowserRedirect: true für manuelle URL-Verarbeitung
-  - PKCE OAuth Flow aktiviert
-  - App URL Listener extrahiert Tokens aus Callback
 
 ### Technical Details
-- Web-App Version: 1.4.5 (ASWebAuthenticationSession Fix)
-- GenericOAuth2.authenticate() mit nativer OAuth-Session
+- GenericOAuth2.authenticate() mit ASWebAuthenticationSession
 - redirectUrl: 'https://beta.habdawas.at/auth/callback'
-- App öffnet sich automatisch nach OAuth
-- Capacitor Sync durchgeführt
+- PKCE OAuth Flow aktiviert
+- App URL Listener extrahiert Tokens aus Callback
+- Native iOS OAuth-Fenster statt eingebetteter WebView
+- -test
 
----
-
-## [1.0.9] - 2025-10-12
+## [1.4.4] - 2025-10-12
 
 ### Fixed
-- 🔐 **Native iOS OAuth "Zugriff blockiert" Fehler behoben**
-  - Redirect URL zurück auf https://beta.habdawas.at/auth/callback
-  - Google akzeptiert nur https:// URLs, nicht capacitor://localhost
-  - Universal Links funktionieren korrekt mit https:// URLs
-  - App URL Listener für /auth/callback angepasst
-
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Version 1.4.4 integriert
-  - OAuth Redirect auf https:// URL umgestellt
-  - Token-Extraktion aus Universal Link Callback
-  - App öffnet sich automatisch nach Google OAuth
+- **Native iOS OAuth "Zugriff blockiert" Fehler behoben**
+  - Redirect URL zurück auf https://beta.habdawas.at/auth/callback (statt capacitor://localhost)
+  - Google akzeptiert nur https:// URLs als Redirect URIs
+  - Universal Links funktionieren mit https:// URLs
+  - App URL Listener angepasst für /auth/callback statt /auth/v1/callback
+  - test
 
 ### Technical Details
-- Web-App Version: 1.4.4 (OAuth Redirect Fix)
-- redirectTo: 'https://beta.habdawas.at/auth/callback'
-- App URL Listener prüft auf '/auth/callback' mit '#' Fragment
-- Universal Links öffnen App mit Token-Fragmenten
-- Capacitor Sync durchgeführt
+- redirectTo: 'https://beta.habdawas.at/auth/callback' für native iOS
+- App URL Listener prüft auf '/auth/callback' mit Token-Fragment
+- Universal Links öffnen App automatisch nach OAuth
+- Token-Extraktion aus URL-Fragment funktioniert
 
----
+## [1.4.3] - 2025-10-12
 
-## [1.0.8] - 2025-10-12
+### Behoben
+- **Native iOS OAuth Implementation**: "Fehler 400" bei iPhone App behoben
+  - Umstellung von GenericOAuth2 Plugin auf natives Capacitor App URL Listener
+  - Verwendung von `capacitor://localhost` als Redirect URL statt https://
+  - Manuelle Token-Extraktion aus OAuth-Callback URL
+  - Direct `setSession()` Aufruf statt `exchangeCodeForSession()`
+  - Entspricht der empfohlenen Supabase + Capacitor OAuth Implementierung
+  - test
 
-### Fixed
-- 🔐 **Native iOS Google OAuth**: "Fehler 400" bei iPhone App endgültig behoben
-  - Umstellung von GenericOAuth2 Plugin auf Capacitor App URL Listener
-  - `capacitor://localhost` als Redirect URL statt https://
-  - Manuelle Token-Extraktion aus OAuth-Callback URL-Fragmenten
-  - Direct `setSession()` Aufruf für Session-Etablierung
-  - Entspricht offizieller Supabase + Capacitor OAuth-Dokumentation
-  - Web OAuth bleibt unverändert und funktioniert weiterhin
-
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Neueste Version von bazar_bold (v1.4.3) integriert
-  - AuthContext komplett überarbeitet für native iOS
+### Geändert
+- **AuthContext OAuth Flow**: Vereinfachter und robusterer OAuth-Flow
   - App URL Listener für OAuth-Callbacks
-  - Automatische Token-Extraktion via URLSearchParams
+  - Automatische Token-Extraktion aus URL-Fragmenten
   - Verbessertes Error Handling und Logging
-  - Cleanup von Event Listenern beim Component Unmount
+  - Cleanup von Listenern beim Component Unmount
 
-### Technical Details
-- Web-App Version: 1.4.3 (Native iOS OAuth Fix)
-- Import: `@capacitor/app` statt `@capacitor-community/generic-oauth2`
-- Event Handler: `appUrlOpen` für OAuth-Callback-URLs
-- Token Extraction: URL hash parsing mit URLSearchParams
-- Supabase API: `setSession()` statt `exchangeCodeForSession()`
-- Capacitor Sync durchgeführt
+### Technisch
+- Import von `@capacitor-community/generic-oauth2` entfernt
+- `@capacitor/app` für URL Listening verwendet
+- `appUrlOpen` Event Handler für OAuth-Callbacks
+- URLSearchParams für Token-Extraktion
+- Supabase `setSession()` API Integration
 
-### Architecture
-- Web Platform: Standard OAuth mit Browser-Redirect
-- Native iOS: App URL Listener + manuelle Token-Verarbeitung
-- Unified Codebase mit Platform-Detection
-- Konsistente User Experience auf allen Plattformen
+## [1.4.2] - 2025-10-12
 
----
-
-## [1.0.7] - 2025-10-12
-
-### Fixed
-- 🔐 **OAuth Consent Screen konfiguriert**: "invalid_client" Fehler behoben
-  - Neuer OAuth Client in Google Cloud Console erstellt
+### Behoben
+- **OAuth Consent Screen Konfiguration**: "invalid_client" Fehler behoben
+  - OAuth Consent Screen in Google Cloud Console konfiguriert
   - Authorized Domains hinzugefügt (habdawas.at, beta.habdawas.at, supabase.co)
   - Scopes konfiguriert (email, profile, openid)
   - Testnutzer hinzugefügt
-  - Supabase mit neuen Credentials aktualisiert
+  - Neuer OAuth Client mit korrekten Credentials erstellt
+  - Supabase mit neuer Client ID und Secret aktualisiert
+  - test
 
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Neueste Version von bazar_bold (v1.4.2) integriert
-  - OAuth Consent Screen Setup dokumentiert
-  - Neue Client ID: `60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1.apps.googleusercontent.com`
-  - Web OAuth Login funktioniert einwandfrei
+### Hinzugefügt
+- **OAuth Consent Screen Setup Dokumentation**: Vollständige deutsche Anleitung
+  - Schritt-für-Schritt Anleitung für Google Cloud Console
+  - Schnellstart-Guide für 5-Minuten-Setup
+  - Detaillierte Erklärungen aller Konfigurationsschritte
+  - Checkliste für alle erforderlichen Einstellungen
+  - Troubleshooting für häufige Fehler
 
-### Documentation
-- OAUTH-CONSENT-SCREEN-SETUP.md: Vollständige deutsche Anleitung erstellt
-- Schnellstart-Guide für 5-Minuten-Setup
-- Detaillierte Schritt-für-Schritt Anleitung für Google Cloud Console
-- Checkliste und Troubleshooting
-
-### Technical Details
-- Web-App Version: 1.4.2 (OAuth Consent Screen Fix)
+### Technisch
+- Neue Client ID: `60326895721-l6lf1hj5gchv1v514e9fbrgn9lc1oqr1.apps.googleusercontent.com`
 - OAuth Consent Screen Status: Testing
-- Redirect URIs konfiguriert für alle Plattformen
-- Capacitor Sync durchgeführt
+- Redirect URIs konfiguriert für localhost, beta.habdawas.at, www.habdawas.at, Supabase
 
----
+## [1.4.1] - 2025-10-12
 
-## [1.0.5] - 2025-10-12
+### Behoben
+- **Vercel 404 Fehler**: SPA-Routing für alle Routen konfiguriert
+  - `vercel.json` mit Rewrites für Single Page Application
+  - Alle Routen werden auf `/index.html` umgeleitet
+  - React Router übernimmt das Client-Side Routing
+  - `/auth/callback` funktioniert jetzt korrekt
+  - Direktaufrufe und Browser-Refresh funktionieren auf allen Seiten
+  - test
+    
 
-### Fixed
-- 🔐 **OAuth Session Detection aktiviert**: Google Login funktioniert jetzt korrekt in der iOS App
-  - Supabase Auth mit `detectSessionInUrl: true` konfiguriert
-  - PKCE OAuth-Flow für erhöhte Sicherheit implementiert
-  - OAuth-Tokens werden automatisch aus URL extrahiert nach Google-Callback
+### Hinzugefügt
+- **Vercel Konfiguration**: `vercel.json` für optimales Deployment
+  - SPA-Rewrites für alle Routen
+  - Content-Type Header für Apple App Site Association Dateien
+  - Korrekte MIME-Types für Universal Links
+
+### Technisch
+- Vercel Rewrites: `/(.*) → /index.html`
+- Headers für `/apple-app-site-association` und `/.well-known/apple-app-site-association`
+- Content-Type: `application/json` für Universal Links Dateien
+
+## [1.4.0] - 2025-10-12
+
+### Hinzugefügt
+- **OAuth Callback Route**: Neue `/auth/callback` Route für Web-OAuth
+  - OAuthCallbackPage Komponente verarbeitet OAuth-Redirects
+  - Automatische Code-zu-Session-Konvertierung
+  - Loading-Status während der Verarbeitung
+  - Fehlerbehandlung mit User-Feedback
+  - Unterstützt sowohl Web- als auch iOS-OAuth-Flow
+- **Universal Links Support**: Natives iOS Deep-Linking
+  - Apple App Site Association Dateien deployed
+  - Support für `/auth/callback` als Universal Link
+  - App öffnet sich automatisch nach OAuth auf iOS
+  - Nahtlose Weiterleitung vom Browser zur App
+  - test
+
+### Behoben
+- **404-Fehler bei OAuth**: `/auth/callback` existierte nicht
+  - Route war zuvor für ResetPasswordPage verwendet
+  - Separate Route für OAuth-Callback erstellt
+  - Web-Login funktioniert jetzt korrekt
+
+### Technisch
+- OAuthCallbackPage mit useEffect für URL-Processing
+- Supabase `exchangeCodeForSession()` Integration
+- React Router Route für `/auth/callback`
+- Apple App Site Association im `public/` Ordner
+- Team ID `G5QYXZ4B6L` für Universal Links konfiguriert
+
+## [1.3.9] - 2025-10-12
+
+### Hinzugefügt
+- **Apple App Site Association**: Universal Links für iOS
+  - Datei für iOS App-zu-Web Verlinkung
+  - Pfad `/auth/callback` für OAuth-Redirects registriert
+  - Unterstützt automatisches Öffnen der iOS App
+  - Verfügbar unter `/apple-app-site-association` und `/.well-known/apple-app-site-association`
+
+### Technisch
+- App ID: `G5QYXZ4B6L.at.habdawas.app`
+- JSON-Format ohne Dateiendung
+- Content-Type: `application/json`
+
+## [1.3.8] - 2025-10-12
+
+### Hinzugefügt
+- **Native iOS OAuth**: Implementierung mit ASWebAuthenticationSession
+  - `@capacitor-community/generic-oauth2` Plugin integriert
+  - Nutzt Apple's empfohlene ASWebAuthenticationSession API
+  - Ersetzt custom URL scheme durch Universal Links
+  - Google-konforme OAuth-Implementierung für iOS
+
+### Geändert
+- **OAuth Redirect URL**: Von `habdawas://oauth-callback` zu `https://beta.habdawas.at/auth/callback`
+  - Nutzt Universal Links statt custom URL scheme
+  - Kompatibel mit Google OAuth Richtlinien
+  - Funktioniert auf Web und iOS App
+
+### Behoben
+- **Google 400 Fehler**: OAuth-Anfragen wurden von Google blockiert
+  - Custom URL schemes werden von Google nicht akzeptiert
+  - Universal Links sind die korrekte Lösung für native Apps
+  - ASWebAuthenticationSession ist Google's bevorzugte Methode
+
+### Technisch
+- GenericOAuth2 Plugin mit PKCE-Unterstützung
+- Separate Flows für Web und Native Plattformen
+- Capacitor.isNativePlatform() Erkennung
+- OAuth Debugging-Logs hinzugefügt
+- Automatischer Code-zu-Session-Austausch
+
+## [1.3.7] - 2025-10-12
+
+### Behoben
+- **Google OAuth Login**: Endloses Laden nach Google-Anmeldung behoben
+  - `detectSessionInUrl: true` zur Supabase-Konfiguration hinzugefügt
+  - `flowType: 'pkce'` für sicheren OAuth-Flow implementiert
+  - OAuth-Tokens werden jetzt automatisch aus der URL extrahiert
   - Benutzer werden nach erfolgreicher Google-Anmeldung sofort eingeloggt
-  - Endloses Laden nach OAuth-Callback behoben
+  - Keine hängende Loading-Anzeige mehr nach OAuth-Callback
 
-### Changed
-- 🔄 **Web-App Build aktualisiert**: Neueste Version von bazar_bold (v1.3.7) integriert
-  - Alle OAuth-Fixes von Web-App übernommen
-  - Optimierte Supabase Auth-Konfiguration
-  - Vollständiger Sync mit iOS Native-App
+### Technisch
+- Supabase Auth-Konfiguration erweitert mit Session-Detection
+- PKCE (Proof Key for Code Exchange) OAuth-Flow für erhöhte Sicherheit
 
-### Technical Details
-- Web-App Version: 1.3.7 (OAuth Fix)
-- Supabase Client: detectSessionInUrl + flowType PKCE
-- Build Pipeline: bazar_bold → dist → iphone_app/www
-- Capacitor Sync durchgeführt
+## [1.3.6] - 2025-10-11
 
-### Testing
-- OAuth Flow mit Google getestet
-- Session Detection verifiziert
-- Deep Link Callback funktioniert
+### Verbessert
+- **Mobile Listenansicht (ItemCompactList)**: Zeitanzeige optimiert für einheitliches Layout
+  - Zeitangabe erscheint jetzt rechts neben Ortsangabe (in derselben Zeile)
+  - `justifyContent: 'space-between'` für gleichmäßige Verteilung
+  - `minHeight: 20px` für konsistente Zeilenhöhe
+  - `flexWrap: 'nowrap'` verhindert ungewollte Umbrüche bei Chips
+  - Alle Listenkarten haben jetzt identische Höhe
+  - Optimierter Platzbedarf ermöglicht mehr sichtbare Inserate
+- **ItemList**: Einheitliche Kartenhöhen auch ohne Ortsangaben
+  - `minHeight` für Location/Zeit-Zeile hinzugefügt
+  - Verhindert höhenvariable Karten bei fehlenden Standortdaten
+- **ItemCard**: Konsistente Location/Zeit-Ausrichtung
+  - Layout-Verbesserungen für bessere Lesbarkeit
+- **Login-Dialog UX**: Verbesserte mobile Darstellung
+  - Safe Area Insets für iPhone-Notch/Kamera berücksichtigt
+  - `env(safe-area-inset-top)` verhindert Überlappung mit Statusleiste
+  - Home-Button deutlich sichtbarer: Blau (primary.main), 44x44px, mit Schatten
+  - Home-Icon vergrößert von 20px auf 24px
+  - Mehr Abstand oben (mt: 6 = 48px) für bessere Übersicht
+  - Logo ist jetzt klickbar und navigiert zur Startseite
+  - Hover-Effekt am Logo mit Opacity-Änderung
 
----
+### Technisch
+- Safe Area Support mit CSS `env(safe-area-inset-top)`
+- Responsive Layout-Optimierungen für xs/sm/md Breakpoints
+- Flexbox-basierte Layoutverbesserungen für konsistente UI
 
-## [1.0.0] - 2025-10-11
+## [1.3.5] - 2025-10-11
 
-### Added
-- ☁️ **Vercel Deployment**: Vollständige Vercel-Integration für optimierte Mobile UI
-  - `vercel.json` mit Production-ready Konfiguration
-  - `.vercelignore` für optimierte Deployment-Größe
-  - Vercel-Dokumentation im README
-  - Security Headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
-  - Asset Caching mit max-age=31536000 für Performance
-  - SPA Routing für Single-Page-Application Support
+### Hinzugefügt
+- **Versionsnummer im Footer**: Dezente Anzeige der aktuellen App-Version
+  - Version wird neben dem Copyright angezeigt
+  - Sehr zurückhaltende Darstellung (0.7rem, 50% Opacity)
+  - Graue Textfarbe für minimale visuelle Präsenz
+  - Format: "v1.3.5"
 
-- 🔧 **Xcode Integration**: Vollständige iOS Entwicklungsumgebung
-  - Xcode Projekt Setup für iOS 13.0+
-  - CocoaPods Integration für Dependencies
-  - Development & Production Build Configuration
-  - Code Signing & Provisioning Profiles Support
-  - Simulator & Physical Device Testing Support
+### Technisch
+- Stack-Layout für Copyright und Versionsnummer
+- Typography mit `color: 'text.disabled'` und `opacity: 0.5`
 
-- 📱 **iOS App Features** (aus vorherigen Commits):
-  - Push Notifications Support via Capacitor
-  - Local Notifications Support
-  - Fullscreen WebView für beta.habdawas.at
-  - Safe Area Support für iPhone mit Notch
-  - Native iOS Integration mit Capacitor 7.4.3
+## [1.3.4] - 2025-10-11
 
-- 📝 **Dokumentation**:
-  - VERSION Datei für Versionskontrolle
-  - CHANGELOG.md für Release Notes
-  - README.md mit Vercel Deployment Sektion
-  - Xcode Setup Anleitung
-  - Push Notifications Dokumentation
+### Verbessert
+- **Mobile Listen-Ansicht Layout**: Einheitliche Kartenhöhe und optimiertes Layout
+  - Zeitangabe immer rechts positioniert (Gestern, Vor X Tagen)
+  - Ort/PLZ und Zeitangabe in einer Zeile mit Space-Between Layout
+  - Chips-Zeile noch kompakter (18px statt 20px Höhe auf Mobile)
+  - Schriftgröße der Chips reduziert (0.65rem auf Mobile)
+  - Versand/Abholung Icons auf Mobile ausgeblendet
+  - Alle Inserate haben jetzt exakt die gleiche Höhe
+  - Keine Umbrüche mehr in der Chips-Zeile (`flexWrap: 'nowrap'`)
+  - Ort-Text mit Ellipsis bei Überlauf
 
-### Changed
-- README.md: Erweitert um Vercel Deployment Sektion
-- README.md: Deployment & CI/CD Ressourcen hinzugefügt
+### Technisch
+- Typography mit `whiteSpace: 'nowrap'` und `textOverflow: 'ellipsis'`
+- Flexbox `justifyContent: 'space-between'` für konsistentes Layout
+- Responsive Icon-Größen (12px auf Mobile, 14px auf Desktop)
 
-### Technical Details
-- **Capacitor Version**: 7.4.3
-- **iOS Target**: iOS 13.0+
-- **Node.js**: v24.7.0
-- **npm**: v11.6.0
-- **Deployment**: Vercel
-- **Framework**: Capacitor + Native iOS
+## [1.3.3] - 2025-10-11
 
-### Security
-- X-Content-Type-Options Header: nosniff
-- X-Frame-Options Header: DENY
-- X-XSS-Protection Header: 1; mode=block
-- HTTPS-only über Vercel
-- App Transport Security in iOS
+### Verbessert
+- **Mobile Listen-Ansicht**: Kompakteres Design für mehr Inserate auf einmal
+  - Kartenhöhe auf Mobile von 200px auf 130px reduziert
+  - Bildbreite auf Mobile von 240px auf 110px optimiert
+  - Alle Abstände und Paddings für Mobile komprimiert
+  - Schriftgrößen auf Mobile verkleinert (Titel, Preis, Beschreibung)
+  - Icon-Buttons kompakter (36px → 28px auf Mobile)
+  - Chips kleiner mit reduziertem Padding
+  - Beschreibung auf Mobile auf 1 Zeile begrenzt
+  - Zweiter Tag auf Mobile ausgeblendet
+  - Optimierte Spacing zwischen Elementen
+  - Deutlich mehr Inserate gleichzeitig sichtbar
 
----
+### Technisch
+- Responsive MUI Breakpoints für xs/sm/md
+- WebkitLineClamp für Beschreibungs-Kürzung
+- Optimierte Card-Layouts mit flexiblen Heights
 
-## [1.0.1] - 2025-10-11
+## [1.3.2] - 2025-10-09
 
-### Changed
-- 🎨 **App Icons & Favicon**: Hand-Icon von beta.habdawas.at übernommen
-  - Favicon in www/ aktualisiert (192x192px)
-  - iOS App Icons neu generiert mit Hand-Icon (alle Größen)
-  - PWA Icons generiert (48-512px in WebP)
-  - Splash Screens aktualisiert
+### Verbessert
+- **Auto-Save-Anzeige**: Optimiertes Feedback beim Speichern in den Einstellungen
+  - "Gespeichert"-Anzeige verschwindet automatisch nach 3 Sekunden
+  - Error-Status verschwindet nach 5 Sekunden
+  - Verhindert permanente Anzeige die nicht mehr aktuell ist
+  - Saubere automatische Bereinigung der Status-Anzeige
+- **Ansichtsmodus-Speicherung**: View Mode wird jetzt in der Datenbank persistiert
+  - Änderungen am Ansichtsmodus (Kachel/Liste/Galerie) werden automatisch gespeichert
+  - Sync zwischen localStorage und Datenbank
+  - Save-Indikator wird beim Umschalten angezeigt
+  - Konsistente Speicherung aller Einstellungen
 
-### Technical Details
-- Capacitor Assets verwendung für automatische Icon-Generierung
-- 10 iOS Icons generiert (15.29 MB total)
-- 7 PWA Icons generiert (446.11 KB total)
-- Icons synchronisiert mit `npx cap sync ios`
+### Behoben
+- **isFieldSaved-Fehler**: Entfernung veralteter Field-Saved-Logik
+  - Alle `isFieldSaved()` Referenzen entfernt
+  - Überbleibsel vom alten AutoSave-System bereinigt
+  - Verhindert ReferenceError in allen Settings-Sections
+  - Sauberere Code-Struktur ohne Legacy-Code
 
----
+### Technisch
+- Auto-Hide Timer für AutoSave-Status (3s für Success, 5s für Error)
+- `view_mode_preference` in FormData und AutoSaveData integriert
+- Cleanup von nicht verwendeten CSS-Classes
 
-## [1.0.2] - 2025-10-11
+## [1.3.1] - 2025-10-08
 
-### Added
-- 🔐 **Google OAuth Login für iOS**: Vollständige Integration
-  - Capacitor Browser Plugin für native OAuth im Safari
-  - Deep Link Handling für OAuth Callbacks
-  - Platform Detection (Web vs Native)
-  - Custom URL Scheme: `at.habdawas.app://oauth-callback`
-  - Automatisches Browser-Schließen nach erfolgreicher Auth
+### Behoben
+- **SPA-Routing für Netlify**: 404-Fehler bei direkten URLs und Page-Reload behoben
+  - `_redirects` Datei in `public/` Ordner erstellt
+  - Alle URLs werden auf `index.html` mit Status 200 umgeleitet
+  - Direktaufrufe von `/create`, `/item/:id`, etc. funktionieren jetzt
+  - Browser-Refresh funktioniert auf allen Seiten
+  - React Router übernimmt korrekt das Routing
+- **Tab-Filter nach Reload**: "Meine Inserate" und "Favoriten" zeigen nach Reload korrekte Daten
+  - URL-Parameter (`?view=myitems`, `?view=favorites`) werden vor dem initialen Laden ausgewertet
+  - `loadItems()` wartet jetzt auf alle Tab-States (`showMyItems`, `showFavorites`)
+  - Initial Load useEffect reagiert auf Tab-State-Änderungen
+  - Filter werden korrekt angewendet bevor Daten geladen werden
 
-### Changed
-- 📱 **AuthContext erweitert** (bazar_bold Projekt):
-  - Capacitor-spezifische OAuth-Logik
-  - Deep Link Listener für iOS
-  - Native Browser vs WebView Detection
+### Verbessert
+- **Desktop Upload-Buttons**: Optimierte Button-Darstellung beim Artikel erstellen
+  - Kamera-Button wird auf Desktop ausgeblendet (nur auf Mobile sichtbar)
+  - Desktop zeigt nur "Bilder auswählen" Button (prominent, contained)
+  - Mobile zeigt beide Optionen: "Kamera" und "Galerie"
+  - Klarere Benutzererfahrung ohne sinnlose Buttons
+  - Button-Text passt sich der Plattform an
 
-- 🔧 **iOS Konfiguration**:
-  - Info.plist: CFBundleURLTypes hinzugefügt
-  - URL Scheme registriert für Deep Linking
-  - Capacitor Browser Plugin zu Podfile
+### Technisch
+- Netlify `_redirects` Datei für SPA-Support
+- useEffect Dependencies erweitert für Tab-State-Synchronisation
+- Responsive Button-Rendering basierend auf `isMobile` Detection
 
-### Technical Details
-- @capacitor/browser v7.0.2 installiert
-- @capacitor/app v7.1.0 installiert
-- bazar_bold Source Code angepasst
-- Build von bazar_bold in iphone_app/www/ integriert
-- iOS native dependencies mit CocoaPods aktualisiert
+## [1.3.0] - 2025-10-08
 
-### Documentation
-- GOOGLE-LOGIN-SETUP.md: Vollständige Setup-Anleitung
-- Supabase Dashboard Konfiguration dokumentiert
-- Debugging und Troubleshooting Guide
+### Hinzugefügt
+- **Profilbild-Upload im Onboarding**: Neuer optionaler Schritt für Profilbilder
+  - Upload-Option im ersten Schritt des Onboarding-Wizards
+  - Visueller Hinweis auf Vertrauen und Transparenz
+  - Betonung von Verifizierung und Echtheit als höchste Prioritäten
+  - Runde Avatar-Vorschau mit User-Icon als Platzhalter
+- **Webcam-Integration**: Direkter Foto-Zugriff für Profilbilder
+  - Neue CameraCapture-Komponente mit Live-Vorschau
+  - Zwei Upload-Optionen: "Foto aufnehmen" (Webcam) oder "Datei wählen" (Dateisystem)
+  - Funktioniert im Onboarding-Wizard und in den Einstellungen
+  - Browser-native Webcam-API mit Fehlerbehandlung
+  - Foto-Vorschau mit Möglichkeit zum erneuten Aufnehmen
+  - Kamera-Berechtigungsverwaltung
+- **Automatische Bildoptimierung**: Canvas-basierte Größenanpassung
+  - Alle Bilder werden auf maximal 1200x1200 Pixel skaliert
+  - Seitenverhältnis wird automatisch beibehalten
+  - JPEG-Komprimierung mit 85% Qualität
+  - Gilt für Webcam-Aufnahmen und Datei-Uploads
+  - Verhindert unnötig große Dateien (meist unter 500 KB)
 
-### Security
-- OAuth-Flow über nativen Safari Browser (nicht WebView blockiert)
-- App-specific URL Scheme verhindert Callback-Abfangen
-- Token-Handling über Supabase sichere Mechanismen
+### Verbessert
+- **Einstellungen/Profilbild**: Menu-Button mit zwei Optionen
+  - "Foto aufnehmen" öffnet Webcam
+  - "Datei wählen" öffnet Datei-Browser
+  - Konsistente Funktionalität wie im Onboarding
+- **Upload-Performance**: Drastisch reduzierte Dateigrößen
+  - Schnellere Upload-Zeiten
+  - Reduzierter Speicherverbrauch
+  - 5 MB Limit wird selten erreicht
 
----
+### Technisch
+- CameraCapture-Komponente mit MediaDevices API
+- Wiederverwendbare Resize-Funktion für alle Image-Uploads
+- Automatische Canvas-Skalierung mit Aspect-Ratio-Erhaltung
+- Integration in Onboarding-Wizard und ProfileSection
 
-## [1.0.3] - 2025-10-11
+## [1.2.1] - 2025-10-07
 
-### Added
-- 🎨 **OAuth Loading UX Enhancement**: Professioneller Google-Login Flow mit Visual Feedback
-  - OAuthLoadingOverlay Component mit animiertem Google Logo
-  - CircularProgress Spinner während OAuth-Redirect
-  - "Weiterleitung zu Google..." Nachricht mit Erklärung
-  - Pulse Animation für Google Logo
-  - Backdrop mit Blur-Effekt für bessere Fokussierung
+### Behoben
+- **Doppeltes Laden**: Items wurden beim Seitenaufruf zweimal geladen
+  - Initial-Load und Filter-useEffect triggerten gleichzeitig
+  - Neuer `initialLoadComplete` Flag verhindert doppelte Ladevorgänge
+  - Smooth Loading ohne Zuckeln beim Seitenaufruf
+- **DOM-Nesting-Warnung**: Ungültige HTML-Struktur in SearchAutocomplete
+  - `<div>` innerhalb von `<p>` Tag entfernt
+  - Chips und Count-Elemente korrekt als separate Elemente platziert
+  - Validiert gegen HTML-Standard
 
-### Changed
-- 📱 **AuthContext erweitert** (bazar_bold Projekt):
-  - Neuer `oauthLoading` State für OAuth-Flow Tracking
-  - Loading State wird automatisch bei OAuth-Start gesetzt
-  - Loading State wird bei Deep Link Callback automatisch zurückgesetzt
-  - Verbesserte Error Handling während OAuth-Flow
+### Verbessert
+- Performance beim initialen Laden der Hauptseite
+- Sauberer Code ohne React Console Warnings
 
-- 🎨 **LoginDialog UX Verbesserung**:
-  - OAuthLoadingOverlay Integration
-  - Smooth Fade-In Animation beim Erscheinen
-  - Automatisches Schließen des Overlays nach erfolgreicher Auth
-  - Konsistentes Loading-Feedback für User
+## [1.2.0] - 2025-10-06
 
-### Technical Details
-- Neue Komponente: `/src/components/Auth/OAuthLoadingOverlay.tsx`
-- MUI System Keyframes für Animationen
-- Backdrop mit 95% weiß und Blur-Filter
-- ASWebAuthenticationSession Best Practices befolgt
-- Entspricht iOS OAuth Standards von Spotify, Twitter, Canva
+### Hinzugefügt
+- **News-Seite**: Zentrale Übersicht über alle Neuigkeiten und Updates
+  - Changelog-basierte News-Darstellung
+  - Zugriff über Hauptmenü im Footer
+  - Chronologische Auflistung aller Änderungen
+  - Farbcodierte Kategorien (Hinzugefügt, Verbessert, Behoben, etc.)
+- **Mobile Kamera-Zugriff**: Direkter Kamerazugriff beim Hochladen von Bildern
+  - `capture="environment"` für Rückkamera auf Mobilgeräten
+  - Nahtlose Integration in MultiImageUpload
+  - Funktioniert parallel zur Dateiauswahl
 
-### UX Improvements
-- User sieht jetzt klares visuelles Feedback während OAuth-Redirect
-- Reduzierte Verwirrung durch informativen Text
-- Professionellerer Look & Feel beim Google Login
-- Smooth Transitions statt abrupter Browser-Wechsel
+### Verbessert
+- **Upload-Flow**: Optimierte Benutzerführung beim Artikel erstellen
+  - Automatisches Öffnen der Bildauswahl nach Seitenladen (300ms Delay)
+  - Großes Upload-Feld ohne Paper-Container wenn keine Bilder vorhanden
+  - Paper-Container erscheint erst nach Upload der ersten Bilder
+  - Verhindert unnötigen visuellen Ballast
+  - Bessere State-Verwaltung für Auto-Open
 
----
+## [1.1.1] - 2025-10-06
 
-## [1.0.4] - 2025-10-11
+### Verbessert
+- **Speichern-Logik**: Status-Management beim Speichern optimiert
+  - Entwurf/Pausiert: "Speichern" speichert nur Änderungen, ohne Status zu ändern
+  - Veröffentlicht: "Veröffentlichen" übernimmt Änderungen
+  - Separater "Veröffentlichen" Button im Banner für Entwürfe/Pausierte Items
+- **Auto-Save-Anzeige**: Intelligentere Anzeige des Speicher-Status
+  - "Speichert..." Chip wird ausgeblendet bei manuellem Speichern
+  - Verhindert verwirrende doppelte Speicher-Meldungen
+- **Artikel-Erstellung**: Abbrechen-Button in der Fußzeile entfernt
+  - Klarere Navigation ohne redundanten Cancel-Button
+  - Nutzer können über Browser-Navigation zurück
 
-### Fixed
-- 🔐 **OAuth Redirect Problem behoben**: Dokumentation für Supabase Redirect URL Konfiguration
-  - SUPABASE-REDIRECT-FIX.md mit vollständiger Schritt-für-Schritt Anleitung
-  - README.md mit OAuth Setup Sektion erweitert
-  - Problem: Safari bleibt nach Google Login offen
-  - Ursache: `at.habdawas.app://oauth-callback` nicht in Supabase konfiguriert
-  - Lösung: Supabase Dashboard → Authentication → URL Configuration
+### Geändert
+- Status wird beim Inline-Speichern nicht mehr automatisch auf "published" gesetzt
+- Entkopplung von Speichern und Veröffentlichen-Funktion
 
-### Added
-- 📝 **SUPABASE-REDIRECT-FIX.md**: Vollständige Troubleshooting-Anleitung für OAuth
-  - Detaillierte Supabase Dashboard Konfiguration
-  - Debugging-Tipps und Console Logs
-  - Häufige Fehler und deren Lösungen
-  - Alternative Test-Szenarien
-  - Security Best Practices
+## [1.1.0] - 2025-10-04
 
-### Changed
-- 📖 **README.md**: Neue Sektion "Google OAuth Login einrichten"
-  - Problem-Beschreibung und Ursache
-  - Schritt-für-Schritt Lösung
-  - Verweis auf detaillierte Anleitung
-  - "Nächste Schritte" mit OAuth-Konfiguration erweitert
-  - App Version auf 1.0.4 aktualisiert
+### Hinzugefügt
+- **Bild-Optimierung**: Drastische Performance-Verbesserung durch intelligente Bildverarbeitung
+  - Supabase Image Transformation API Integration
+  - Automatische Thumbnail-Generierung (400x400px) für ItemCards
+  - Detail-Bilder in mittlerer Auflösung (1200x1200px)
+  - Vollauflösung nur für Lightbox (2000x2000px)
+  - WebP-Format für bessere Kompression
+  - Qualitätsstufen je nach Verwendung (80-90%)
+- **Lazy Loading**: Native Browser-Lazy-Loading für alle Bilder
+  - Bilder werden erst geladen, wenn sie im Viewport erscheinen
+  - Reduziert initiale Ladezeit erheblich
+- **LazyImage Component**: Wiederverwendbare Komponente mit Shimmer-Effekt
+  - Animierter Platzhalter während des Ladens
+  - Smooth Fade-In-Animation beim Laden
+  - Fehlerbehandlung mit Fallback-Nachricht
+  - Verwendung in ItemCard, ItemList und ItemDetailPage
 
-### Technical Details
-- AuthContext Code ist korrekt implementiert ✅
-- Deep Link Listener funktioniert ✅
-- Info.plist URL Scheme korrekt konfiguriert ✅
-- Problem liegt ausschließlich in Supabase Redirect URL Konfiguration
-- Mit Playwright OAuth-Flow getestet und verifiziert
+### Verbessert
+- **Ladezeiten**: Bis zu 95% kleinere Bilddateien
+  - Thumbnails: Von mehreren MB auf 50-100 KB reduziert
+  - Nur sichtbare Bilder werden geladen
+  - CDN-Caching durch Supabase
 
-### Documentation
-- SUPABASE-REDIRECT-FIX.md: Comprehensive OAuth troubleshooting guide
-- README.md: OAuth setup section with quick-start instructions
-- GOOGLE-LOGIN-SETUP.md: Bereits vorhanden, ergänzt durch Fix-Dokumentation
+### Technisch
+- Neue Utility-Funktionen in imageUtils.ts
+  - getOptimizedImageUrl: URL-Transformation für Supabase Render API
+  - getThumbnailUrl: 400x400px Thumbnails
+  - getDetailImageUrl: 1200x1200px Detail-Bilder
+  - getFullImageUrl: 2000x2000px Vollauflösung
+- LazyImage Komponente mit Shimmer-Animation
+- URL-Transformation von /object/ zu /render/image/ Endpoint
 
----
+## [1.0.0] - 2025-10-04
 
-## [Unreleased]
+### Hinzugefügt
+- **Händigkeits-Präferenz**: Benutzer können zwischen Links- und Rechtshänder-Modus wählen
+  - Einstellung in den Display-Einstellungen
+  - Floating Action Buttons passen sich automatisch der bevorzugten Seite an
+  - Lightbox-Schließen-Button positioniert sich entsprechend
+  - Persistente Speicherung in der Datenbank
+  - Context-Provider für globalen Zugriff
+- **Professionelle Druckansicht**: Vollständig überarbeitetes Print-Layout
+  - HABDAWAS Logo im Header mit Corporate Identity
+  - Professioneller Header mit Druckdatum und -uhrzeit
+  - Hervorgehobener Preis in blauer Box
+  - Zweispaltiges Grid-Layout für alle Details
+  - Icons/Emojis bei jedem Detail-Feld
+  - Separate Sektionen für Besondere Merkmale und Zubehör
+  - Alle verfügbaren Produktdetails (Marke, Kategorie, Größe, Material, Farben, etc.)
+  - Professioneller Footer mit Artikel-ID und HABDAWAS Branding
+  - Farberhaltung beim Druck (color-adjust: exact)
+  - Optimierte Seitenumbrüche und Spacing
+- **Direkt-Druck-Button**: Drucker-Icon in der Detailansicht
+  - Prominente Platzierung neben Favoriten und Teilen
+  - Ein-Klick-Zugriff auf Druckfunktion
+- **AGB-Seite**: Umfassende rechtlich abgesicherte Allgemeine Geschäftsbedingungen
+  - Vollständiger Haftungsausschluss
+  - Nutzerverantwortlichkeiten klar definiert
+  - Verkäufer- und Käuferpflichten
+  - Datenschutz und Sicherheitshinweise
+  - M3 Design mit professionellem Layout
+- **Haftungsausschluss-Seite**: Detaillierte rechtliche Absicherung
+  - Klare Regelungen zur Plattformhaftung
+  - Nutzerverantwortung für Inhalte
+  - Gewährleistungsausschluss
+  - Externe Links und Disclaimer
+- **Datenschutz-Seite**: DSGVO-konforme Datenschutzerklärung
+  - Detaillierte Datenerfassung und -verarbeitung
+  - Nutzerrechte nach DSGVO
+  - Cookie-Richtlinien
+  - Kontaktdaten des Verantwortlichen
+- **Erweiterte Fußzeile**: Vollständig neu gestalteter Footer
+  - Drei-Spalten-Layout mit Links, Rechtlichem und Informationen
+  - Navigation zu AGB, Datenschutz, Impressum
+  - Über uns, Hilfe & Support Links
+  - Copyright-Hinweis mit Jahr
+  - Versionsnummer
+  - Responsive Design für alle Bildschirmgrößen
+  - M3 Design mit abgesetztem Hintergrund
 
-### Geplante Features
-- [ ] Automatisches Deployment via GitHub Actions
-- [ ] PWA Support für Web Version
-- [ ] Offline Mode mit Service Worker
-- [ ] App Store Connect Integration
-- [ ] TestFlight Beta Distribution
-- [ ] Performance Monitoring mit Web Vitals
-- [ ] Error Tracking mit Sentry
-- [ ] Analytics Integration
+### Verbessert
+- **Detailansicht-Header**: Bessere Icon-Gruppierung und Übersichtlichkeit
+- **Druckfunktion**: Alle Produktdetails werden jetzt beim Druck angezeigt
+- **Navigation**: Vollständiges Navigationskonzept mit allen wichtigen Seiten
 
----
+### Behoben
+- **Versandkosten-Fehler**: TypeError bei undefined shipping_cost behoben
+  - Zusätzliche Prüfung auf undefined neben null
+  - Verhindert Crashes bei fehlenden Versandkosten
 
-**Legende:**
-- `Added` - Neue Features
-- `Changed` - Änderungen an bestehenden Features
-- `Deprecated` - Features die bald entfernt werden
-- `Removed` - Entfernte Features
-- `Fixed` - Bug Fixes
-- `Security` - Sicherheits-Updates
+### Technisch
+- Neue Seiten-Komponenten: AGBPage, ImpressumPage, DatenschutzPage
+- Footer-Komponente komplett überarbeitet
+- Routing für alle rechtlichen Seiten eingerichtet
+- HandPreferenceContext für globale Händigkeits-Einstellung
+- Erweiterte Print-Styles mit color-adjust: exact
 
-[1.0.4]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.4
-[1.0.3]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.3
-[1.0.2]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.2
-[1.0.1]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.1
-[1.0.0]: https://github.com/mmollay/bazar_iphone_app/releases/tag/v1.0.0
+### Rechtliches
+- Umfassende rechtliche Absicherung der Plattform
+- DSGVO-konforme Datenschutzerklärung
+- Klare Haftungsausschlüsse und Nutzungsbedingungen
+- Professionelle rechtliche Grundlage für den Betrieb
+
+## [0.9.3] - 2025-10-03
+
+### Verbessert
+- **Visuelles Swipe-Feedback**: Inserat-Navigation mit Echtzeit-Bewegung
+  - Seite bewegt sich mit dem Finger während des Wischens
+  - 80% Widerstand an den Rändern wenn keine weiteren Inserate verfügbar
+  - Smooth Return-Animation beim Loslassen
+  - Sofortige Reaktion ohne Verzögerung während des Swipens
+  - Natürlicheres Gefühl wie bei modernen Apps (Instagram, Tinder)
+- **Versandkosten-Anzeige**: Intelligentere Darstellung
+  - Zeigt "Auf Anfrage" statt "0.00 €" wenn kein Preis angegeben
+  - Klarere Kommunikation für Käufer
+- **Auto-Scroll bei Navigation**: Automatischer Sprung nach oben
+  - Beim Wechseln zwischen Inseraten scrollt die Seite automatisch nach oben
+  - Titel, Bild und Preis sind sofort sichtbar
+  - Bessere User Experience beim Durchblättern
+
+## [0.9.2] - 2025-10-03
+
+### Verbessert
+- **Mobile Messaging-Optimierung**: Nachrichten-Funktion komplett für Smartphone optimiert
+  - Vollbildansicht ohne Ränder auf mobilen Geräten
+  - Toggle zwischen Konversationsliste und aktiver Konversation
+  - Zurück-Button für Navigation zur Konversationsliste
+  - Kompaktere UI-Elemente und Abstände
+  - Optimiertes Eingabefeld mit abgerundeten Ecken
+  - Farbiger Send-Button für bessere UX
+
+### Behoben
+- **React Hooks Order**: Kritischer Fehler in ItemDetailDialog behoben
+  - Hooks werden jetzt vor jedem early return aufgerufen
+  - Verhindert "white screen" beim Klicken auf Item-Details
+  - Befolgt React Rules of Hooks
+
+## [0.9.1] - 2025-10-03
+
+### Verbessert
+- **Mobile Sticky Header**: Smooth Animation ohne Zittern
+  - GPU-Beschleunigung mit `will-change: transform`
+  - Verhindert Scroll-Jumping mit `overflow-anchor: none`
+  - Einheitliche Transition-Timings (0.2s ease)
+  - RequestAnimationFrame für präzises DOM-Timing
+  - Funktioniert sofort nach dem Öffnen in beliebiger Bildschirmgröße
+  - Automatisches Cleanup bei Desktop/Mobile-Wechsel
+
+### Behoben
+- Sticky Header funktioniert jetzt zuverlässig auch wenn die Seite direkt in Mobile-Größe geöffnet wird
+- Kein Zittern/Flickering mehr beim Scrollen auf mobilen Geräten
+
+## [0.9.0] - 2025-10-03
+
+### Hinzugefügt
+- **Inserate-Verwaltung**: Komplettes System zur Verwaltung eigener Inserate
+  - "Meine Inserate" Tab im Hauptbereich
+  - Tabs zum Wechseln zwischen "Alle Inserate" und "Meine Inserate"
+  - Nur für angemeldete User sichtbar
+- **Status-System**: 6 verschiedene Inserat-Status
+  - Entwurf: Noch nicht veröffentlicht
+  - Live: Aktiv und öffentlich sichtbar
+  - Pausiert: Temporär deaktiviert, kann reaktiviert werden
+  - Verkauft: Als verkauft markiert
+  - Archiviert: Dauerhaft deaktiviert
+  - Abgelaufen: Automatisch nach Schaltdauer abgelaufen
+- **Status-Filter**: Filterung nach Status in der Sidebar
+  - Nur bei "Meine Inserate" verfügbar
+  - Mehrfachauswahl möglich
+  - Farbcodierte Chips
+- **Action-Menü für eigene Inserate**: Kontextmenü mit allen Verwaltungsfunktionen
+  - Bearbeiten (öffnet Detail-Ansicht)
+  - Pausieren (Live → Pausiert)
+  - Aktivieren (Pausiert/Abgelaufen → Live)
+  - Als verkauft markieren
+  - Archivieren
+  - Löschen (mit Bestätigungs-Dialog)
+- **Visuelle Status-Anzeige**: Sofort erkennbarer Status
+  - Farbiger Status-Badge oben links auf der Karte
+  - Ausgegraut bei pausierten/abgelaufenen Inseraten (60% Opacity)
+  - Farbschema: Grün (Live), Grau (Entwurf), Orange (Pausiert), Blau (Verkauft), Dunkelgrau (Archiviert), Rot (Abgelaufen)
+- **Schaltdauer-Einstellung**: Konfigurierbare Laufzeit für Inserate
+  - Einstellbar zwischen 10-30 Tagen
+  - Standard: 30 Tage
+  - Neue Option in Display-Einstellungen
+  - Wird bei jedem neuen Inserat verwendet
+- **Automatische Ablauf-Logik**: Inserate laufen automatisch ab
+  - Trigger-basierte Publikationsdaten
+  - Automatisches Setzen von published_at und expires_at
+  - Pausierte Zeit wird bei Reaktivierung aufgerechnet
+  - Abgelaufene Inserate sind nicht mehr öffentlich sichtbar
+
+### Geändert
+- **Item-Karten**: Unterschiedliche Darstellung für eigene vs. fremde Inserate
+  - Eigene Inserate: Action-Menü statt Favoriten-Button
+  - Fremde Inserate: Favoriten-Button wie bisher
+- **RLS-Policies**: Aktualisierte Sicherheitsregeln
+  - Nur published Items mit gültigem Ablaufdatum sind öffentlich
+  - User sehen alle eigenen Items unabhängig vom Status
+  - Eigene Items können jederzeit bearbeitet, gelöscht und Status geändert werden
+
+### Technisch
+- Neue Spalten in items Tabelle: published_at, expires_at, duration_days, paused_at
+- Neue Spalte in profiles Tabelle: default_listing_duration
+- Trigger-Funktionen für automatisches Status-Management
+- Indexes für Performance-Optimierung
+- Status-Check Constraint für gültige Status-Werte
+
+## [0.8.0] - 2025-10-03
+
+### Hinzugefügt
+- **E-Mail-Verifizierungsstatus**: Visueller Indikator im Header
+  - Grüner Haken bei verifizierten Accounts
+  - Orange Warnung bei unverifizierten Accounts
+  - Tooltip mit Status-Information
+- **Verifizierungs-E-Mail erneut senden**: 5-Minuten-Cooldown
+  - Button in den Einstellungen
+  - Warnung bei unverifizierten Accounts
+  - Zeitbasierte Rate-Limiting
+- **View Counter System**: Manipulation-geschütztes Tracking
+  - Session-basiertes Tracking (kein IP-Tracking)
+  - Unique Views pro User/Session
+  - Browser-Fingerprint für anonyme User
+  - Automatische Aktualisierung via Trigger
+  - 2 Sekunden Verzögerung gegen Bot-Traffic
+- **View Count Anzeige**: Nur für Verkäufer sichtbar
+  - Auge-Icon mit Zahl in Item-Details
+  - Nur für eigene Inserate sichtbar
+  - Datenschutzfreundliche Implementierung
+
+### Technisch
+- Neue Tabelle `item_views` mit RLS
+- Spalte `view_count` in items Tabelle
+- Trigger für automatisches Hochzählen
+- Hook `useItemView` für tracking
+- DSGVO-konform ohne IP-Speicherung
+
+## [0.7.2] - 2025-10-03
+
+### Verbessert
+- **Registrierungs-Erfolgsansicht**: Neuer dedizierter Success-Screen
+  - Modal wechselt nach erfolgreicher Registrierung zur Erfolgsansicht
+  - Klare Meldung: "Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse."
+  - Großer "Schließen" Button zur Navigation zur Hauptseite
+  - Kein Formular mehr sichtbar nach erfolgreicher Registrierung
+  - Bessere User Experience und klarere Kommunikation
+
+## [0.7.1] - 2025-10-03
+
+### Verbessert
+- **Logo-Sichtbarkeit**: Weißer Hintergrund für bessere Lesbarkeit
+  - Abgerundeter Container mit Padding
+  - Logo hebt sich deutlich vom Header ab
+- **Google OAuth Popup**: Anmeldung ohne Seitenverlust
+  - 500x600px zentriertes Popup-Fenster
+  - Dialog schließt sich nach OAuth-Start
+  - Nahtlose User Experience
+
+### Hinweis
+- Ab sofort richten sich Versionsnummern nach Änderungsumfang
+  - Patch (0.0.x): Kleine Verbesserungen und Bugfixes
+  - Minor (0.x.0): Neue Features
+  - Major (x.0.0): Große Änderungen oder Breaking Changes
+
+## [0.7.1] - 2025-10-03
+
+### Verbessert
+- **Logo-Sichtbarkeit**: Weißer Hintergrund für bessere Lesbarkeit
+  - Abgerundeter Container mit Padding
+  - Logo hebt sich deutlich vom Header ab
+- **Google OAuth Popup**: Anmeldung ohne Seitenverlust
+  - 500x600px zentriertes Popup-Fenster
+  - Dialog schließt sich nach OAuth-Start
+  - Nahtlose User Experience
+
+### Hinweis
+- Ab sofort richten sich Versionsnummern nach Änderungsumfang
+  - Patch (0.0.x): Kleine Verbesserungen und Bugfixes
+  - Minor (0.x.0): Neue Features
+  - Major (x.0.0): Große Änderungen oder Breaking Changes
+
+## [0.7.0] - 2025-10-03
+
+### Hinzugefügt
+- **HABDAWAS Logo**: Offizielles Plattform-Logo eingebunden
+  - Logo im Header anstelle von Text
+  - 40px Höhe, responsive Design
+  - Klickbar für Navigation zur Startseite
+
+### Geändert
+- **Branding**: Umbenennung von "Bazar" zu "HABDAWAS"
+  - App-Name in version.ts aktualisiert
+  - Login-Dialog zeigt "bei HABDAWAS"
+  - Konsistentes Branding über die gesamte Plattform
+
+## [0.6.0] - 2025-10-03
+
+### Hinzugefügt
+- **Passwort sichtbar machen**: Auge-Icon im Passwort-Feld zum Ein-/Ausblenden
+  - Eye/EyeOff Icons von Lucide React
+  - Toggle-Button am Ende des Passwort-Feldes
+  - Funktioniert in Login und Registrierung
+- **E-Mail-Verifizierung**: Pflicht-Verifizierung bei der Registrierung
+  - Bestätigungs-E-Mail wird automatisch versendet
+  - Redirect zu `/auth/callback` nach Bestätigung
+  - Success-Meldung nach Registrierung mit Hinweis auf E-Mail-Bestätigung
+- **Verifizierungs-Prüfung**: Schutz vor unverifizierten Inseraten
+  - User muss E-Mail bestätigen, bevor Inserate erstellt werden können
+  - Klare Fehlermeldung wenn E-Mail noch nicht bestätigt
+  - Prüfung auf `user.email_confirmed_at` vor Upload
+
+### Verbessert
+- Sicherheit durch E-Mail-Verifizierung erhöht
+- Bessere User Experience mit Passwort-Sichtbarkeit
+
+## [0.5.0] - 2025-10-03
+
+### Hinzugefügt
+- **Google-Style Login-Dialog**: Komplett neu gestalteter Login-Dialog im modernen Google-Design
+  - Zentriertes Layout mit Mail-Icon
+  - Saubere Typografie und abgerundete Ecken
+  - Mehr Weißraum und dezente Schatten
+- **Google OAuth**: Integration der Google-Anmeldung
+  - "Mit Google anmelden" Button mit Original Google-Logo
+  - Automatische OAuth-Weiterleitung über Supabase
+- **Passwort vergessen**: Vollständige Passwort-Reset-Funktionalität
+  - Eigener "Passwort zurücksetzen" Modus
+  - E-Mail-Link zum Zurücksetzen
+  - Success-Feedback nach Versand
+- **Angemeldet bleiben**: Checkbox für persistente Sessions
+  - Unter Passwort-Feld im Login-Modus
+  - Neben "Passwort vergessen?" Link
+
+### Verbessert
+- **Produktdetails-Sektion**: Moderneres und übersichtlicheres Design
+  - Intelligente Filterung: Nur gefüllte Felder werden angezeigt
+  - "Unbekannt"-Werte werden automatisch ausgeblendet
+  - Grid-Layout mit gleichmäßigen Abständen
+  - Uppercase Section-Überschriften mit letter-spacing
+  - Label-Value Layout mit 90px breiten Labels
+  - Farbcodierte Chips für Farben, Eigenschaften und Zubehör
+  - Seriennummer in Monospace-Font mit grauem Hintergrund
+- **Standort-Anzeige**: Vereinfachte Logik in Versand & Abholung
+  - Standort wird immer angezeigt (konsistent mit Item-Card)
+  - Keine verwirrenden "nur für angemeldete Nutzer" Hinweise mehr
+- **Tags-Sektion**: Bessere visuelle Trennung
+  - Zusätzlicher Abstand nach oben (mt: 3)
+
+### Behoben
+- Unicode-Zeichen in Standort-Meldung korrigiert
+
+## [Archiv] - 2025-10-03
+
+### Hinzugefügt
+- **Versandoptionen & Abholung**: Individuelle Anpassung von Versand- und Abholoptionen pro Artikel beim Upload
+  - Wählbare Versandkostenberechnung (Kostenlos, Fest, KI-berechnet)
+  - Abholoptionen mit öffentlicher/privater Standortanzeige
+  - Versand- und Abholbeschreibungen
+  - Snapshot-System für unveränderliche Artikel-Einstellungen
+
+- **Mobile-Optimierung**: Vollständig responsive Detailansicht für Smartphones
+  - Vertikales Layout auf mobilen Geräten
+  - Optimierte Bilddarstellung (40% Bildschirmhöhe)
+  - Touch-freundliche Buttons und Navigation
+  - Angepasste Typografie und Abstände
+
+- **KI-Versandkostenberechnung**: Automatische Berechnung basierend auf Artikelgröße und Gewicht
+  - Schätzung für Deutschland und EU
+  - Integration in Upload-Dialog
+
+- **Adressverwaltung**: Erweiterte Adressverwaltung mit Typen
+  - Unterscheidung zwischen Versand-, Abhol- und kombinierten Adressen
+  - Standard-Adressen für Versand und Abholung
+
+- **Versionsanzeige**: Version wird dynamisch in der Fußzeile angezeigt
+
+- **Öffentliche Artikel**: Artikel sind jetzt auch für nicht-angemeldete Benutzer sichtbar
+
+### Verbessert
+- Benutzereinstellungen mit umfangreichen Versand- und Abholoptionen
+- Upload-Dialog zeigt Default-Einstellungen an, die angepasst werden können
+- Artikel-Detailansicht zeigt Versand- und Abholoptionen klar an
+- Mobile Benutzererfahrung deutlich verbessert
+
+### Geändert
+- RLS-Policy für Items erlaubt jetzt öffentlichen Lesezugriff auf veröffentlichte Artikel
+- Snapshot-System speichert Versand/Abhol-Einstellungen dauerhaft pro Artikel
+
+### Sicherheit
+- Row Level Security (RLS) für alle Tabellen aktiviert
+- Sichere Authentifizierung mit Supabase Auth
+- Nur authentifizierte Benutzer können Artikel erstellen, bearbeiten und löschen
