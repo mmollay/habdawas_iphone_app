@@ -263,6 +263,15 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
+        keepMounted={false}
+        disableScrollLock={false}
+        BackdropProps={{
+          onClick: handleMenuClose,
+          sx: { cursor: 'default' }
+        }}
+        MenuListProps={{
+          sx: { p: 0 }
+        }}
         PaperProps={{
           sx: {
             mt: 1.5,
@@ -443,7 +452,7 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
           <ListItemText>Über HABDAWAS</ListItemText>
         </MenuItem>
         <Divider sx={{ my: 0.5 }} />
-        <MenuItem onClick={() => { setAnchorEl(null); handleLogout(); }}>
+        <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <LogOut size={20} />
           </ListItemIcon>

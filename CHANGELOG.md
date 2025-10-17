@@ -4,6 +4,23 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.0.40] - 2025-10-17
+
+### Synced from bazar_bold v1.5.15
+- 🐛 **User-Menü bleibt manchmal hängen**: Menu Backdrop-Click Problem behoben
+  - Menu schließt jetzt zuverlässig bei Backdrop-Click
+  - `BackdropProps` + `keepMounted={false}` Lösung
+
+- 🐛 **Stripe Zahlungen gutgeschrieben aber Credits nicht angezeigt**: Payment-Credits Synchronisation behoben
+  - Credits erscheinen sofort im UI nach erfolgreicher Zahlung
+  - Webhook aktualisiert jetzt direkt `profiles.personal_credits`
+
+### iOS App Details
+- **Web Content Version**: 1.5.15
+- **iOS Wrapper Version**: 1.0.40
+- **Build**: Synced via rsync from bazar_bold
+- **Testing**: Menu & Payment fixes verified
+
 ## [1.0.39] - 2025-10-17
 
 ### Synced from bazar_bold v1.5.14

@@ -111,27 +111,19 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      console.log(`Processing payment for user ${userId}: ${totalTokens} tokens (${tokens} + ${bonus} bonus)`);
+      console.log(`Processing payment for user ${userId}: ${totalTokens} credits (${tokens} + ${bonus} bonus)`);
 
-      const { error: addTokensError } = await supabaseClient.rpc('add_tokens', {
-        p_user_id: userId,
-        p_amount: totalTokens,
-        p_transaction_type: 'purchase',
-        p_metadata: {
-          package_id: packageId,
-          tokens: tokens,
-          bonus: bonus,
-          stripe_session_id: session.id,
-          stripe_payment_intent: session.payment_intent,
-          amount_paid: session.amount_total ? (session.amount_total / 100) : 0,
-          currency: session.currency,
-        }
-      });
+      // Update personal credits in profiles table
+      const { data: currentProfile, error: fetchError } = await supabaseClient
+        .from('profiles')
+        .select('personal_credits')
+        .eq('id', userId)
+        .single();
 
-      if (addTokensError) {
-        console.error("Error adding tokens:", addTokensError);
+      if (fetchError) {
+        console.error("Error fetching user profile:", fetchError);
         return new Response(
-          JSON.stringify({ error: "Failed to add tokens", details: addTokensError.message }),
+          JSON.stringify({ error: "Failed to fetch user profile", details: fetchError.message }),
           {
             status: 500,
             headers: {
@@ -142,7 +134,46 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      console.log(`Successfully added ${totalTokens} tokens to user ${userId}`);
+      const currentCredits = currentProfile?.personal_credits || 0;
+      const newCredits = currentCredits + totalTokens;
+
+      const { error: updateError } = await supabaseClient
+        .from('profiles')
+        .update({ personal_credits: newCredits })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error("Error updating personal credits:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to update credits", details: updateError.message }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      // Also create transaction record for history (optional, but good practice)
+      await supabaseClient.from('credit_transactions').insert({
+        user_id: userId,
+        amount: totalTokens,
+        transaction_type: 'purchase',
+        description: `Stripe payment: ${packageId}`,
+        metadata: {
+          package_id: packageId,
+          tokens: tokens,
+          bonus: bonus,
+          stripe_session_id: session.id,
+          stripe_payment_intent: session.payment_intent,
+          amount_paid: session.amount_total ? (session.amount_total / 100) : 0,
+          currency: session.currency,
+        }
+      });
+
+      console.log(`Successfully added ${totalTokens} credits to user ${userId} (${currentCredits} → ${newCredits})`);
 
       return new Response(
         JSON.stringify({ success: true, tokens_added: totalTokens }),

@@ -4,6 +4,22 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.5.15] - 2025-10-17
+
+### Fixed
+- 🐛 **User-Menü bleibt manchmal hängen**: Menu Backdrop-Click Problem behoben
+  - **Problem**: Menü schloss nicht beim Klick außerhalb (Backdrop)
+  - **Lösung**: `BackdropProps` mit explizitem onClick Handler + `keepMounted={false}`
+  - **Ergebnis**: Menü schließt jetzt zuverlässig bei Backdrop-Click
+  - **Datei**: `Header.tsx`
+
+- 🐛 **Stripe Zahlungen gutgeschrieben aber Credits nicht angezeigt**: Payment-Credits Synchronisation behoben
+  - **Problem**: Nach Testkäufen kein Guthaben in "Token-Guthaben" sichtbar
+  - **Ursache**: Webhook schrieb in `user_tokens`, UI las aus `profiles.personal_credits`
+  - **Lösung**: Webhook aktualisiert jetzt direkt `profiles.personal_credits`
+  - **Ergebnis**: Credits erscheinen sofort im UI nach erfolgreicher Zahlung
+  - **Datei**: `supabase/functions/stripe-webhook/index.ts`
+
 ## [1.5.14] - 2025-10-17
 
 ### Improved
