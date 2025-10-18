@@ -4,6 +4,20 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.7.8] - 2025-10-19
+
+### Fixed
+- 🎨 **ItemDetailPage Responsive Spacing**: Reduzierter Abstand auf Smartphones (synchronisiert von Web-Version)
+  - **Problem**: Zu großer weißer Abstand (400px) zwischen Bild und Content auf Smartphones
+  - **Lösung**: Responsive Höhe für Platzhalter-Boxen
+    - Smartphone (xs): 100px Höhe
+    - Desktop (md+): 400px Höhe
+  - **User Feedback**: "ja passt!"
+
+### Technical Details
+- **Sync Status**: UI-Optimierung aus bazar_bold v1.7.8 übernommen
+- **Mobile-First**: Optimiert für iPhone-Bildschirme
+
 ## [1.7.7] - 2025-10-19
 
 ### Changed
