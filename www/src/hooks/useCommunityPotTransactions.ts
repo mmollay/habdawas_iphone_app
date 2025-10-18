@@ -23,12 +23,12 @@ export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}
         .from('community_pot_transactions')
         .select(`
           *,
-          user:profiles (
+          user:profiles!community_pot_transactions_user_id_profiles_fkey (
             id,
             full_name,
             email
           ),
-          item:items (
+          item:items!community_pot_transactions_item_id_fkey (
             id,
             title
           )
