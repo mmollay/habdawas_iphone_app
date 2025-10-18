@@ -4,6 +4,119 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.7.0] - 2025-10-18
+
+### Improved
+- 🎨 **Header UX-Verbesserungen**: Community-Topf Widget aus Header entfernt für klarere Navigation
+  - **Community-Topf**: Widget aus Desktop-Header entfernt (war nur für eingeloggte User sichtbar)
+  - **Community-Topf Link**: Bleibt als Menüpunkt im Avatar-Dropdown erhalten (`/tokens?tab=community`)
+  - **Grund**: Fokus auf wichtigste Aktionen - "Inserat anlegen" und Nachrichten
+  - **Header.tsx** (Zeilen 153-161): CommunityPotWidget entfernt
+
+- 📊 **Avatar-Menü: Verfügbare Inserate Übersicht hinzugefügt**
+  - **Neue Sektion** nach "Mein Guthaben": Zeigt verfügbare Inserate auf einen Blick
+  - **Gratis-Inserate**: Anzeige mit 🗓️ Calendar Icon - "X gratis heute" (Reset: 5 pro Tag)
+  - **Credits-Inserate**: Anzeige mit 💰 Coins Icon - "Y Credits (= Y Inserate)"
+  - **Leere Credits**: Warnung mit rotem Icon - "Keine verfügbar. Credits kaufen?"
+  - **Styling**: Grüner Background (rgba(76, 175, 80, 0.06)), kompakte Cards mit Icons
+  - **Header.tsx** (Zeilen 557-646): Neue `creditInfo` Sektion mit `useCreditCheck()` Hook
+  - **Hooks**: `useCreditCheck()` und `useSystemSettings()` integriert
+
+- 🏷️ **"Inserat anlegen" Button: Status-Badge hinzugefügt**
+  - **Desktop Button**: Zeigt jetzt Live-Status rechts im Button
+  - **Badge zeigt**:
+    - "X gratis" wenn kostenlose Inserate verfügbar (grüner Hintergrund)
+    - "Y Credits" wenn nur Credits verfügbar (lila Hintergrund)
+    - "0" wenn keine Inserate verfügbar
+  - **Styling**: `rgba(255, 255, 255, 0.25)` Background, 0.7rem Font, kompakt
+  - **Header.tsx** (Zeilen 194-213): Status-Badge im Button integriert
+  - **Hook**: `checkCredit()` wird bei User-Load und Menu-Open aufgerufen
+
+### Technical Details
+- **Header.tsx**: Neue State `creditInfo` mit `CreditCheckResult` Type
+- **useEffect**: `checkCredit()` lädt bei User-Änderung automatisch
+- **Responsive**: Status-Badge nur auf Desktop (!isMobile), Mobile behält IconButton
+- **Credit-Logik**: Priorisiert gratis-Inserate vor Credits (wie in `useCreditCheck.ts`)
+- **Performance**: Minimal - nur 1 zusätzlicher API-Call beim Menu-Öffnen
+
+## [1.6.5] - 2025-10-18
+
+### Fixed
+- 🔧 **Supabase Foreign Key Relationship Fehler behoben**: PostgREST konnte Relationen nicht finden
+  - **useDonations.ts** (Zeile 26): `user:profiles` → `user:profiles!user_id`
+  - **useCommunityPotTransactions.ts** (Zeile 26): `user:profiles` → `user:profiles!user_id`
+  - **useCommunityPotTransactions.ts** (Zeile 31): `item:items` → `item:items!item_id`
+  - **Problem**: PostgREST PGRST200 Error - "Could not find a relationship between 'donations' and 'profiles' in the schema cache"
+  - **Lösung**: Explizite Spaltenreferenz mit `!column_name` Syntax hinzugefügt
+  - **Resultat**: Admin-Panel Spenden-Tab und Community-Pot Transaktionen laden nun korrekt
+
+### Technical Details
+- Supabase PostgREST benötigt bei mehrdeutigen Foreign Keys explizite Spaltennamen
+- Syntax: `related_table!foreign_key_column` statt nur `related_table`
+- Betroffen waren alle Queries die `profiles` und `items` Tabellen jointen
+- Console-Fehler: "400 Bad Request" und "PGRST200" vollständig behoben
+
+## [1.6.4] - 2025-10-18
+
+### Fixed
+- 🐛 **SVG-Attribut-Fehler behoben**: Icons erhielten responsive Objekte statt Zahlen
+  - **TokensSection.tsx**: `size={{ xs: 20, md: 24 }}` → `size={24}` für Coins & Heart Icons
+  - **TokensSection.tsx**: `size={{ xs: 24, md: 32 }}` → `size={28}` für CircularProgress
+  - **Problem**: Lucide React Icons und MUI unterstützen keine responsive Size-Props
+  - **Resultat**: Console-Fehler `<svg> attribute width: Expected length, "[object Object]"` behoben
+
+- 🔧 **Supabase RPC-Funktion aktualisiert**: `get_all_users_admin` auf neues Credit-System angepasst
+  - **Migration**: `fix_get_all_users_admin_for_new_credit_system`
+  - **Änderung**: Von `user_tokens.balance` zu `profiles.personal_credits`
+  - **Grund**: Token-System wurde auf Credit-System umgestellt (Migration `remove_legacy_token_tables`)
+  - **Resultat**: Admin-Panel lädt User-Liste wieder korrekt (404 Error behoben)
+
+### Technical Details
+- Alle Icon-Komponenten verwenden jetzt feste numerische Größen
+- Admin-Funktionen kompatibel mit neuem Credit-System
+- Console ist nun frei von SVG- und RPC-Fehlern
+
+## [1.6.3] - 2025-10-18
+
+### Fixed
+- 🔧 **Sidebar**: "Token-Guthaben" endlich überall auf "Mein Guthaben" geändert
+  - **SettingsSidebar.tsx** (Zeile 23): Label angepasst
+  - **SettingsPage.tsx** hatte es bereits, aber Sidebar nicht
+
+### Improved
+- 🎨 **Credits-Kaufseite (/tokens) Tab-Buttons kompakter gemacht**
+  - **Padding reduziert**: px: 4 → 2.5, py: 2 → 1.25 (ca. 30-40% kleiner)
+  - **Icon-Container**: 40px → 32px (20% kleiner)
+  - **Icon-Größe**: 20/18px → 16/14px (ca. 20% kleiner)
+  - **Font-Größen**: 1.1rem → 0.95rem (ca. 15% kleiner)
+  - **Gaps**: 2/1.5 → 1.5/1 (25% kleiner)
+  - **Ziel**: Kompakter und zwarter, aber immer noch klar erkennbar
+
+## [1.6.2] - 2025-10-18
+
+### Improved
+- 🎨 **Credits-Kaufseite (/tokens) mit Google MD3 Styling überarbeitet**
+  - **Tab-Navigation** deutlich prominenter und erkennbarer
+  - Tabs als große Toggle-Buttons mit Icons und Beschreibungen gestaltet
+  - **Google MD3 Farben**: #1a73e8 (Personal Credits), #c51162 (Community Spenden)
+  - Tonal Backgrounds mit 2px Borders für aktiven Tab
+  - Hover-Effekte mit Transform und Background-Change
+  - Mobile-optimiert: Kompaktere Texte auf kleinen Bildschirmen
+  - **Verbesserung**: User sieht jetzt sofort, dass man zwischen "Credits kaufen" und "Spenden" wechseln kann
+
+- 🏷️ **Badges im Avatar-Menü kompakter gemacht**
+  - **Gap zwischen Badges**: 1 → 0.75 (25% kleiner)
+  - **Icon-Text Gap**: 0.5 → 0.375
+  - **Padding**: px: 1, py: 0.5 → px: 0.75, py: 0.375
+  - **Font-Size**: 0.7rem → 0.65rem
+  - **Icon-Größe**: 12px → 10px
+  - **Ziel**: Platz für mehr Badges schaffen, da weitere hinzukommen werden
+
+### Technical Details
+- **CreditPurchasePage.tsx** (Zeilen 593-749): Tabs von MUI Tabs auf Custom Box-Komponenten umgestellt
+- **Header.tsx** (Zeilen 439-468): Badge-Showcase kompakter gestyled
+- Google Material Design 3 Farbschema durchgehend angewendet
+
 ## [1.6.1] - 2025-10-18
 
 ### Fixed
