@@ -13,10 +13,14 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  ToggleButtonGroup,
-  ToggleButton,
   Stack,
   Divider,
+  FormControl,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { Coins, TrendingUp, TrendingDown, ShoppingCart, Gift, RefreshCw, Heart, Filter, Sparkles, Calendar } from 'lucide-react';
 import { useTokens } from '../../../hooks/useTokens';
@@ -308,130 +312,118 @@ export const TokensSection = () => {
       {/* Filters */}
       {creditTransactions.length > 0 && (
         <Paper sx={{ p: 2.5, mb: 3, borderRadius: 2, bgcolor: '#fafafa' }}>
-          <Stack spacing={2}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Filter size={18} color="#666" />
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                Filter
-              </Typography>
-            </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <Filter size={18} color="#666" />
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+              Filter
+            </Typography>
+          </Box>
 
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
-                Transaktionstyp
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                <Chip
-                  label={`Alle (${creditTransactions.length})`}
-                  onClick={() => setFilterType('all')}
-                  color={filterType === 'all' ? 'primary' : 'default'}
-                  variant={filterType === 'all' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-                <Chip
-                  icon={<ShoppingCart size={14} />}
-                  label={`Käufe (${creditTransactions.filter(t => t.transaction_type === 'purchase').length})`}
-                  onClick={() => setFilterType('purchase')}
-                  color={filterType === 'purchase' ? 'success' : 'default'}
-                  variant={filterType === 'purchase' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-                <Chip
-                  icon={<TrendingDown size={14} />}
-                  label={`Verbrauch (${creditTransactions.filter(t => t.transaction_type === 'usage').length})`}
-                  onClick={() => setFilterType('usage')}
-                  color={filterType === 'usage' ? 'error' : 'default'}
-                  variant={filterType === 'usage' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-                <Chip
-                  icon={<Gift size={14} />}
-                  label={`Bonus (${creditTransactions.filter(t => t.transaction_type === 'bonus').length})`}
-                  onClick={() => setFilterType('bonus')}
-                  color={filterType === 'bonus' ? 'info' : 'default'}
-                  variant={filterType === 'bonus' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-              </Stack>
-            </Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+            {/* Transaktionstyp Filter */}
+            <FormControl size="small" fullWidth>
+              <InputLabel id="filter-type-label">Transaktionstyp</InputLabel>
+              <Select
+                labelId="filter-type-label"
+                value={filterType}
+                label="Transaktionstyp"
+                onChange={(e) => setFilterType(e.target.value as typeof filterType)}
+              >
+                <MenuItem value="all">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Filter size={16} />
+                    <span>Alle ({creditTransactions.length})</span>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="purchase">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ShoppingCart size={16} color="#4caf50" />
+                    <span>Käufe ({creditTransactions.filter(t => t.transaction_type === 'purchase').length})</span>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="usage">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <TrendingDown size={16} color="#f44336" />
+                    <span>Verbrauch ({creditTransactions.filter(t => t.transaction_type === 'usage').length})</span>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="bonus">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Gift size={16} color="#2196f3" />
+                    <span>Bonus ({creditTransactions.filter(t => t.transaction_type === 'bonus').length})</span>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="refund">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <RefreshCw size={16} color="#ff9800" />
+                    <span>Rückerstattung ({creditTransactions.filter(t => t.transaction_type === 'refund').length})</span>
+                  </Box>
+                </MenuItem>
+              </Select>
+            </FormControl>
 
-            <Divider />
+            {/* Zeitraum Filter */}
+            <FormControl size="small" fullWidth>
+              <InputLabel id="filter-period-label">Zeitraum</InputLabel>
+              <Select
+                labelId="filter-period-label"
+                value={filterPeriod}
+                label="Zeitraum"
+                onChange={(e) => setFilterPeriod(e.target.value as typeof filterPeriod)}
+              >
+                <MenuItem value="all">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Calendar size={16} />
+                    <span>Alle Zeiträume</span>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="today">Heute</MenuItem>
+                <MenuItem value="week">Letzte 7 Tage</MenuItem>
+                <MenuItem value="month">Letzte 30 Tage</MenuItem>
+              </Select>
+            </FormControl>
 
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
-                Zeitraum
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                <Chip
-                  icon={<Calendar size={14} />}
-                  label="Alle"
-                  onClick={() => setFilterPeriod('all')}
-                  color={filterPeriod === 'all' ? 'primary' : 'default'}
-                  variant={filterPeriod === 'all' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-                <Chip
-                  label="Heute"
-                  onClick={() => setFilterPeriod('today')}
-                  color={filterPeriod === 'today' ? 'primary' : 'default'}
-                  variant={filterPeriod === 'today' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-                <Chip
-                  label="Letzte 7 Tage"
-                  onClick={() => setFilterPeriod('week')}
-                  color={filterPeriod === 'week' ? 'primary' : 'default'}
-                  variant={filterPeriod === 'week' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-                <Chip
-                  label="Letzte 30 Tage"
-                  onClick={() => setFilterPeriod('month')}
-                  color={filterPeriod === 'month' ? 'primary' : 'default'}
-                  variant={filterPeriod === 'month' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-              </Stack>
-            </Box>
-
+            {/* AI-Only Filter (nur bei Verbrauch) */}
             {filterType === 'usage' && (
-              <>
-                <Divider />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
-                    KI-Inserate
-                  </Typography>
-                  <Chip
-                    icon={<Sparkles size={14} />}
-                    label="Nur AI-generierte Inserate"
-                    onClick={() => setFilterAiOnly(!filterAiOnly)}
-                    color={filterAiOnly ? 'secondary' : 'default'}
-                    variant={filterAiOnly ? 'filled' : 'outlined'}
-                    size="small"
-                  />
-                </Box>
-              </>
-            )}
-
-            {(filterType !== 'all' || filterPeriod !== 'all' || filterAiOnly) && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  {filteredTransactions.length} von {creditTransactions.length} Transaktionen
-                </Typography>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    setFilterType('all');
-                    setFilterPeriod('all');
-                    setFilterAiOnly(false);
-                  }}
-                  sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-                >
-                  Filter zurücksetzen
-                </Button>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={filterAiOnly}
+                      onChange={(e) => setFilterAiOnly(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Sparkles size={14} />
+                      <Typography variant="body2">Nur AI-Inserate</Typography>
+                    </Box>
+                  }
+                />
               </Box>
             )}
-          </Stack>
+          </Box>
+
+          {/* Filter-Zusammenfassung */}
+          {(filterType !== 'all' || filterPeriod !== 'all' || filterAiOnly) && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary">
+                {filteredTransactions.length} von {creditTransactions.length} Transaktionen
+              </Typography>
+              <Button
+                size="small"
+                onClick={() => {
+                  setFilterType('all');
+                  setFilterPeriod('all');
+                  setFilterAiOnly(false);
+                }}
+                sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+              >
+                Filter zurücksetzen
+              </Button>
+            </Box>
+          )}
         </Paper>
       )}
 

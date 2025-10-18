@@ -4,25 +4,24 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
-## [1.5.18] - 2025-10-18
-
-### Fixed
-- 🐛 **Stripe Webhook Credits/Tokens Kompatibilität**: Backwards compatibility sichergestellt
-  - **Problem**: Deployed Edge Function unterstützte neue `credits` Metadata, lokale Version noch alte `tokens`
-  - **Lösung**:
-    - Unterstützung für BEIDE Metadata-Formate: `credits`/`total_credits` UND `tokens`/`total_tokens`
-    - Fallback-Logic: `metadata.credits || metadata.tokens || "0"`
-    - Package-Type wird jetzt korrekt gespeichert (`personal` oder `community`)
-  - **Betroffene Datei**: `supabase/functions/stripe-webhook/index.ts`
-  - **Ergebnis**: Webhook funktioniert mit alten UND neuen Stripe Checkout Sessions
-  - **Synchronisiert**: Auch in iPhone App verfügbar
+## [1.5.19] - 2025-10-18
 
 ### Improved
-- ⚡ **Response-Format harmonisiert**: Einheitliche Webhook-Responses
-  - Alte Response: `tokens_added`
-  - Neue Response: `credits_added`
-  - Bessere Logging-Ausgaben mit Package-Type Information
-  - Transaction-Metadata enthält jetzt `package_type` für bessere Nachvollziehbarkeit
+- 🎨 **Filter als Dropdowns**: Transaktionsfilter von Chips zu kompakten Dropdowns umgebaut
+  - **Problem**: User wünschte kompaktere Filter-UI mit Dropdown-Komponenten
+  - **Lösung**:
+    - MUI FormControl + Select Komponenten verwendet
+    - 3-spaltige Grid-Layout: Transaktionstyp, Zeitraum, AI-Only Checkbox
+    - Icons und Anzahl in jedem Dropdown-Item
+    - Responsive: 1 Spalte auf Mobile, 2 auf Tablet, 3 auf Desktop
+  - **Betroffene Datei**: `src/components/Settings/sections/TokensSection.tsx` (Zeilen 1-24, 308-428)
+  - **Ergebnis**: Deutlich kompaktere und professionellere Filter-UI
+
+### Technical Details
+- **MUI Komponenten**: FormControl, Select, MenuItem, InputLabel, FormControlLabel, Checkbox
+- **Grid-Layout**: `gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }`
+- **Icons in Dropdown**: Lucide-Icons mit farbigen Akzenten (ShoppingCart grün, TrendingDown rot, etc.)
+- **AI-Filter Conditional**: Checkbox erscheint nur wenn `filterType === 'usage'`
 
 ## [1.5.17] - 2025-10-18
 
