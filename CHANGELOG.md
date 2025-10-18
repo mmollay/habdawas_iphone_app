@@ -4,6 +4,45 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.6.0] - 2025-10-18
+
+### Added
+- 🏆 **User Status & Badge System**: Gamification mit Achievement-Badges
+  - **Status-Detection Hook** (`useUserStatus.ts`): Berechnet User-Status automatisch
+  - **7 Achievement-Badges**:
+    - 🔰 Neu: Frisch registriert
+    - ✅ Verifiziert: Email bestätigt
+    - 📝 Aktiver Verkäufer: Min. 3 Inserate erstellt
+    - 💰 Premium: Credits gekauft
+    - 🏆 Community Hero: An Community-Topf gespendet
+    - ⭐ Trusted: Account > 3 Monate + 5+ Inserate
+    - 💎 Elite: Alle Status erreicht
+  - **Badge-Overlay am Avatar**: Zeigt höchsten Status oben rechts
+  - **Badge-Showcase im Menü**: Alle erreichten Badges sichtbar
+  - **Status-Level mit Farbe**: Prominent unter Benutzername
+
+- ✨ **Professionelles Avatar-Menü**:
+  - User-Card Header mit Avatar + Badge + Status
+  - Badge-Showcase: Alle erreichten Achievements
+  - Prominent "Mein Guthaben" Button (Gradient-Background)
+  - Community-Topf Direktlink (Heart-Icon)
+  - Bessere Struktur und Spacing
+
+### Improved
+- 🎨 **Menü-Struktur optimiert**:
+  - "Mein Guthaben" prominent platziert (nach "Inserat anlegen")
+  - Credits-Anzeige rechts als Badge
+  - "Credits & Community" → "Community-Topf" umbenannt
+  - Gradient-Background für wichtige Actions
+
+### Technical Details
+- **Badge-Berechnung**: Client-seitig aus bestehenden Daten (items, transactions, profile)
+- **Priority System**: Badges sortiert nach Wichtigkeit (0-6)
+- **Top Badge Logic**: Höchste Priorität wird am Avatar angezeigt
+- **Icon Mapping**: CheckCircle, Store, Crown, Award, Shield, Sparkles
+- **Color Coding**: Jeder Status hat eigene Farbe (#4caf50, #2196f3, #ff9800, #e91e63, #9c27b0)
+- **Keine DB-Migration**: Alle Badges aus bestehenden Tabellen berechnet
+
 ## [1.5.20] - 2025-10-18
 
 ### Improved

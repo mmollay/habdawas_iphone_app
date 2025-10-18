@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Box, Button, IconButton, TextField, InputAdornment, useMediaQuery, useTheme, Badge, Avatar, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
-import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield } from 'lucide-react';
+import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 import { useCreditsStats } from '../../hooks/useCreditsStats';
+import { useUserStatus } from '../../hooks/useUserStatus';
 import { SearchAutocomplete } from '../Common/SearchAutocomplete';
 import { CommunityPotWidget } from '../Community/CommunityPotWidget';
 import { supabase, Profile } from '../../lib/supabase';
@@ -20,12 +21,34 @@ interface HeaderProps {
   customButtons?: React.ReactNode;
 }
 
+// Helper function to get badge icon component
+const getBadgeIcon = (iconName: string, size = 16) => {
+  const iconProps = { size };
+  switch (iconName) {
+    case 'CheckCircle':
+      return <CheckCircle {...iconProps} />;
+    case 'Store':
+      return <Store {...iconProps} />;
+    case 'Crown':
+      return <Crown {...iconProps} />;
+    case 'Award':
+      return <Award {...iconProps} />;
+    case 'Shield':
+      return <Shield {...iconProps} />;
+    case 'Sparkles':
+      return <Sparkles {...iconProps} />;
+    default:
+      return <Sparkles {...iconProps} />;
+  }
+};
+
 export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = '', onSearchChange, onSearch, showSearch = true, customButtons }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { unreadCount } = useUnreadMessages(30000);
   const { personalCredits } = useCreditsStats();
+  const { status: userStatus } = useUserStatus();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -206,28 +229,53 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
                     sx={{
                       ml: 0.5,
                       p: 0,
+                      position: 'relative',
                     }}
                   >
-                    <Avatar
-                      src={profile?.avatar_url || undefined}
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        bgcolor: 'primary.main',
-                        fontSize: '1rem',
-                        fontWeight: 600,
-                        border: '2px solid',
-                        borderColor: 'background.paper',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
-                          transform: 'scale(1.05)',
-                        },
-                      }}
+                    <Badge
+                      overlap="circular"
+                      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                      badgeContent={
+                        userStatus?.topBadge ? (
+                          <Box
+                            sx={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: '50%',
+                              bgcolor: userStatus.topBadge.color,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '2px solid white',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            }}
+                          >
+                            {getBadgeIcon(userStatus.topBadge.icon, 10)}
+                          </Box>
+                        ) : null
+                      }
                     >
-                      {!profile?.avatar_url && user.email?.[0].toUpperCase()}
-                    </Avatar>
+                      <Avatar
+                        src={profile?.avatar_url || undefined}
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          bgcolor: 'primary.main',
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          border: '2px solid',
+                          borderColor: 'background.paper',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+                            transform: 'scale(1.05)',
+                          },
+                        }}
+                      >
+                        {!profile?.avatar_url && user.email?.[0].toUpperCase()}
+                      </Avatar>
+                    </Badge>
                   </IconButton>
                 </>
               ) : (
@@ -283,15 +331,13 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
+        {/* User Card Header with Status */}
         <Box
           onClick={() => { handleMenuClose(); navigate('/settings?section=profile'); }}
           sx={{
             px: 2.5,
             py: 2.5,
             borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
             cursor: 'pointer',
             transition: 'all 0.2s ease',
             '&:hover': {
@@ -299,49 +345,127 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             },
           }}
         >
-          <Avatar
-            src={profile?.avatar_url || undefined}
-            sx={{
-              width: 56,
-              height: 56,
-              bgcolor: 'primary.main',
-              fontSize: '1.25rem',
-              fontWeight: 600,
-              border: '2px solid',
-              borderColor: 'background.paper',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-            }}
-          >
-            {!profile?.avatar_url && user?.email?.[0].toUpperCase()}
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              variant="body1"
-              fontWeight={600}
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
+            <Badge
+              overlap="circular"
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              badgeContent={
+                userStatus?.topBadge ? (
+                  <Box
+                    sx={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      bgcolor: userStatus.topBadge.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid white',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      color: 'white',
+                    }}
+                  >
+                    {getBadgeIcon(userStatus.topBadge.icon, 12)}
+                  </Box>
+                ) : null
+              }
             >
-              {profile?.full_name || user?.email}
-            </Typography>
-            {profile?.full_name && (
-              <Typography
-                variant="caption"
-                color="text.secondary"
+              <Avatar
+                src={profile?.avatar_url || undefined}
                 sx={{
-                  display: 'block',
+                  width: 56,
+                  height: 56,
+                  bgcolor: 'primary.main',
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  border: '2px solid',
+                  borderColor: 'background.paper',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                }}
+              >
+                {!profile?.avatar_url && user?.email?.[0].toUpperCase()}
+              </Avatar>
+            </Badge>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                variant="body1"
+                fontWeight={600}
+                sx={{
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                 }}
               >
-                {user?.email}
+                {profile?.full_name || user?.email}
               </Typography>
-            )}
+              {profile?.full_name && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {user?.email}
+                </Typography>
+              )}
+              {userStatus && (
+                <Box
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    bgcolor: userStatus.statusColor,
+                    color: 'white',
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: 1,
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    mt: 0.5,
+                  }}
+                >
+                  {userStatus.topBadge && getBadgeIcon(userStatus.topBadge.icon, 10)}
+                  <span>{userStatus.level}</span>
+                </Box>
+              )}
+            </Box>
+            <User size={18} style={{ color: '#666', opacity: 0.5 }} />
           </Box>
-          <User size={18} style={{ color: '#666', opacity: 0.5 }} />
+
+          {/* Badge Showcase */}
+          {userStatus && userStatus.badges.some(b => b.achieved) && (
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', pt: 1, borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
+              {userStatus.badges
+                .filter(b => b.achieved)
+                .sort((a, b) => b.priority - a.priority)
+                .map((badge) => (
+                  <Box
+                    key={badge.id}
+                    title={badge.description}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      bgcolor: `${badge.color}15`,
+                      border: `1px solid ${badge.color}40`,
+                      color: badge.color,
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {getBadgeIcon(badge.icon, 12)}
+                    <span>{badge.name}</span>
+                  </Box>
+                ))}
+            </Box>
+          )}
         </Box>
         <MenuItem
           onClick={() => { handleMenuClose(); navigate('/create'); }}
@@ -352,7 +476,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             '&:hover': {
               bgcolor: 'rgba(25, 118, 210, 0.15)',
             },
-            borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
             fontWeight: 600,
           }}
         >
@@ -363,6 +486,45 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             primary="Inserat anlegen"
             primaryTypographyProps={{ fontWeight: 600, color: 'primary.main' }}
           />
+        </MenuItem>
+
+        {/* Prominent Mein Guthaben */}
+        <MenuItem
+          onClick={() => { handleMenuClose(); navigate('/settings?section=tokens'); }}
+          sx={{
+            px: 2.5,
+            py: 1.5,
+            bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
+            },
+            borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+            fontWeight: 600,
+          }}
+        >
+          <ListItemIcon>
+            <Coins size={20} style={{ color: '#667eea' }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="Mein Guthaben"
+            secondary={`${personalCredits} Credits verfügbar`}
+            primaryTypographyProps={{ fontWeight: 600, color: '#667eea' }}
+            secondaryTypographyProps={{ fontSize: '0.75rem' }}
+          />
+          <Box
+            sx={{
+              bgcolor: '#667eea',
+              color: 'white',
+              px: 1.5,
+              py: 0.5,
+              borderRadius: 2,
+              fontWeight: 700,
+              fontSize: '0.85rem',
+            }}
+          >
+            {personalCredits}
+          </Box>
         </MenuItem>
 
         <Box sx={{ py: 1 }}>
@@ -405,13 +567,12 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             <ListItemText>Einstellungen</ListItemText>
           </MenuItem>
           <MenuItem
-            onClick={() => { handleMenuClose(); navigate('/tokens'); }}
+            onClick={() => { handleMenuClose(); navigate('/tokens?tab=community'); }}
           >
             <ListItemIcon>
-              <Coins size={20} />
+              <Heart size={20} style={{ color: '#e91e63' }} />
             </ListItemIcon>
-            <ListItemText>Credits & Community</ListItemText>
-            <Typography variant="caption" fontWeight={700} color="primary.main" sx={{ ml: 1 }}>({personalCredits})</Typography>
+            <ListItemText>Community-Topf</ListItemText>
           </MenuItem>
         </Box>
 
