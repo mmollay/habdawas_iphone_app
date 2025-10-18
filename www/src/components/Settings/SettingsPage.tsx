@@ -28,9 +28,18 @@ export const SettingsPage = () => {
   const [pickupAddresses, setPickupAddresses] = useState<PickupAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentSection, setCurrentSection] = useState<SettingsSection>(
-    (searchParams.get('section') as SettingsSection) || 'profile'
-  );
+  const [currentSection, setCurrentSection] = useState<SettingsSection>(() => {
+    // Check URL first, then localStorage, then default to 'profile'
+    const urlSection = searchParams.get('section') as SettingsSection;
+    if (urlSection) return urlSection;
+
+    const savedSection = localStorage.getItem('settings-last-section') as SettingsSection;
+    if (savedSection && ['overview', 'profile', 'security', 'addresses', 'shipping', 'display', 'ai', 'notifications', 'tokens', 'admin'].includes(savedSection)) {
+      return savedSection;
+    }
+
+    return 'profile';
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -176,8 +185,18 @@ export const SettingsPage = () => {
     const section = searchParams.get('section') as SettingsSection;
     if (section && ['overview', 'profile', 'security', 'addresses', 'shipping', 'display', 'ai', 'notifications', 'tokens', 'admin'].includes(section)) {
       setCurrentSection(section);
+      localStorage.setItem('settings-last-section', section);
     }
   }, [searchParams]);
+
+  // Save current section to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('settings-last-section', currentSection);
+    // Also update URL to reflect current section
+    if (!searchParams.get('section') || searchParams.get('section') !== currentSection) {
+      setSearchParams({ section: currentSection });
+    }
+  }, [currentSection]);
 
   if (loading) {
     return (
@@ -284,7 +303,7 @@ export const SettingsPage = () => {
       display: 'Anzeige',
       ai: 'KI-Assistent',
       notifications: 'Benachrichtigungen',
-      tokens: 'Token-Guthaben',
+      tokens: 'Mein Guthaben',
       admin: 'Administration',
     };
     return labels[currentSection];

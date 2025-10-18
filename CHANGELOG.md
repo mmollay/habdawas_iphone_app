@@ -4,6 +4,40 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.6.1] - 2025-10-18
+
+### Fixed
+- 🐛 **KRITISCHER BUG**: Community-Spenden gingen auf persönliches Konto statt Community-Topf
+  - **Problem**: Stripe-Webhook erhöhte immer `personal_credits`, egal ob `packageType === 'community'` oder `'personal'`
+  - **Lösung**: Webhook ruft jetzt `process_donation()` Function auf, die korrekt zwischen Community-Topf und persönlichen Credits unterscheidet
+  - **Impact**: Alle zukünftigen Community-Spenden gehen jetzt korrekt in den Community-Topf
+  - **Datei**: `supabase/functions/stripe-webhook/index.ts` (Zeilen 127-173)
+
+### Improved
+- 🎨 **"Mein Guthaben" Seite komplett überarbeitet**: Deutlich kompakter und stilvoller
+  - **Menütitel**: "Token-Guthaben" → "Mein Guthaben"
+  - **Credits-Overview**: Von 3 Cards auf 2 kompakte Cards reduziert
+    - Personal Credits Card: Guthaben + Statistik (Gekauft/Verbraucht) in einer Card
+    - Community-Topf Card: Balance + "Meine Spenden" in einer Card
+  - **Statistik integriert**: Keine separate Stats-Card mehr, direkt in Credit-Cards
+  - **Filter verschlankt**: Von großer Paper-Box zu kompakter inline Darstellung
+  - **Transaktionsliste als Tabelle**: Kompakte Table-Ansicht statt Cards
+    - Responsive mit Hide-Columns für Mobile
+    - Expandable Details für Package-Info und Token-Verbrauch
+    - Community Hero Badge inline (klein, kompakt)
+    - Hover-Effekte für bessere UX
+
+### Technical Details
+- **Stripe Webhook Fix**:
+  - Mapping: `packageType === 'community'` → `donation_type === 'community_pot'`
+  - Mapping: `packageType === 'personal'` → `donation_type === 'personal_credits'`
+  - Nutzt bestehende `process_donation()` DB-Function
+  - Erstellt zusätzlich `credit_transactions` Eintrag für Kompatibilität
+
+### Manual Action Required
+- ⚠️ **Edge Function deployen**: `supabase functions deploy stripe-webhook`
+- ⚠️ **Fehlerhafte Credits korrigieren**: Falls bereits Community-Spenden getätigt wurden, manuell vom `personal_credits` abziehen und zu `community_pot_balance` hinzufügen
+
 ## [1.6.0] - 2025-10-18
 
 ### Added
