@@ -4,6 +4,26 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.5.18] - 2025-10-18
+
+### Fixed
+- 🐛 **Stripe Webhook Credits/Tokens Kompatibilität**: Backwards compatibility sichergestellt
+  - **Problem**: Deployed Edge Function unterstützte neue `credits` Metadata, lokale Version noch alte `tokens`
+  - **Lösung**:
+    - Unterstützung für BEIDE Metadata-Formate: `credits`/`total_credits` UND `tokens`/`total_tokens`
+    - Fallback-Logic: `metadata.credits || metadata.tokens || "0"`
+    - Package-Type wird jetzt korrekt gespeichert (`personal` oder `community`)
+  - **Betroffene Datei**: `supabase/functions/stripe-webhook/index.ts`
+  - **Ergebnis**: Webhook funktioniert mit alten UND neuen Stripe Checkout Sessions
+  - **Synchronisiert**: Auch in iPhone App verfügbar
+
+### Improved
+- ⚡ **Response-Format harmonisiert**: Einheitliche Webhook-Responses
+  - Alte Response: `tokens_added`
+  - Neue Response: `credits_added`
+  - Bessere Logging-Ausgaben mit Package-Type Information
+  - Transaction-Metadata enthält jetzt `package_type` für bessere Nachvollziehbarkeit
+
 ## [1.5.17] - 2025-10-18
 
 ### Fixed

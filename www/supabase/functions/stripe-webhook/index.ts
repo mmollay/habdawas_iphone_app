@@ -93,11 +93,14 @@ Deno.serve(async (req: Request) => {
 
       const userId = metadata.user_id;
       const packageId = metadata.package_id;
-      const tokens = parseInt(metadata.tokens || "0");
-      const bonus = parseInt(metadata.bonus || "0");
-      const totalTokens = parseInt(metadata.total_tokens || "0");
+      const packageType = metadata.package_type || 'personal';
 
-      if (!userId || !packageId || totalTokens === 0) {
+      // Support both old (tokens) and new (credits) metadata keys for backwards compatibility
+      const credits = parseInt(metadata.credits || metadata.tokens || "0");
+      const bonus = parseInt(metadata.bonus || "0");
+      const totalCredits = parseInt(metadata.total_credits || metadata.total_tokens || "0");
+
+      if (!userId || !packageId || totalCredits === 0) {
         console.error("Invalid metadata:", metadata);
         return new Response(
           JSON.stringify({ error: "Invalid metadata" }),
@@ -111,7 +114,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      console.log(`Processing payment for user ${userId}: ${totalTokens} credits (${tokens} + ${bonus} bonus)`);
+      console.log(`Processing ${packageType} payment for user ${userId}: ${totalCredits} credits (${credits} + ${bonus} bonus)`);
 
       // Update personal credits in profiles table
       const { data: currentProfile, error: fetchError } = await supabaseClient
@@ -135,7 +138,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const currentCredits = currentProfile?.personal_credits || 0;
-      const newCredits = currentCredits + totalTokens;
+      const newCredits = currentCredits + totalCredits;
 
       const { error: updateError } = await supabaseClient
         .from('profiles')
@@ -156,15 +159,16 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Also create transaction record for history (optional, but good practice)
+      // Also create transaction record for history
       await supabaseClient.from('credit_transactions').insert({
         user_id: userId,
-        amount: totalTokens,
+        amount: totalCredits,
         transaction_type: 'purchase',
-        description: `Stripe payment: ${packageId}`,
+        description: `Stripe payment: ${packageId} (${packageType})`,
         metadata: {
           package_id: packageId,
-          tokens: tokens,
+          package_type: packageType,
+          credits: credits,
           bonus: bonus,
           stripe_session_id: session.id,
           stripe_payment_intent: session.payment_intent,
@@ -173,10 +177,10 @@ Deno.serve(async (req: Request) => {
         }
       });
 
-      console.log(`Successfully added ${totalTokens} credits to user ${userId} (${currentCredits} → ${newCredits})`);
+      console.log(`Successfully added ${totalCredits} credits to user ${userId} (${currentCredits} → ${newCredits})`);
 
       return new Response(
-        JSON.stringify({ success: true, tokens_added: totalTokens }),
+        JSON.stringify({ success: true, credits_added: totalCredits }),
         {
           headers: {
             ...corsHeaders,
