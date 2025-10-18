@@ -70,5 +70,5 @@ export const useCreditsStats = () => {
     return () => clearInterval(interval);
   }, [user?.id]);
 
-  return stats;
+  return { ...stats, refetch: fetchStats };
 };

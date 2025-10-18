@@ -8,14 +8,20 @@ import {
   Button,
   CircularProgress,
 } from '@mui/material';
-import { CheckCircle, Coins, ArrowRight } from 'lucide-react';
+import { CheckCircle, Coins, ArrowRight, AlertCircle } from 'lucide-react';
 import { useTokens } from '../../hooks/useTokens';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 export const TokenSuccessPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { refetch: refetchTokens } = useTokens();
+  const { refetch: refetchTokens, balance } = useTokens();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [initialCredits, setInitialCredits] = useState<number | null>(null);
+  const [creditsAdded, setCreditsAdded] = useState(false);
+  const [webhookFailed, setWebhookFailed] = useState(false);
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
@@ -25,13 +31,57 @@ export const TokenSuccessPage = () => {
       return;
     }
 
-    const timer = setTimeout(async () => {
-      await refetchTokens();
-      setLoading(false);
-    }, 2000);
+    // Fetch personal credits directly from profiles
+    const fetchPersonalCredits = async () => {
+      if (!user) return null;
 
-    return () => clearTimeout(timer);
-  }, [searchParams, navigate, refetchTokens]);
+      const { data } = await supabase
+        .from('profiles')
+        .select('personal_credits')
+        .eq('id', user.id)
+        .single();
+
+      return data?.personal_credits ?? 0;
+    };
+
+    // Initialize and start polling
+    const startPolling = async () => {
+      const initial = await fetchPersonalCredits();
+      setInitialCredits(initial);
+
+      let pollCount = 0;
+      const maxPolls = 15; // 15 seconds total (give webhook more time)
+
+      const pollInterval = setInterval(async () => {
+        pollCount++;
+        const currentCredits = await fetchPersonalCredits();
+
+        console.log(`Poll ${pollCount}: initial=${initial}, current=${currentCredits}`);
+
+        if (currentCredits !== null && initial !== null && currentCredits > initial) {
+          // Credits were added!
+          console.log('Credits confirmed!');
+          setCreditsAdded(true);
+          setLoading(false);
+          clearInterval(pollInterval);
+          refetchTokens(); // Update the hook's state
+        } else if (pollCount >= maxPolls) {
+          // Timeout - webhook likely failed
+          console.log('Polling timeout - no credits added');
+          setWebhookFailed(true);
+          setLoading(false);
+          clearInterval(pollInterval);
+        }
+      }, 1000);
+
+      return () => clearInterval(pollInterval);
+    };
+
+    const cleanup = startPolling();
+    return () => {
+      cleanup.then(fn => fn && fn());
+    };
+  }, [searchParams, navigate, refetchTokens, user]);
 
   return (
     <Box sx={{ bgcolor: '#fafafa', minHeight: '100vh', py: 8 }}>
@@ -51,10 +101,72 @@ export const TokenSuccessPage = () => {
                 Zahlung wird verarbeitet...
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Bitte warte einen Moment, während wir deine Tokens gutschreiben.
+                Bitte warte einen Moment, während wir deine Credits gutschreiben.
               </Typography>
             </>
-          ) : (
+          ) : webhookFailed ? (
+            <>
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  p: 3,
+                  borderRadius: '50%',
+                  bgcolor: 'warning.main',
+                  color: 'white',
+                  mb: 3,
+                }}
+              >
+                <AlertCircle size={64} />
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 900, mb: 2 }}>
+                Zahlung erfolgreich, Credits verzögert
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                Deine Zahlung wurde erfolgreich verarbeitet, aber die Credits konnten noch nicht gutgeschrieben werden.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+                Bitte warte einige Minuten oder kontaktiere den Support, falls die Credits nicht innerhalb von 10 Minuten erscheinen.
+              </Typography>
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                }}
+              >
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  startIcon={<Coins size={20} />}
+                  onClick={() => navigate('/settings?section=tokens')}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    py: 1.5,
+                    borderRadius: 2,
+                  }}
+                >
+                  Zur Credits-Übersicht
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="large"
+                  onClick={() => window.location.reload()}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    py: 1.5,
+                    borderRadius: 2,
+                  }}
+                >
+                  Seite neu laden
+                </Button>
+              </Box>
+            </>
+          ) : creditsAdded ? (
             <>
               <Box
                 sx={{
@@ -72,7 +184,7 @@ export const TokenSuccessPage = () => {
                 Zahlung erfolgreich!
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                Deine Tokens wurden erfolgreich gutgeschrieben und stehen dir jetzt zur Verfügung.
+                Deine Credits wurden erfolgreich gutgeschrieben und stehen dir jetzt zur Verfügung.
               </Typography>
 
               <Box
@@ -87,6 +199,21 @@ export const TokenSuccessPage = () => {
                   variant="contained"
                   size="large"
                   startIcon={<Coins size={20} />}
+                  onClick={() => navigate('/settings?section=tokens')}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    py: 1.5,
+                    borderRadius: 2,
+                  }}
+                >
+                  Zur Credits-Übersicht
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="large"
+                  endIcon={<ArrowRight size={20} />}
                   onClick={() => navigate('/create')}
                   sx={{
                     textTransform: 'none',
@@ -97,24 +224,9 @@ export const TokenSuccessPage = () => {
                 >
                   Jetzt Inserat erstellen
                 </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  size="large"
-                  endIcon={<ArrowRight size={20} />}
-                  onClick={() => navigate('/settings')}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    py: 1.5,
-                    borderRadius: 2,
-                  }}
-                >
-                  Zu den Einstellungen
-                </Button>
               </Box>
             </>
-          )}
+          ) : null}
         </Paper>
       </Container>
     </Box>

@@ -4,6 +4,286 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.6.3] - 2025-10-18
+
+### Fixed
+- 🔧 **Sidebar**: "Token-Guthaben" endlich überall auf "Mein Guthaben" geändert
+  - **SettingsSidebar.tsx** (Zeile 23): Label angepasst
+  - **SettingsPage.tsx** hatte es bereits, aber Sidebar nicht
+
+### Improved
+- 🎨 **Credits-Kaufseite (/tokens) Tab-Buttons kompakter gemacht**
+  - **Padding reduziert**: px: 4 → 2.5, py: 2 → 1.25 (ca. 30-40% kleiner)
+  - **Icon-Container**: 40px → 32px (20% kleiner)
+  - **Icon-Größe**: 20/18px → 16/14px (ca. 20% kleiner)
+  - **Font-Größen**: 1.1rem → 0.95rem (ca. 15% kleiner)
+  - **Gaps**: 2/1.5 → 1.5/1 (25% kleiner)
+  - **Ziel**: Kompakter und zwarter, aber immer noch klar erkennbar
+
+## [1.6.2] - 2025-10-18
+
+### Improved
+- 🎨 **Credits-Kaufseite (/tokens) mit Google MD3 Styling überarbeitet**
+  - **Tab-Navigation** deutlich prominenter und erkennbarer
+  - Tabs als große Toggle-Buttons mit Icons und Beschreibungen gestaltet
+  - **Google MD3 Farben**: #1a73e8 (Personal Credits), #c51162 (Community Spenden)
+  - Tonal Backgrounds mit 2px Borders für aktiven Tab
+  - Hover-Effekte mit Transform und Background-Change
+  - Mobile-optimiert: Kompaktere Texte auf kleinen Bildschirmen
+  - **Verbesserung**: User sieht jetzt sofort, dass man zwischen "Credits kaufen" und "Spenden" wechseln kann
+
+- 🏷️ **Badges im Avatar-Menü kompakter gemacht**
+  - **Gap zwischen Badges**: 1 → 0.75 (25% kleiner)
+  - **Icon-Text Gap**: 0.5 → 0.375
+  - **Padding**: px: 1, py: 0.5 → px: 0.75, py: 0.375
+  - **Font-Size**: 0.7rem → 0.65rem
+  - **Icon-Größe**: 12px → 10px
+  - **Ziel**: Platz für mehr Badges schaffen, da weitere hinzukommen werden
+
+### Technical Details
+- **CreditPurchasePage.tsx** (Zeilen 593-749): Tabs von MUI Tabs auf Custom Box-Komponenten umgestellt
+- **Header.tsx** (Zeilen 439-468): Badge-Showcase kompakter gestyled
+- Google Material Design 3 Farbschema durchgehend angewendet
+
+## [1.6.1] - 2025-10-18
+
+### Fixed
+- 🐛 **KRITISCHER BUG**: Community-Spenden gingen auf persönliches Konto statt Community-Topf
+  - **Problem**: Stripe-Webhook erhöhte immer `personal_credits`, egal ob `packageType === 'community'` oder `'personal'`
+  - **Lösung**: Webhook ruft jetzt `process_donation()` Function auf, die korrekt zwischen Community-Topf und persönlichen Credits unterscheidet
+  - **Impact**: Alle zukünftigen Community-Spenden gehen jetzt korrekt in den Community-Topf
+  - **Datei**: `supabase/functions/stripe-webhook/index.ts` (Zeilen 127-173)
+
+### Improved
+- 🎨 **"Mein Guthaben" Seite komplett überarbeitet**: Deutlich kompakter und stilvoller
+  - **Menütitel**: "Token-Guthaben" → "Mein Guthaben"
+  - **Credits-Overview**: Von 3 Cards auf 2 kompakte Cards reduziert
+    - Personal Credits Card: Guthaben + Statistik (Gekauft/Verbraucht) in einer Card
+    - Community-Topf Card: Balance + "Meine Spenden" in einer Card
+  - **Statistik integriert**: Keine separate Stats-Card mehr, direkt in Credit-Cards
+  - **Filter verschlankt**: Von großer Paper-Box zu kompakter inline Darstellung
+  - **Transaktionsliste als Tabelle**: Kompakte Table-Ansicht statt Cards
+    - Responsive mit Hide-Columns für Mobile
+    - Expandable Details für Package-Info und Token-Verbrauch
+    - Community Hero Badge inline (klein, kompakt)
+    - Hover-Effekte für bessere UX
+
+### Technical Details
+- **Stripe Webhook Fix**:
+  - Mapping: `packageType === 'community'` → `donation_type === 'community_pot'`
+  - Mapping: `packageType === 'personal'` → `donation_type === 'personal_credits'`
+  - Nutzt bestehende `process_donation()` DB-Function
+  - Erstellt zusätzlich `credit_transactions` Eintrag für Kompatibilität
+
+### Manual Action Required
+- ⚠️ **Edge Function deployen**: `supabase functions deploy stripe-webhook`
+- ⚠️ **Fehlerhafte Credits korrigieren**: Falls bereits Community-Spenden getätigt wurden, manuell vom `personal_credits` abziehen und zu `community_pot_balance` hinzufügen
+
+## [1.6.0] - 2025-10-18
+
+### Added
+- 🏆 **User Status & Badge System**: Gamification mit Achievement-Badges
+  - **Status-Detection Hook** (`useUserStatus.ts`): Berechnet User-Status automatisch
+  - **7 Achievement-Badges**:
+    - 🔰 Neu: Frisch registriert
+    - ✅ Verifiziert: Email bestätigt
+    - 📝 Aktiver Verkäufer: Min. 3 Inserate erstellt
+    - 💰 Premium: Credits gekauft
+    - 🏆 Community Hero: An Community-Topf gespendet
+    - ⭐ Trusted: Account > 3 Monate + 5+ Inserate
+    - 💎 Elite: Alle Status erreicht
+  - **Badge-Overlay am Avatar**: Zeigt höchsten Status oben rechts
+  - **Badge-Showcase im Menü**: Alle erreichten Badges sichtbar
+  - **Status-Level mit Farbe**: Prominent unter Benutzername
+
+- ✨ **Professionelles Avatar-Menü**:
+  - User-Card Header mit Avatar + Badge + Status
+  - Badge-Showcase: Alle erreichten Achievements
+  - Prominent "Mein Guthaben" Button (Gradient-Background)
+  - Community-Topf Direktlink (Heart-Icon)
+  - Bessere Struktur und Spacing
+
+### Improved
+- 🎨 **Menü-Struktur optimiert**:
+  - "Mein Guthaben" prominent platziert (nach "Inserat anlegen")
+  - Credits-Anzeige rechts als Badge
+  - "Credits & Community" → "Community-Topf" umbenannt
+  - Gradient-Background für wichtige Actions
+
+### Technical Details
+- **Badge-Berechnung**: Client-seitig aus bestehenden Daten (items, transactions, profile)
+- **Priority System**: Badges sortiert nach Wichtigkeit (0-6)
+- **Top Badge Logic**: Höchste Priorität wird am Avatar angezeigt
+- **Icon Mapping**: CheckCircle, Store, Crown, Award, Shield, Sparkles
+- **Color Coding**: Jeder Status hat eigene Farbe (#4caf50, #2196f3, #ff9800, #e91e63, #9c27b0)
+- **Keine DB-Migration**: Alle Badges aus bestehenden Tabellen berechnet
+
+## [1.5.20] - 2025-10-18
+
+### Improved
+- 🎨 **Transaktionsliste komplett überarbeitet**: Von Table zu Cards mit professionellem Design
+  - **Problem**: User wünschte professionellere Darstellung mit Unterscheidung Community/Personal und Hervorhebung von Spenden
+  - **Lösung**:
+    - Cards statt Table für moderneres Design
+    - **Community Hero Badge**: Spenden an Community-Topf mit Award-Badge hervorgehoben
+    - **Community/Personal Badges**: User/Users Icons zeigen Typ an (pink für Community, lila für Personal)
+    - **AI Badge**: Sparkles-Icon für AI-generierte Transaktionen
+    - **Aufklappbare Details**: Gemini Token-Breakdown und Paket-Details per Collapse/Expand
+    - Hover-Effekte: Transform + Shadow für interaktives Feedback
+    - Community-Spenden: Pink Border, Gradient Badge, spezieller Hover-Effect
+  - **Betroffene Datei**: `src/components/Settings/sections/TokensSection.tsx` (Zeilen 1-690)
+  - **Ergebnis**: Deutlich professionellere und übersichtlichere Transaktionsansicht
+
+### Added
+- ✨ **Aufklappbare Transaction-Details**:
+  - ChevronDown Icon zum Aufklappen
+  - Collapse-Animation für Details
+  - Paket-Details: ID, Betrag, Credits, Bonus
+  - Gemini Token-Breakdown: Input/Output/Total Tokens mit Credit-Berechnung
+
+- ✨ **Status-Badges für Transaktionen**:
+  - Community Hero Badge für Community-Spenden (Award-Icon mit Gradient)
+  - Community/Personal Badge für Käufe
+  - AI Badge für AI-generierte Inserate
+
+### Technical Details
+- **State Management**: `Set<string>` für expandierte Transaktionen
+- **Conditional Styling**: `isCommunityDonation` für spezielle Card-Styles
+- **Animation**: CSS Transitions für Hover und Transform
+- **Badge Positioning**: `position: absolute` mit `top: -12px` für Hero Badge
+- **Metadata Detection**: `packageType` aus `metadata.package_type`
+- **Icon Integration**: Award, User, Users, ChevronDown aus Lucide-React
+
+## [1.5.19] - 2025-10-18
+
+### Improved
+- 🎨 **Filter als Dropdowns**: Transaktionsfilter von Chips zu kompakten Dropdowns umgebaut
+  - **Problem**: User wünschte kompaktere Filter-UI mit Dropdown-Komponenten
+  - **Lösung**:
+    - MUI FormControl + Select Komponenten verwendet
+    - 3-spaltige Grid-Layout: Transaktionstyp, Zeitraum, AI-Only Checkbox
+    - Icons und Anzahl in jedem Dropdown-Item
+    - Responsive: 1 Spalte auf Mobile, 2 auf Tablet, 3 auf Desktop
+  - **Betroffene Datei**: `src/components/Settings/sections/TokensSection.tsx` (Zeilen 1-24, 308-428)
+  - **Ergebnis**: Deutlich kompaktere und professionellere Filter-UI
+
+### Technical Details
+- **MUI Komponenten**: FormControl, Select, MenuItem, InputLabel, FormControlLabel, Checkbox
+- **Grid-Layout**: `gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }`
+- **Icons in Dropdown**: Lucide-Icons mit farbigen Akzenten (ShoppingCart grün, TrendingDown rot, etc.)
+- **AI-Filter Conditional**: Checkbox erscheint nur wenn `filterType === 'usage'`
+
+## [1.5.17] - 2025-10-18
+
+### Fixed
+- 🐛 **KRITISCH: Gemini Tokens wurden nicht gespeichert**: Token-Tracking komplett fehlerhaft
+  - **Problem**: ALLE AI-generierten Inserate hatten `gemini_tokens_used: 0`, keine Usage-Transaktionen wurden erstellt
+  - **Ursache**: ItemCreatePage INSERT enthielt keine Gemini-Token-Felder, Credits wurden nur für `personal_credits` abgezogen
+  - **Lösung**:
+    - Gemini Tokens werden jetzt beim INSERT gespeichert (`gemini_input_tokens`, `gemini_output_tokens`, `gemini_tokens_used`)
+    - Credits werden IMMER abgezogen wenn AI verwendet wurde, unabhängig von Credit-Quelle (Community-Topf oder persönliche Credits)
+  - **Betroffene Datei**: `src/components/Items/ItemCreatePage.tsx` (Zeilen 402-467, 492-534)
+  - **Ergebnis**: Korrekte Token-Zählung und Credit-Abzug für alle AI-Inserate
+  - **Testing**: User muss neues AI-Inserat erstellen um Fix zu verifizieren
+
+- 🐛 **KRITISCH: Credits wurden bei Community-Topf-Nutzung nicht abgezogen**
+  - **Problem**: Wenn Community-Topf genutzt wurde, erfolgte KEIN Credit-Abzug für AI-Nutzung
+  - **Alter Code**: `if (creditCheck.source === 'community_pot') { /* kein Abzug! */ }`
+  - **Neuer Code**: `if (totalGeminiTokens > 0) { /* IMMER abziehen */ }`
+  - **Ergebnis**: AI-Nutzung wird jetzt korrekt getrackt, egal welche Credit-Quelle
+
+### Added
+- ✨ **Transaktions-Filter für bessere Übersicht**: Umfassende Filtermöglichkeiten in Token-Guthaben
+  - **Filter nach Typ**:
+    - Alle Transaktionen
+    - Käufe (mit Shopping Cart Icon)
+    - Verbrauch (mit Zap Icon)
+    - Bonus (mit Gift Icon)
+    - Rückerstattung (mit Undo Icon)
+  - **Filter nach Zeitraum**:
+    - Alle Zeiträume
+    - Heute
+    - Letzte 7 Tage
+    - Letzte 30 Tage
+  - **Filter nach AI-Generierung**:
+    - Nur AI-generierte Transaktionen anzeigen (nur bei Typ "Verbrauch")
+    - Zeigt Anzahl AI-generierter Inserate
+  - **UI-Design**:
+    - Material Design 3 Chips mit Icons
+    - Responsive Flex-Wrap Layout
+    - Aktive Filter in Primary Color
+    - Transaktions-Anzahl in jedem Chip
+  - **Betroffene Datei**: `src/components/Settings/sections/TokensSection.tsx` (Zeilen 100-161, 308-468)
+  - **Synchronisiert**: Auch in iPhone App verfügbar
+
+### Improved
+- 🎨 **SellerProfile kompakter**: "Weitere Inserate" optimiert
+  - **Problem**: Items hatten dynamische Breite und veränderten Layout
+  - **Lösung**:
+    - Fixe Breite 110px (statt dynamisch)
+    - 2-Zeilen Titel-Ellipsis mit `WebkitLineClamp: 2`
+    - Hover-Effekt: `scale(1.05)`
+  - **Betroffene Datei**: `src/components/Items/SellerProfile.tsx` (Zeilen 189-256)
+  - **Ergebnis**: Konsistente, kompakte Darstellung
+
+### Technical Details
+- **Credit Deduction Flow (Fixed)**:
+  1. AI-Analyse gibt Token Usage zurück (analyze-image Edge Function v30)
+  2. Frontend extrahiert `geminiInputTokens` und `geminiOutputTokens` SOFORT
+  3. Tokens werden beim INSERT in items-Tabelle gespeichert
+  4. Beim Publizieren: `if (totalGeminiTokens > 0)` → IMMER `deductCreditsForAI()` aufrufen
+  5. Credits werden abgezogen (250 Tokens = 1 Credit), Usage-Transaktion mit Metadata erstellt
+  6. Egal ob Community-Topf oder persönliche Credits verwendet wurden
+
+- **Filter Logic**:
+  - Client-seitiges Filtering mit `Array.filter()`
+  - Zeitraum-Vergleiche mit `Date` Objekten
+  - AI-Detection über `metadata.gemini_total_tokens > 0`
+  - Performance: Filtert ~100-1000 Transaktionen ohne spürbare Verzögerung
+
+## [1.5.16] - 2025-10-18
+
+### Fixed
+- 🐛 **Foreign Key Fehler in Donations & Community Pot**: Datenbank-Queries behoben
+  - **Problem**: Supabase PostgREST konnte Foreign Key Relationship nicht finden
+  - **Fehler**: "Could not find a relationship between 'donations' and 'profiles'"
+  - **Lösung**: Explizite Foreign Key Constraint Namen in Supabase Queries verwendet
+  - **Betroffene Dateien**:
+    - `src/hooks/useDonations.ts`: `profiles!donations_user_id_profiles_fkey`
+    - `src/hooks/useCommunityPotTransactions.ts`: `profiles!community_pot_transactions_user_id_profiles_fkey`, `items!community_pot_transactions_item_id_fkey`
+  - **Ergebnis**: Donations und Community Pot Transaktionen werden jetzt korrekt mit User-Profilen geladen
+
+- 🐛 **Edge Function "Token balance not found" Fehler**: Alte Token-Tabelle entfernt
+  - **Problem**: analyze-image Edge Function versuchte auf gelöschte `user_tokens` Tabelle zuzugreifen
+  - **Fehler**: "Token balance not found" bei AI-Bildanalyse
+  - **Lösung**: Token-Balance-Check entfernt, Credits werden erst beim Publizieren abgezogen
+  - **Änderungen**:
+    - Edge Function prüft nicht mehr Token-Balance vorab
+    - Credits werden erst beim Veröffentlichen des Inserats abgezogen
+    - Gemini Token Usage wird weiterhin getrackt und an Frontend zurückgegeben
+    - Frontend berechnet Credits basierend auf Token Usage (250 Tokens = 1 Credit)
+  - **Datei**: `supabase/functions/analyze-image/index.ts`
+  - **Deployment**: Version 30, Function ID `83fe5014-86d8-4daa-9c7d-b9b4ea4ad132`
+
+- 🐛 **useTokens Hook verwendet gelöschte Tabelle**: Migration auf neues Credit-System
+  - **Problem**: Hook versuchte `user_tokens` Tabelle zu lesen
+  - **Lösung**: Umstellung auf `profiles.personal_credits` + `credit_transactions`
+  - **Änderungen**:
+    - Balance aus `profiles.personal_credits` lesen
+    - Earned/Spent aus `credit_transactions` berechnen
+    - Beide Web- und iPhone-App synchronisiert
+  - **Dateien**:
+    - `src/hooks/useTokens.ts`
+    - `www/src/hooks/useTokens.ts` (iPhone App)
+
+### Technical Details
+- **PostgREST Schema Cache**: Cache nach Änderungen neu geladen (`NOTIFY pgrst, 'reload schema'`)
+- **Credit System Flow**:
+  1. AI-Analyse gibt Token Usage zurück
+  2. Frontend berechnet Credits (250 Gemini Tokens = 1 Credit)
+  3. Credits werden beim Publizieren abgezogen
+  4. Transaction mit Gemini Token Breakdown in Metadata gespeichert
+
 ## [1.5.15] - 2025-10-17
 
 ### Fixed

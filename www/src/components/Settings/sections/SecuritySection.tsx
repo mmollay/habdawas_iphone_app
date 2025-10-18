@@ -142,7 +142,15 @@ export const SecuritySection = ({ userId }: SecuritySectionProps) => {
 
     } catch (err: any) {
       console.error('Error setting password:', err);
-      setError(err.message || 'Fehler beim Setzen des Passworts');
+
+      // Translate common Supabase errors to German
+      if (err.message?.includes('should be different from the old password')) {
+        setError('Das neue Passwort muss sich vom aktuellen Passwort unterscheiden.');
+      } else if (err.message?.includes('Password is too weak')) {
+        setError('Passwort ist zu schwach. Verwende ein stärkeres Passwort.');
+      } else {
+        setError(err.message || 'Fehler beim Setzen des Passworts');
+      }
     } finally {
       setLoading(false);
     }
@@ -173,7 +181,15 @@ export const SecuritySection = ({ userId }: SecuritySectionProps) => {
 
     } catch (err: any) {
       console.error('Error changing password:', err);
-      setError(err.message || 'Fehler beim Ändern des Passworts');
+
+      // Translate common Supabase errors to German
+      if (err.message?.includes('should be different from the old password')) {
+        setError('Das neue Passwort muss sich vom aktuellen Passwort unterscheiden.');
+      } else if (err.message?.includes('Password is too weak')) {
+        setError('Passwort ist zu schwach. Verwende ein stärkeres Passwort.');
+      } else {
+        setError(err.message || 'Fehler beim Ändern des Passworts');
+      }
     } finally {
       setLoading(false);
     }

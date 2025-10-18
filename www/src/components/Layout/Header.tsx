@@ -436,9 +436,9 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             <User size={18} style={{ color: '#666', opacity: 0.5 }} />
           </Box>
 
-          {/* Badge Showcase */}
+          {/* Badge Showcase - Compact for more badges */}
           {userStatus && userStatus.badges.some(b => b.achieved) && (
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', pt: 1, borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
+            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', pt: 1, borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
               {userStatus.badges
                 .filter(b => b.achieved)
                 .sort((a, b) => b.priority - a.priority)
@@ -449,18 +449,18 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 0.5,
+                      gap: 0.375,
                       bgcolor: `${badge.color}15`,
                       border: `1px solid ${badge.color}40`,
                       color: badge.color,
-                      px: 1,
-                      py: 0.5,
+                      px: 0.75,
+                      py: 0.375,
                       borderRadius: 1,
-                      fontSize: '0.7rem',
+                      fontSize: '0.65rem',
                       fontWeight: 600,
                     }}
                   >
-                    {getBadgeIcon(badge.icon, 12)}
+                    {getBadgeIcon(badge.icon, 10)}
                     <span>{badge.name}</span>
                   </Box>
                 ))}

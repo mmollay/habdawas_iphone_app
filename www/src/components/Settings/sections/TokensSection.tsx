@@ -202,55 +202,76 @@ export const TokensSection = () => {
         Mein Guthaben
       </Typography>
 
-      {/* Compact Credits Overview */}
+      {/* Google MD3 Style Credits Overview - Compact & Mobile Optimized */}
       <Box
         sx={{
           display: 'grid',
           gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
-          gap: 2,
-          mb: 3,
+          gap: { xs: 2, md: 3 },
+          mb: { xs: 3, md: 4 },
         }}
       >
+        {/* Personal Credits Card - Google Blue Style */}
         <Paper
+          elevation={0}
           sx={{
-            p: 2.5,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            borderRadius: 2,
+            p: { xs: 2, sm: 2.5, md: 3 },
+            borderRadius: { xs: 2, md: 3 },
+            bgcolor: '#f8f9fa',
+            border: '1px solid #e8eaed',
             position: 'relative',
             overflow: 'hidden',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              boxShadow: '0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15)',
+              transform: 'translateY(-2px)',
+            },
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <Coins size={18} />
-                <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.85rem' }}>
-                  Personal Credits
-                </Typography>
-              </Box>
-              <Typography variant="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
-                {creditsLoading ? <CircularProgress size={28} color="inherit" /> : formatNumber(personalCredits)}
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                Verfügbar für Inserate
-              </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, md: 2 }, mb: { xs: 2, md: 2.5 } }}>
+            <Box
+              sx={{
+                width: { xs: 40, md: 48 },
+                height: { xs: 40, md: 48 },
+                borderRadius: 2,
+                bgcolor: '#e8f0fe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Coins size={{ xs: 20, md: 24 }} color="#1a73e8" />
             </Box>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mb: 0.5 }}>
-                Gekauft
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, mb: 0.25, fontWeight: 500 }}>
+                Personal Credits
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                +{creditTransactions.filter(t => t.transaction_type === 'purchase' && (t.metadata as any)?.package_type !== 'community').reduce((sum, t) => sum + t.amount, 0)}
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1, mb: 0.5 }}>
-                Verbraucht
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                -{creditTransactions.filter(t => t.transaction_type === 'usage').reduce((sum, t) => sum + Math.abs(t.amount), 0)}
+              <Typography variant="h3" sx={{ fontWeight: 600, color: '#202124', fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' }, lineHeight: 1.2 }}>
+                {creditsLoading ? <CircularProgress size={{ xs: 24, md: 32 }} /> : formatNumber(personalCredits)}
               </Typography>
             </Box>
           </Box>
+
+          <Box sx={{ display: 'flex', gap: { xs: 2, md: 3 }, mb: { xs: 1.5, md: 2 }, px: 0.5 }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, display: 'block', mb: 0.25 }}>
+                Gekauft
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#34a853', fontSize: { xs: '0.875rem', md: '0.95rem' } }}>
+                +{creditTransactions.filter(t => t.transaction_type === 'purchase' && (t.metadata as any)?.package_type !== 'community').reduce((sum, t) => sum + t.amount, 0)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, display: 'block', mb: 0.25 }}>
+                Verbraucht
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#5f6368', fontSize: { xs: '0.875rem', md: '0.95rem' } }}>
+                {creditTransactions.filter(t => t.transaction_type === 'usage').reduce((sum, t) => sum + Math.abs(t.amount), 0)}
+              </Typography>
+            </Box>
+          </Box>
+
           <Button
             fullWidth
             variant="contained"
@@ -259,51 +280,74 @@ export const TokensSection = () => {
             sx={{
               textTransform: 'none',
               fontWeight: 600,
-              py: 1,
-              bgcolor: 'rgba(255, 255, 255, 0.2)',
+              py: { xs: 1, md: 1.25 },
+              bgcolor: '#1a73e8',
+              color: 'white',
+              borderRadius: 2,
+              boxShadow: 'none',
+              fontSize: { xs: '0.875rem', md: '1rem' },
               '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.3)',
+                bgcolor: '#1557b0',
+                boxShadow: '0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15)',
               },
             }}
           >
-            Credits kaufen
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Credits kaufen</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Kaufen</Box>
           </Button>
         </Paper>
 
+        {/* Community Pot Card - Google Red/Pink Style */}
         <Paper
+          elevation={0}
           sx={{
-            p: 2.5,
-            borderRadius: 2,
-            border: '2px solid rgba(233, 30, 99, 0.3)',
-            bgcolor: 'rgba(233, 30, 99, 0.03)',
+            p: { xs: 2, sm: 2.5, md: 3 },
+            borderRadius: { xs: 2, md: 3 },
+            bgcolor: '#fef7ff',
+            border: '1px solid #f3e8fd',
             position: 'relative',
             overflow: 'hidden',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              boxShadow: '0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15)',
+              transform: 'translateY(-2px)',
+            },
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <Heart size={18} color="#e91e63" />
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                  Community-Topf
-                </Typography>
-              </Box>
-              <Typography variant="h3" sx={{ fontWeight: 700, color: '#e91e63', mb: 0.5 }}>
-                {creditsLoading ? <CircularProgress size={28} /> : formatNumber(communityPotBalance)}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Kostenlose Inserate für alle
-              </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, md: 2 }, mb: { xs: 2, md: 2.5 } }}>
+            <Box
+              sx={{
+                width: { xs: 40, md: 48 },
+                height: { xs: 40, md: 48 },
+                borderRadius: 2,
+                bgcolor: '#fce8f3',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Heart size={{ xs: 20, md: 24 }} color="#c51162" fill="#c51162" />
             </Box>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                Meine Spenden
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, mb: 0.25, fontWeight: 500 }}>
+                Community-Topf
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#e91e63' }}>
-                {creditTransactions.filter(t => t.transaction_type === 'purchase' && (t.metadata as any)?.package_type === 'community').reduce((sum, t) => sum + t.amount, 0) || 0}
+              <Typography variant="h3" sx={{ fontWeight: 600, color: '#c51162', fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' }, lineHeight: 1.2 }}>
+                {creditsLoading ? <CircularProgress size={{ xs: 24, md: 32 }} /> : formatNumber(communityPotBalance)}
               </Typography>
             </Box>
           </Box>
+
+          <Box sx={{ px: 0.5, mb: { xs: 1.5, md: 2 } }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, display: 'block', mb: 0.25 }}>
+              Meine Spenden
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: '#c51162', fontSize: { xs: '0.875rem', md: '0.95rem' } }}>
+              {creditTransactions.filter(t => t.transaction_type === 'purchase' && (t.metadata as any)?.package_type === 'community').reduce((sum, t) => sum + t.amount, 0) || 0} Credits
+            </Typography>
+          </Box>
+
           <Button
             fullWidth
             variant="outlined"
@@ -312,16 +356,21 @@ export const TokensSection = () => {
             sx={{
               textTransform: 'none',
               fontWeight: 600,
-              py: 1,
-              borderColor: '#e91e63',
-              color: '#e91e63',
+              py: { xs: 1, md: 1.25 },
+              borderColor: '#c51162',
+              color: '#c51162',
+              borderRadius: 2,
+              borderWidth: 1.5,
+              fontSize: { xs: '0.875rem', md: '1rem' },
               '&:hover': {
-                borderColor: '#c2185b',
-                bgcolor: 'rgba(233, 30, 99, 0.08)',
+                borderColor: '#a00037',
+                bgcolor: 'rgba(197, 17, 98, 0.04)',
+                borderWidth: 1.5,
               },
             }}
           >
-            Community spenden
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Jetzt spenden</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Spenden</Box>
           </Button>
         </Paper>
       </Box>

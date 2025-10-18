@@ -60,6 +60,16 @@ export const CreditPurchasePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCanceledMessage, setShowCanceledMessage] = useState(searchParams.get('canceled') === 'true');
 
+  // Set tab based on URL parameter
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'community') {
+      setSelectedTab(1 as any);
+    } else {
+      setSelectedTab(0 as any);
+    }
+  }, [searchParams]);
+
   // Helper functions for dynamic calculations
   const calculateCredits = (euros: number): number => {
     if (!settings) return 0;
@@ -590,38 +600,162 @@ export const CreditPurchasePage = () => {
             </Alert>
           )}
 
-          {/* Tabs */}
-          <Box sx={{ mb: 4 }}>
-            <Tabs
-              value={selectedTab}
-              onChange={(_, newValue) => setSelectedTab(newValue)}
-              centered
+          {/* Tabs - Google MD3 Style Compact */}
+          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
+            <Box
               sx={{
-                '& .MuiTabs-indicator': {
-                  height: 3,
-                  borderRadius: 1.5,
-                },
+                display: 'inline-flex',
+                gap: 1.5,
+                p: 0.75,
+                bgcolor: '#f8f9fa',
+                borderRadius: 2,
+                border: '1px solid #e8eaed',
               }}
             >
-              <Tab
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Zap size={18} />
-                    <span>Personal Credits</span>
-                  </Box>
-                }
-                sx={{ textTransform: 'none', fontWeight: 700, fontSize: '1rem' }}
-              />
-              <Tab
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Heart size={18} />
-                    <span>Community Spenden</span>
-                  </Box>
-                }
-                sx={{ textTransform: 'none', fontWeight: 700, fontSize: '1rem' }}
-              />
-            </Tabs>
+              <Box
+                onClick={() => setSelectedTab(0 as any)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: { xs: 2, sm: 2.5 },
+                  py: { xs: 1, sm: 1.25 },
+                  borderRadius: 1.5,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  bgcolor: selectedTab === 0 ? '#e8f0fe' : 'transparent',
+                  border: '2px solid',
+                  borderColor: selectedTab === 0 ? '#1a73e8' : 'transparent',
+                  '&:hover': {
+                    bgcolor: selectedTab === 0 ? '#e8f0fe' : 'rgba(26, 115, 232, 0.08)',
+                    transform: 'translateY(-1px)',
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: 28, sm: 32 },
+                    height: { xs: 28, sm: 32 },
+                    borderRadius: 1.5,
+                    bgcolor: selectedTab === 0 ? '#1a73e8' : '#e8eaed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Zap size={selectedTab === 0 ? 16 : 14} style={{ color: selectedTab === 0 ? 'white' : '#5f6368' }} />
+                </Box>
+                <Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: { xs: '0.8rem', sm: '0.95rem' },
+                      color: selectedTab === 0 ? '#1a73e8' : '#5f6368',
+                      lineHeight: 1.2,
+                      display: { xs: 'none', sm: 'block' },
+                    }}
+                  >
+                    Personal Credits
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      color: selectedTab === 0 ? '#1a73e8' : '#5f6368',
+                      lineHeight: 1.2,
+                      display: { xs: 'block', sm: 'none' },
+                    }}
+                  >
+                    Credits
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: selectedTab === 0 ? '#1a73e8' : '#5f6368',
+                      fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                      opacity: 0.75,
+                    }}
+                  >
+                    Für Power-User
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box
+                onClick={() => setSelectedTab(1 as any)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: { xs: 2, sm: 2.5 },
+                  py: { xs: 1, sm: 1.25 },
+                  borderRadius: 1.5,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  bgcolor: selectedTab === 1 ? '#fef7ff' : 'transparent',
+                  border: '2px solid',
+                  borderColor: selectedTab === 1 ? '#c51162' : 'transparent',
+                  '&:hover': {
+                    bgcolor: selectedTab === 1 ? '#fef7ff' : 'rgba(197, 17, 98, 0.08)',
+                    transform: 'translateY(-1px)',
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: 28, sm: 32 },
+                    height: { xs: 28, sm: 32 },
+                    borderRadius: 1.5,
+                    bgcolor: selectedTab === 1 ? '#c51162' : '#e8eaed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Heart size={selectedTab === 1 ? 16 : 14} style={{ color: selectedTab === 1 ? 'white' : '#5f6368' }} />
+                </Box>
+                <Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: { xs: '0.8rem', sm: '0.95rem' },
+                      color: selectedTab === 1 ? '#c51162' : '#5f6368',
+                      lineHeight: 1.2,
+                      display: { xs: 'none', sm: 'block' },
+                    }}
+                  >
+                    Community Spenden
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      color: selectedTab === 1 ? '#c51162' : '#5f6368',
+                      lineHeight: 1.2,
+                      display: { xs: 'block', sm: 'none' },
+                    }}
+                  >
+                    Spenden
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: selectedTab === 1 ? '#c51162' : '#5f6368',
+                      fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                      opacity: 0.75,
+                    }}
+                  >
+                    Für die Community
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
           </Box>
 
           {/* Compact Counter - Auto-updates every 2 minutes */}
