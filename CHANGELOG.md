@@ -4,6 +4,27 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.7.7] - 2025-10-19
+
+### Changed
+- 🎨 **Manual Load More for Grid & List Views**: Konsistente UX über alle Ansichten (synchronisiert von Web-Version)
+  - **Entfernt**: Automatic Infinite Scroll (IntersectionObserver) aus Grid und List Views
+  - **Neu**: Manual "Mehr laden" Button (wie Gallery View bereits hatte)
+  - **Änderungen**:
+    - `ItemGrid.tsx`: IntersectionObserver entfernt, Button hinzugefügt
+    - `ItemList.tsx`: IntersectionObserver entfernt, Button hinzugefügt
+  - **Button**: Erscheint wenn `hasMore && !loadingMore && items.length > 0 && onLoadMore`
+  - **Loading State**: CircularProgress während `loadingMore === true`
+  - **Styling**: Konsistent mit Gallery View (outlined, rounded, 600 weight)
+  - **Getestet**: Alle drei Views mit Playwright verifiziert
+
+### Technical Details
+- **Komponenten**:
+  - `src/components/Items/ItemGrid.tsx`: Manual load more button
+  - `src/components/Items/ItemList.tsx`: Manual load more button
+- **Removed Hooks**: `useEffect`, `useRef` (IntersectionObserver logic)
+- **Added Imports**: `Button` from MUI
+
 ## [1.7.6] - 2025-10-19
 
 ### Fixed
