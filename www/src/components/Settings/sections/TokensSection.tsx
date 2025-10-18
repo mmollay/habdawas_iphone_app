@@ -4,12 +4,6 @@ import {
   Typography,
   Paper,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
   CircularProgress,
   Alert,
@@ -21,8 +15,27 @@ import {
   InputLabel,
   FormControlLabel,
   Checkbox,
+  Collapse,
+  IconButton,
+  Badge,
 } from '@mui/material';
-import { Coins, TrendingUp, TrendingDown, ShoppingCart, Gift, RefreshCw, Heart, Filter, Sparkles, Calendar } from 'lucide-react';
+import {
+  Coins,
+  TrendingUp,
+  TrendingDown,
+  ShoppingCart,
+  Gift,
+  RefreshCw,
+  Heart,
+  Filter,
+  Sparkles,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Award,
+  User,
+  Users,
+} from 'lucide-react';
 import { useTokens } from '../../../hooks/useTokens';
 import { useCreditsStats } from '../../../hooks/useCreditsStats';
 import { useNavigate } from 'react-router-dom';
@@ -109,6 +122,21 @@ export const TokensSection = () => {
   const [filterType, setFilterType] = useState<'all' | 'purchase' | 'usage' | 'bonus' | 'refund'>('all');
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [filterAiOnly, setFilterAiOnly] = useState(false);
+
+  // Expandable details state
+  const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (transactionId: string) => {
+    setExpandedTransactions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(transactionId)) {
+        newSet.delete(transactionId);
+      } else {
+        newSet.add(transactionId);
+      }
+      return newSet;
+    });
+  };
 
   const loadCreditTransactions = async () => {
     if (!user) return;
@@ -446,92 +474,216 @@ export const TokensSection = () => {
           Keine Transaktionen mit den aktuellen Filtern gefunden. Versuchen Sie, die Filter zurückzusetzen.
         </Alert>
       ) : (
-        <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
-                <TableCell sx={{ fontWeight: 600 }}>Typ</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Betrag</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Beschreibung</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Datum</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredTransactions.map((transaction) => (
-                <TableRow
-                  key={transaction.id}
-                  sx={{
-                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.02)' },
-                  }}
-                >
-                  <TableCell>
+        <Stack spacing={2}>
+          {filteredTransactions.map((transaction) => {
+            const metadata = transaction.metadata as any;
+            const packageType = metadata?.package_type || 'personal';
+            const isCommunityDonation = transaction.transaction_type === 'purchase' && packageType === 'community';
+            const isExpanded = expandedTransactions.has(transaction.id);
+            const hasGeminiTokens = metadata?.gemini_total_tokens > 0;
+            const hasDetails = metadata?.package_id || hasGeminiTokens;
+
+            return (
+              <Paper
+                key={transaction.id}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 2,
+                  border: isCommunityDonation ? '2px solid' : '1px solid',
+                  borderColor: isCommunityDonation ? '#e91e63' : 'divider',
+                  bgcolor: isCommunityDonation ? 'rgba(233, 30, 99, 0.02)' : 'white',
+                  position: 'relative',
+                  overflow: 'visible',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    boxShadow: isCommunityDonation ? '0 4px 20px rgba(233, 30, 99, 0.2)' : '0 2px 12px rgba(0, 0, 0, 0.08)',
+                    transform: 'translateY(-2px)',
+                  },
+                }}
+              >
+                {/* Community Hero Badge */}
+                {isCommunityDonation && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: -12,
+                      right: 20,
+                      background: 'linear-gradient(135deg, #e91e63 0%, #c2185b 100%)',
+                      color: 'white',
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      boxShadow: '0 2px 8px rgba(233, 30, 99, 0.3)',
+                    }}
+                  >
+                    <Award size={14} />
+                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>
+                      Community Hero
+                    </Typography>
+                  </Box>
+                )}
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Chip
                       icon={getTransactionIcon(transaction.transaction_type)}
                       label={getTransactionTypeLabel(transaction.transaction_type)}
                       color={getTransactionTypeColor(transaction.transaction_type)}
                       size="small"
-                      sx={{ fontWeight: 500 }}
+                      sx={{ fontWeight: 600 }}
                     />
-                  </TableCell>
-                  <TableCell>
+
+                    {/* Community/Personal Badge */}
+                    {transaction.transaction_type === 'purchase' && (
+                      <Chip
+                        icon={packageType === 'community' ? <Users size={12} /> : <User size={12} />}
+                        label={packageType === 'community' ? 'Community' : 'Personal'}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          borderColor: packageType === 'community' ? '#e91e63' : '#667eea',
+                          color: packageType === 'community' ? '#e91e63' : '#667eea',
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                        }}
+                      />
+                    )}
+
+                    {/* AI Badge for usage transactions */}
+                    {transaction.transaction_type === 'usage' && hasGeminiTokens && (
+                      <Chip
+                        icon={<Sparkles size={12} />}
+                        label="AI"
+                        size="small"
+                        variant="outlined"
+                        color="secondary"
+                        sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                      />
+                    )}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography
-                      variant="body2"
+                      variant="h6"
                       sx={{
-                        fontWeight: 600,
+                        fontWeight: 700,
                         color: transaction.amount > 0 ? 'success.main' : 'error.main',
                       }}
                     >
                       {transaction.amount > 0 ? '+' : ''}
                       {transaction.amount}
                     </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Credits
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
                       {transaction.description || '-'}
                     </Typography>
-                    {transaction.metadata && (
-                      <Box sx={{ mt: 0.5 }}>
-                        {/* Purchase metadata */}
-                        {(transaction.metadata as any).package_id && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                            Paket: {(transaction.metadata as any).package_id}
-                            {(transaction.metadata as any).amount_paid && ` • ${(transaction.metadata as any).amount_paid}€`}
-                          </Typography>
-                        )}
-
-                        {/* Gemini Token breakdown */}
-                        {(transaction.metadata as any).gemini_total_tokens && (
-                          <Box sx={{ mt: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>
-                              Gemini Token-Verbrauch:
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 1 }}>
-                              • Input Tokens: {(transaction.metadata as any).gemini_input_tokens?.toLocaleString() || 0}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 1 }}>
-                              • Output Tokens: {(transaction.metadata as any).gemini_output_tokens?.toLocaleString() || 0}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 1, fontWeight: 600 }}>
-                              • Total: {(transaction.metadata as any).gemini_total_tokens?.toLocaleString() || 0} Tokens
-                            </Typography>
-                            <Typography variant="caption" sx={{ display: 'block', ml: 1, mt: 0.5, color: 'primary.main', fontWeight: 600 }}>
-                              → {(transaction.metadata as any).credits_calculated || Math.abs(transaction.amount)} Credits
-                            </Typography>
-                          </Box>
-                        )}
-                      </Box>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary">
                       {formatDate(transaction.created_at)}
                     </Typography>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                  </Box>
+
+                  {hasDetails && (
+                    <IconButton
+                      size="small"
+                      onClick={() => toggleExpand(transaction.id)}
+                      sx={{
+                        transition: 'transform 0.2s',
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      }}
+                    >
+                      <ChevronDown size={20} />
+                    </IconButton>
+                  )}
+                </Box>
+
+                {/* Expandable Details */}
+                {hasDetails && (
+                  <Collapse in={isExpanded}>
+                    <Divider sx={{ my: 2 }} />
+                    <Box sx={{ pl: 2, borderLeft: '3px solid', borderColor: 'divider' }}>
+                      {/* Purchase Details */}
+                      {metadata?.package_id && (
+                        <Box sx={{ mb: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                            Paket-Details:
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Paket-ID: {metadata.package_id}
+                          </Typography>
+                          {metadata.amount_paid && (
+                            <Typography variant="body2" color="text.secondary">
+                              Betrag: {metadata.amount_paid}€
+                            </Typography>
+                          )}
+                          {metadata.credits && (
+                            <Typography variant="body2" color="text.secondary">
+                              Credits: {metadata.credits}
+                              {metadata.bonus > 0 && ` + ${metadata.bonus} Bonus`}
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+
+                      {/* Gemini Token Details */}
+                      {hasGeminiTokens && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                            Gemini Token-Verbrauch:
+                          </Typography>
+                          <Stack spacing={0.5} sx={{ pl: 1 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Input Tokens:
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {metadata.gemini_input_tokens?.toLocaleString() || 0}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Output Tokens:
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {metadata.gemini_output_tokens?.toLocaleString() || 0}
+                              </Typography>
+                            </Box>
+                            <Divider sx={{ my: 0.5 }} />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                Total Tokens:
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                                {metadata.gemini_total_tokens?.toLocaleString() || 0}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                Credits berechnet:
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.main' }}>
+                                {metadata.credits_calculated || Math.abs(transaction.amount)} Credits
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </Box>
+                      )}
+                    </Box>
+                  </Collapse>
+                )}
+              </Paper>
+            );
+          })}
+        </Stack>
       )}
     </Box>
   );

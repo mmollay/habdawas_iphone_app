@@ -4,6 +4,42 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.5.20] - 2025-10-18
+
+### Improved
+- 🎨 **Transaktionsliste komplett überarbeitet**: Von Table zu Cards mit professionellem Design
+  - **Problem**: User wünschte professionellere Darstellung mit Unterscheidung Community/Personal und Hervorhebung von Spenden
+  - **Lösung**:
+    - Cards statt Table für moderneres Design
+    - **Community Hero Badge**: Spenden an Community-Topf mit Award-Badge hervorgehoben
+    - **Community/Personal Badges**: User/Users Icons zeigen Typ an (pink für Community, lila für Personal)
+    - **AI Badge**: Sparkles-Icon für AI-generierte Transaktionen
+    - **Aufklappbare Details**: Gemini Token-Breakdown und Paket-Details per Collapse/Expand
+    - Hover-Effekte: Transform + Shadow für interaktives Feedback
+    - Community-Spenden: Pink Border, Gradient Badge, spezieller Hover-Effect
+  - **Betroffene Datei**: `src/components/Settings/sections/TokensSection.tsx` (Zeilen 1-690)
+  - **Ergebnis**: Deutlich professionellere und übersichtlichere Transaktionsansicht
+
+### Added
+- ✨ **Aufklappbare Transaction-Details**:
+  - ChevronDown Icon zum Aufklappen
+  - Collapse-Animation für Details
+  - Paket-Details: ID, Betrag, Credits, Bonus
+  - Gemini Token-Breakdown: Input/Output/Total Tokens mit Credit-Berechnung
+
+- ✨ **Status-Badges für Transaktionen**:
+  - Community Hero Badge für Community-Spenden (Award-Icon mit Gradient)
+  - Community/Personal Badge für Käufe
+  - AI Badge für AI-generierte Inserate
+
+### Technical Details
+- **State Management**: `Set<string>` für expandierte Transaktionen
+- **Conditional Styling**: `isCommunityDonation` für spezielle Card-Styles
+- **Animation**: CSS Transitions für Hover und Transform
+- **Badge Positioning**: `position: absolute` mit `top: -12px` für Hero Badge
+- **Metadata Detection**: `packageType` aus `metadata.package_type`
+- **Icon Integration**: Award, User, Users, ChevronDown aus Lucide-React
+
 ## [1.5.19] - 2025-10-18
 
 ### Improved
