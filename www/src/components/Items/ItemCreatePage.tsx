@@ -24,6 +24,7 @@ import { ChevronDown, ChevronUp, Sparkles, Info, Package, Save, Coins, X } from 
 import { useAuth } from '../../contexts/AuthContext';
 import { useCreditsStats } from '../../hooks/useCreditsStats';
 import { useCreditCheck } from '../../hooks/useCreditCheck';
+import { useTokenBasedCredits } from '../../hooks/useTokenBasedCredits';
 import { supabase } from '../../lib/supabase';
 import { getDefaultCountry } from '../../utils/countryUtils';
 import { MultiImageUpload } from '../Upload/MultiImageUpload';
@@ -83,6 +84,7 @@ export const ItemCreatePage = () => {
   const { user } = useAuth();
   const { personalCredits } = useCreditsStats();
   const { checkCredit, consumeCredit } = useCreditCheck();
+  const { calculateCreditsFromTokens, deductCreditsForAI, settings } = useTokenBasedCredits();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -98,6 +100,7 @@ export const ItemCreatePage = () => {
   const [uploading, setUploading] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState('');
+  const [estimatedCost, setEstimatedCost] = useState(0);
 
   const [shippingAddresses, setShippingAddresses] = useState<any[]>([]);
   const [selectedShippingAddress, setSelectedShippingAddress] = useState<string>('');
@@ -211,6 +214,19 @@ export const ItemCreatePage = () => {
       setWorkflowStep('choose');
     }
   }, [images, workflowStep]);
+
+  // Update estimated cost based on Gemini token usage
+  useEffect(() => {
+    if (settings && analysis) {
+      // AI was used - get token count from analysis
+      const geminiTokens = analysis.tokenUsage?.totalTokens || 0;
+      const estimate = calculateCreditsFromTokens(geminiTokens);
+      setEstimatedCost(estimate.estimatedCredits);
+    } else {
+      // Manual listing - free
+      setEstimatedCost(0);
+    }
+  }, [analysis, settings, calculateCreditsFromTokens]);
 
   const analyzeImage = async (imageData: string, shippingCountry: string, notes?: string): Promise<AnalysisResult> => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -383,6 +399,18 @@ export const ItemCreatePage = () => {
       const primaryImageUrl = uploadedImageUrls[images.findIndex(img => img.isPrimary)] || uploadedImageUrls[0];
       const dataToUse = analysisData || analysis;
 
+      // IMPORTANT: Extract Gemini tokens BEFORE insert
+      const geminiInputTokens = dataToUse?.tokenUsage?.inputTokens || 0;
+      const geminiOutputTokens = dataToUse?.tokenUsage?.outputTokens || 0;
+      const totalGeminiTokens = geminiInputTokens + geminiOutputTokens;
+
+      console.log('[Item Insert] Gemini Tokens:', {
+        input: geminiInputTokens,
+        output: geminiOutputTokens,
+        total: totalGeminiTokens,
+        hasTokenUsage: !!dataToUse?.tokenUsage
+      });
+
       const { data: itemData, error: insertError } = await supabase
         .from('items')
         .insert({
@@ -432,6 +460,10 @@ export const ItemCreatePage = () => {
           snapshot_pickup_city: selectedAddress?.city,
           snapshot_pickup_country: selectedAddress?.country,
           snapshot_location_description: sellerProfile?.location_description || null,
+          // CRITICAL FIX: Store Gemini tokens at insert time (will be updated by deduct_credits_for_ai if needed)
+          gemini_input_tokens: geminiInputTokens,
+          gemini_output_tokens: geminiOutputTokens,
+          gemini_tokens_used: totalGeminiTokens,
         })
         .select()
         .single();
@@ -457,14 +489,48 @@ export const ItemCreatePage = () => {
         console.log('Images inserted successfully');
       }
 
-      // Consume credit after successful item creation
-      console.log('[Credit Check] Consuming credit...');
-      const creditConsumed = await consumeCredit(creditCheck.source!, itemData.id);
-      if (!creditConsumed) {
-        console.error('[Credit Check] Failed to consume credit');
-        // Note: Item is already created, so we don't fail here
+      // Handle credit deduction based on listing type
+      console.log('[Credit Check] Processing credit deduction...', {
+        creditSource: creditCheck.source,
+        geminiTokens: totalGeminiTokens,
+        aiGenerated: dataToUse !== null
+      });
+
+      // CRITICAL FIX: Deduct credits for AI usage REGARDLESS of credit source
+      if (totalGeminiTokens > 0) {
+        // AI listing - ALWAYS deduct based on Gemini tokens
+        console.log('[Credit Check] AI listing detected - deducting credits based on Gemini tokens...');
+        const deductResult = await deductCreditsForAI(
+          user.id,
+          itemData.id,
+          geminiInputTokens,
+          geminiOutputTokens,
+          `AI listing creation: ${itemTitle}`
+        );
+
+        if (!deductResult.success) {
+          console.error('[Credit Check] Failed to deduct credits:', deductResult.error);
+          setError(deductResult.error || 'Fehler beim Abziehen der Credits');
+          return;
+        }
+
+        console.log('[Credit Check] Credits deducted successfully:', {
+          creditsUsed: deductResult.creditsUsed,
+          newBalance: deductResult.newBalance,
+          geminiInputTokens,
+          geminiOutputTokens,
+          totalTokens: totalGeminiTokens
+        });
+      } else if (creditCheck.source === 'community_pot') {
+        // Manual listing using community pot
+        console.log('[Credit Check] Manual listing using community pot (free listing)');
+        const creditConsumed = await consumeCredit(creditCheck.source, itemData.id);
+        if (!creditConsumed) {
+          console.error('[Credit Check] Failed to consume community pot credit');
+        }
       } else {
-        console.log('[Credit Check] Credit consumed successfully');
+        // Manual listing with personal credits - FREE!
+        console.log('[Credit Check] Manual listing with personal credits - FREE (0 credits)');
       }
 
       console.log('Navigating to:', `/item/${itemData.id}`);
@@ -558,20 +624,49 @@ export const ItemCreatePage = () => {
         {images.length > 0 && (
           <>
             <Box sx={{ mt: 3, p: 2.5, border: '2px solid', borderColor: 'primary.main', borderRadius: 2, bgcolor: 'rgba(25, 118, 210, 0.02)' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Sparkles size={18} style={{ color: '#1976d2' }} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'primary.main' }}>
                     KI-Unterstützung
                   </Typography>
                 </Box>
-                <Chip
-                  icon={<Coins size={16} />}
-                  label={`${personalCredits} Credits`}
-                  size="small"
-                  color={personalCredits > 0 ? "primary" : "error"}
-                  sx={{ fontWeight: 600 }}
-                />
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {analysis && (
+                    <Chip
+                      icon={<Info size={14} />}
+                      label={`${analysis.tokenUsage?.totalTokens || 0} Gemini Tokens`}
+                      size="small"
+                      variant="outlined"
+                      color="info"
+                      sx={{ fontWeight: 600 }}
+                    />
+                  )}
+                  {estimatedCost > 0 ? (
+                    <Chip
+                      icon={<Coins size={14} />}
+                      label={`≈${estimatedCost} Credits`}
+                      size="small"
+                      variant="outlined"
+                      color="warning"
+                      sx={{ fontWeight: 600 }}
+                    />
+                  ) : (
+                    <Chip
+                      label="Manuell = KOSTENLOS"
+                      size="small"
+                      color="success"
+                      sx={{ fontWeight: 600 }}
+                    />
+                  )}
+                  <Chip
+                    icon={<Coins size={16} />}
+                    label={`${personalCredits} Credits verfügbar`}
+                    size="small"
+                    color={personalCredits >= estimatedCost ? "primary" : "error"}
+                    sx={{ fontWeight: 600 }}
+                  />
+                </Box>
               </Box>
               <TextField
                 fullWidth

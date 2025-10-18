@@ -21,7 +21,7 @@ interface SellerItem {
   id: string;
   title: string;
   price: number;
-  images: string[];
+  image_url: string | null;
   status: string;
 }
 
@@ -55,9 +55,9 @@ export const SellerProfile = ({ userId, currentItemId }: SellerProfileProps) => 
 
       let itemsQuery = supabase
         .from('items')
-        .select('id, title, price, images, status', { count: 'exact' })
+        .select('id, title, price, image_url, status', { count: 'exact' })
         .eq('user_id', userId)
-        .eq('status', 'active');
+        .eq('status', 'published');
 
       if (currentItemId) {
         itemsQuery = itemsQuery.neq('id', currentItemId);
@@ -186,7 +186,10 @@ export const SellerProfile = ({ userId, currentItemId }: SellerProfileProps) => 
                 key={item.id}
                 onClick={() => handleItemClick(item.id)}
                 sx={{
-                  minWidth: 120,
+                  width: 110,
+                  minWidth: 110,
+                  maxWidth: 110,
+                  flexShrink: 0,
                   cursor: 'pointer',
                   transition: 'transform 0.2s',
                   '&:hover': {
@@ -196,17 +199,17 @@ export const SellerProfile = ({ userId, currentItemId }: SellerProfileProps) => 
               >
                 <Box
                   sx={{
-                    width: 120,
-                    height: 120,
+                    width: '100%',
+                    height: 110,
                     bgcolor: '#e0e0e0',
                     borderRadius: 1.5,
                     overflow: 'hidden',
                     mb: 0.5,
                   }}
                 >
-                  {item.images && item.images.length > 0 ? (
+                  {item.image_url ? (
                     <img
-                      src={item.images[0]}
+                      src={item.image_url}
                       alt={item.title}
                       style={{
                         width: '100%',
@@ -234,15 +237,20 @@ export const SellerProfile = ({ userId, currentItemId }: SellerProfileProps) => 
                 <Typography
                   variant="body2"
                   sx={{
+                    fontSize: '0.8rem',
+                    lineHeight: 1.3,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
                     mb: 0.25,
+                    minHeight: '2.1em',
                   }}
                 >
                   {item.title}
                 </Typography>
-                <Typography variant="body2" fontWeight={600} color="primary">
+                <Typography variant="body2" fontWeight={600} color="primary" sx={{ fontSize: '0.85rem' }}>
                   {item.price.toFixed(2)} €
                 </Typography>
               </Box>

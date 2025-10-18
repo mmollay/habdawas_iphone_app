@@ -4,44 +4,289 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
-## [1.0.40] - 2025-10-17
+## [1.5.17] - 2025-10-18
 
-### Synced from bazar_bold v1.5.15
+### Fixed
+- 🐛 **KRITISCH: Gemini Tokens wurden nicht gespeichert**: Token-Tracking komplett fehlerhaft
+  - **Problem**: ALLE AI-generierten Inserate hatten `gemini_tokens_used: 0`, keine Usage-Transaktionen wurden erstellt
+  - **Ursache**: ItemCreatePage INSERT enthielt keine Gemini-Token-Felder, Credits wurden nur für `personal_credits` abgezogen
+  - **Lösung**:
+    - Gemini Tokens werden jetzt beim INSERT gespeichert (`gemini_input_tokens`, `gemini_output_tokens`, `gemini_tokens_used`)
+    - Credits werden IMMER abgezogen wenn AI verwendet wurde, unabhängig von Credit-Quelle (Community-Topf oder persönliche Credits)
+  - **Betroffene Datei**: `src/components/Items/ItemCreatePage.tsx` (Zeilen 402-467, 492-534)
+  - **Ergebnis**: Korrekte Token-Zählung und Credit-Abzug für alle AI-Inserate
+  - **Testing**: User muss neues AI-Inserat erstellen um Fix zu verifizieren
+
+- 🐛 **KRITISCH: Credits wurden bei Community-Topf-Nutzung nicht abgezogen**
+  - **Problem**: Wenn Community-Topf genutzt wurde, erfolgte KEIN Credit-Abzug für AI-Nutzung
+  - **Alter Code**: `if (creditCheck.source === 'community_pot') { /* kein Abzug! */ }`
+  - **Neuer Code**: `if (totalGeminiTokens > 0) { /* IMMER abziehen */ }`
+  - **Ergebnis**: AI-Nutzung wird jetzt korrekt getrackt, egal welche Credit-Quelle
+
+### Added
+- ✨ **Transaktions-Filter für bessere Übersicht**: Umfassende Filtermöglichkeiten in Token-Guthaben
+  - **Filter nach Typ**:
+    - Alle Transaktionen
+    - Käufe (mit Shopping Cart Icon)
+    - Verbrauch (mit Zap Icon)
+    - Bonus (mit Gift Icon)
+    - Rückerstattung (mit Undo Icon)
+  - **Filter nach Zeitraum**:
+    - Alle Zeiträume
+    - Heute
+    - Letzte 7 Tage
+    - Letzte 30 Tage
+  - **Filter nach AI-Generierung**:
+    - Nur AI-generierte Transaktionen anzeigen (nur bei Typ "Verbrauch")
+    - Zeigt Anzahl AI-generierter Inserate
+  - **UI-Design**:
+    - Material Design 3 Chips mit Icons
+    - Responsive Flex-Wrap Layout
+    - Aktive Filter in Primary Color
+    - Transaktions-Anzahl in jedem Chip
+  - **Betroffene Datei**: `src/components/Settings/sections/TokensSection.tsx` (Zeilen 100-161, 308-468)
+  - **Synchronisiert**: Auch in iPhone App verfügbar
+
+### Improved
+- 🎨 **SellerProfile kompakter**: "Weitere Inserate" optimiert
+  - **Problem**: Items hatten dynamische Breite und veränderten Layout
+  - **Lösung**:
+    - Fixe Breite 110px (statt dynamisch)
+    - 2-Zeilen Titel-Ellipsis mit `WebkitLineClamp: 2`
+    - Hover-Effekt: `scale(1.05)`
+  - **Betroffene Datei**: `src/components/Items/SellerProfile.tsx` (Zeilen 189-256)
+  - **Ergebnis**: Konsistente, kompakte Darstellung
+
+### Technical Details
+- **Credit Deduction Flow (Fixed)**:
+  1. AI-Analyse gibt Token Usage zurück (analyze-image Edge Function v30)
+  2. Frontend extrahiert `geminiInputTokens` und `geminiOutputTokens` SOFORT
+  3. Tokens werden beim INSERT in items-Tabelle gespeichert
+  4. Beim Publizieren: `if (totalGeminiTokens > 0)` → IMMER `deductCreditsForAI()` aufrufen
+  5. Credits werden abgezogen (250 Tokens = 1 Credit), Usage-Transaktion mit Metadata erstellt
+  6. Egal ob Community-Topf oder persönliche Credits verwendet wurden
+
+- **Filter Logic**:
+  - Client-seitiges Filtering mit `Array.filter()`
+  - Zeitraum-Vergleiche mit `Date` Objekten
+  - AI-Detection über `metadata.gemini_total_tokens > 0`
+  - Performance: Filtert ~100-1000 Transaktionen ohne spürbare Verzögerung
+
+## [1.5.16] - 2025-10-18
+
+### Fixed
+- 🐛 **Foreign Key Fehler in Donations & Community Pot**: Datenbank-Queries behoben
+  - **Problem**: Supabase PostgREST konnte Foreign Key Relationship nicht finden
+  - **Fehler**: "Could not find a relationship between 'donations' and 'profiles'"
+  - **Lösung**: Explizite Foreign Key Constraint Namen in Supabase Queries verwendet
+  - **Betroffene Dateien**:
+    - `src/hooks/useDonations.ts`: `profiles!donations_user_id_profiles_fkey`
+    - `src/hooks/useCommunityPotTransactions.ts`: `profiles!community_pot_transactions_user_id_profiles_fkey`, `items!community_pot_transactions_item_id_fkey`
+  - **Ergebnis**: Donations und Community Pot Transaktionen werden jetzt korrekt mit User-Profilen geladen
+
+- 🐛 **Edge Function "Token balance not found" Fehler**: Alte Token-Tabelle entfernt
+  - **Problem**: analyze-image Edge Function versuchte auf gelöschte `user_tokens` Tabelle zuzugreifen
+  - **Fehler**: "Token balance not found" bei AI-Bildanalyse
+  - **Lösung**: Token-Balance-Check entfernt, Credits werden erst beim Publizieren abgezogen
+  - **Änderungen**:
+    - Edge Function prüft nicht mehr Token-Balance vorab
+    - Credits werden erst beim Veröffentlichen des Inserats abgezogen
+    - Gemini Token Usage wird weiterhin getrackt und an Frontend zurückgegeben
+    - Frontend berechnet Credits basierend auf Token Usage (250 Tokens = 1 Credit)
+  - **Datei**: `supabase/functions/analyze-image/index.ts`
+  - **Deployment**: Version 30, Function ID `83fe5014-86d8-4daa-9c7d-b9b4ea4ad132`
+
+- 🐛 **useTokens Hook verwendet gelöschte Tabelle**: Migration auf neues Credit-System
+  - **Problem**: Hook versuchte `user_tokens` Tabelle zu lesen
+  - **Lösung**: Umstellung auf `profiles.personal_credits` + `credit_transactions`
+  - **Änderungen**:
+    - Balance aus `profiles.personal_credits` lesen
+    - Earned/Spent aus `credit_transactions` berechnen
+    - Beide Web- und iPhone-App synchronisiert
+  - **Dateien**:
+    - `src/hooks/useTokens.ts`
+    - `www/src/hooks/useTokens.ts` (iPhone App)
+
+### Technical Details
+- **PostgREST Schema Cache**: Cache nach Änderungen neu geladen (`NOTIFY pgrst, 'reload schema'`)
+- **Credit System Flow**:
+  1. AI-Analyse gibt Token Usage zurück
+  2. Frontend berechnet Credits (250 Gemini Tokens = 1 Credit)
+  3. Credits werden beim Publizieren abgezogen
+  4. Transaction mit Gemini Token Breakdown in Metadata gespeichert
+
+## [1.5.15] - 2025-10-17
+
+### Fixed
 - 🐛 **User-Menü bleibt manchmal hängen**: Menu Backdrop-Click Problem behoben
-  - Menu schließt jetzt zuverlässig bei Backdrop-Click
-  - `BackdropProps` + `keepMounted={false}` Lösung
+  - **Problem**: Menü schloss nicht beim Klick außerhalb (Backdrop)
+  - **Lösung**: `BackdropProps` mit explizitem onClick Handler + `keepMounted={false}`
+  - **Ergebnis**: Menü schließt jetzt zuverlässig bei Backdrop-Click
+  - **Datei**: `Header.tsx`
 
 - 🐛 **Stripe Zahlungen gutgeschrieben aber Credits nicht angezeigt**: Payment-Credits Synchronisation behoben
-  - Credits erscheinen sofort im UI nach erfolgreicher Zahlung
-  - Webhook aktualisiert jetzt direkt `profiles.personal_credits`
+  - **Problem**: Nach Testkäufen kein Guthaben in "Token-Guthaben" sichtbar
+  - **Ursache**: Webhook schrieb in `user_tokens`, UI las aus `profiles.personal_credits`
+  - **Lösung**: Webhook aktualisiert jetzt direkt `profiles.personal_credits`
+  - **Ergebnis**: Credits erscheinen sofort im UI nach erfolgreicher Zahlung
+  - **Datei**: `supabase/functions/stripe-webhook/index.ts`
 
-### iOS App Details
-- **Web Content Version**: 1.5.15
-- **iOS Wrapper Version**: 1.0.40
-- **Build**: Synced via rsync from bazar_bold
-- **Testing**: Menu & Payment fixes verified
+## [1.5.14] - 2025-10-17
 
-## [1.0.39] - 2025-10-17
-
-### Synced from bazar_bold v1.5.14
+### Improved
 - ✨ **Community-Topf Modal deutlich verbessert**: Klarere Erklärungen und bessere UX
-  - Info-Box erklärt "Wie funktioniert der Community-Topf?"
-  - Klarere Labels: "Credits im Topf", "Gut gefüllt", "Credits verwendet"
-  - Tooltips bei allen Statistiken mit detaillierten Erklärungen
-  - Info-Icons (ℹ️) für kontextuelle Hilfe
-  - Beide Varianten (compact/full) aktualisiert
+  - **Problem**: User verstanden Modal-Inhalte nicht ("was ist Gesund?")
+  - **Lösung**: Umfassende UX-Überarbeitung mit mehrschichtiger Hilfe
 
-### Synced from bazar_bold v1.5.13
+  **Neue Elemente**:
+  - 📘 **Info-Box oben**: Erklärt "Wie funktioniert der Community-Topf?"
+    - Beschreibt Konzept: Gemeinsamer Credit-Pool für kostenlose Inserate
+    - Emoji 🎁 für freundliche Ansprache
+
+  - 🏷️ **Klarere Labels**:
+    - "Verfügbare Inserate" → "Credits im Topf" (mit Tooltip)
+    - "Gesund" → "Gut gefüllt" (mit erklärendem Tooltip)
+    - "Gesamt finanziert" → "Credits verwendet"
+    - "Anzahl Spenden" → "Spendenvorgänge"
+
+  - ℹ️ **Tooltips überall**:
+    - "Credits im Topf": "Jedes Inserat kostet 1 Credit..."
+    - "Gut gefüllt": "Über 100 Credits - alles im grünen Bereich!"
+    - "Niedrig": "Weniger als 100 Credits - bitte spenden!"
+    - "Aktive Spender": "Anzahl der User, die bereits gespendet haben"
+    - "Credits verwendet": "Anzahl der Credits für kostenlose Inserate"
+    - "Spenden gesamt": "Gesamtbetrag aller Spenden in Euro"
+    - "Spendenvorgänge": "Anzahl der Spendenvorgänge"
+
+  - 🎯 **Info-Icons**: Kleine ℹ️ Icons bei allen Statistiken mit Hover-Hilfe
+
+  **Betroffene Komponenten**:
+  - `CommunityPotWidget.tsx`: Komplett-Überarbeitung beider Varianten
+    - Compact Variant (Dialog): Lines 86-238
+    - Full Variant: Lines 244-315
+
+  **Design-Pattern**:
+  - Info-Box: `bgcolor: 'info.50'` + `borderLeft: '4px solid'` + `borderColor: 'info.main'`
+  - Tooltips: MUI `<Tooltip>` mit `cursor: 'help'` für Info-Icons
+  - Status-Chip: Dynamic color (warning/success) mit Icon (TrendingUp/Users)
+
+### Technical Details
+
+**Info-Box Struktur**:
+```typescript
+<Paper elevation={0} sx={{ p: 2, bgcolor: 'info.50', mb: 2, borderLeft: '4px solid', borderColor: 'info.main' }}>
+  <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+    <Info size={20} color="#0288d1" />
+    <Box>
+      <Typography variant="subtitle2">Wie funktioniert der Community-Topf?</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Der Community-Topf ist ein gemeinsamer Pool an Credits...
+      </Typography>
+    </Box>
+  </Box>
+</Paper>
+```
+
+**Tooltip-Pattern**:
+```typescript
+<Tooltip title="Jedes Inserat kostet 1 Credit...">
+  <Info size={14} style={{ cursor: 'help' }} />
+</Tooltip>
+```
+
+**Testing**:
+- ✅ Playwright-Test: Dialog öffnet korrekt mit allen neuen Elementen
+- ✅ Info-Box wird angezeigt mit "Wie funktioniert..."-Überschrift
+- ✅ Alle neuen Labels und Tooltips funktionieren
+- ✅ Status-Chip zeigt "Gut gefüllt" statt "Gesund"
+- ✅ Keine Console-Fehler
+
+### Impact
+- **User Experience**: Deutlich verständlicher für neue User
+- **Self-Service**: User verstehen Konzept ohne externe Erklärung
+- **Accessibility**: Info-Icons bieten kontextuelle Hilfe
+- **Consistency**: Gleiche UX in compact und full Varianten
+
+## [1.5.13] - 2025-10-17
+
+### Fixed
 - 🐛 **Community-Topf zeigt 0 für nicht angemeldete User**: RLS Policy & Foreign Key Fixes
-  - RLS Policy für anonymen Zugriff auf Community Pot Balance
-  - Foreign Key Syntax-Fehler behoben (PGRST200)
-  - Anonyme User sehen jetzt korrekten Balance-Wert
+  - **Problem 1**: Anonyme User sahen "0" statt echtem Balance (z.B. 150)
+  - **Ursache**: RLS Policy für `credit_system_settings` erlaubte nur authenticated admins
+  - **Lösung**: Neue Policy "Anyone can read community pot balance" (TO public)
+  - **Migration**: `20251017_allow_anonymous_read_community_pot_balance.sql`
+  - **Ergebnis**: Jeder kann globalen Community Pot Balance sehen
 
-### iOS App Details
-- **Web Content Version**: 1.5.14
-- **iOS Wrapper Version**: 1.0.39
-- **Build**: Synced via rsync from bazar_bold
-- **Testing**: Community Pot improvements verified in iOS wrapper
+- 🐛 **Supabase Foreign Key Errors behoben**: PGRST200 Fehler eliminiert
+  - **Problem 2**: Console-Fehler "Could not find relationship between 'donations' and 'profiles'"
+  - **Ursache**: Falsche Syntax `profiles!user_id` (expliziter Constraint statt Auto-Detect)
+  - **Lösung**: Auf `profiles` gewechselt (Supabase erkennt FK automatisch)
+  - **Betroffene Dateien**:
+    - `useDonations.ts`: `.select('*, user:profiles!user_id (...)` → `.select('*, user:profiles (...)`
+    - `useCommunityPotTransactions.ts`: Analog geändert
+  - **Ergebnis**: Keine PGRST200 Fehler mehr im Browser
+
+### Technical Details
+
+**RLS Policy für Anonymous Read** (`credit_system_settings`):
+```sql
+-- Neue Policy in Migration 20251017_allow_anonymous_read_community_pot_balance.sql
+CREATE POLICY "Anyone can read community pot balance"
+ON credit_system_settings
+FOR SELECT
+TO public
+USING (setting_key = 'community_pot_balance');
+
+-- Vorher: Nur authenticated admins konnten lesen
+-- Jetzt: Jeder (auch anonymous) kann community_pot_balance lesen
+```
+
+**Foreign Key Syntax Fix** (`useDonations.ts`):
+```typescript
+// Vorher (v1.5.12 - Fehler):
+.select(`
+  *,
+  user:profiles!user_id (  // ❌ Expliziter Constraint - nicht gefunden
+    id, full_name, email
+  )
+`)
+
+// Jetzt (v1.5.13 - Funktioniert):
+.select(`
+  *,
+  user:profiles (  // ✅ Auto-Detect basierend auf user_id Spalte
+    id, full_name, email
+  )
+`)
+```
+
+**Foreign Key Syntax Fix** (`useCommunityPotTransactions.ts`):
+```typescript
+// Vorher (v1.5.12):
+.select(`
+  *,
+  user:profiles!user_id (...),  // ❌
+  item:items!item_id (...)       // ❌
+`)
+
+// Jetzt (v1.5.13):
+.select(`
+  *,
+  user:profiles (...),  // ✅
+  item:items (...)      // ✅
+`)
+```
+
+**Playwright Test Results** (v1.5.13):
+- ✅ Anonymous user sieht Community Pot Balance: **150** (nicht 0)
+- ✅ Community Pot Dialog öffnet und zeigt korrekte Statistiken
+- ✅ Keine Console-Fehler mehr (PGRST200 eliminiert)
+- ✅ Status: "Gesund" mit grünem Indikator
+- ✅ "Jetzt spenden" Button nur für angemeldete User sichtbar
+
+### Database Changes
+- Migration `20251017_allow_anonymous_read_community_pot_balance.sql` erstellt
+- RLS Policy auf `credit_system_settings` Tabelle hinzugefügt
 
 ## [1.5.12] - 2025-10-17
 

@@ -13,12 +13,18 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  ToggleButtonGroup,
+  ToggleButton,
+  Stack,
+  Divider,
 } from '@mui/material';
-import { Coins, TrendingUp, TrendingDown, ShoppingCart, Gift, RefreshCw, Heart } from 'lucide-react';
+import { Coins, TrendingUp, TrendingDown, ShoppingCart, Gift, RefreshCw, Heart, Filter, Sparkles, Calendar } from 'lucide-react';
 import { useTokens } from '../../../hooks/useTokens';
 import { useCreditsStats } from '../../../hooks/useCreditsStats';
 import { useNavigate } from 'react-router-dom';
 import { formatNumber } from '../../../utils/formatNumber';
+import { useAuth } from '../../../contexts/AuthContext';
+import { supabase } from '../../../lib/supabase';
 
 interface TokenTransaction {
   id: string;
@@ -28,6 +34,15 @@ interface TokenTransaction {
   gemini_input_tokens: number | null;
   gemini_output_tokens: number | null;
   gemini_total_tokens: number | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+interface CreditTransaction {
+  id: string;
+  amount: number;
+  transaction_type: 'purchase' | 'usage' | 'bonus' | 'refund';
+  description: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string;
 }
@@ -80,26 +95,74 @@ const getTransactionIcon = (type: string) => {
 
 export const TokensSection = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { balance, totalEarned, totalSpent, loading, refetch, fetchTransactions } = useTokens();
-  const creditsStats = useCreditsStats();
-  const [transactions, setTransactions] = useState<TokenTransaction[]>([]);
+  const { personalCredits, communityPotBalance, loading: creditsLoading, refetch: refetchCredits } = useCreditsStats();
+  const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
 
-  const loadTransactions = async () => {
+  // Filter states
+  const [filterType, setFilterType] = useState<'all' | 'purchase' | 'usage' | 'bonus' | 'refund'>('all');
+  const [filterPeriod, setFilterPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [filterAiOnly, setFilterAiOnly] = useState(false);
+
+  const loadCreditTransactions = async () => {
+    if (!user) return;
+
     setLoadingTransactions(true);
     try {
-      const data = await fetchTransactions(50);
-      setTransactions(data);
+      const { data, error } = await supabase
+        .from('credit_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setCreditTransactions(data || []);
     } catch (error) {
-      console.error('Error loading transactions:', error);
+      console.error('Error loading credit transactions:', error);
     } finally {
       setLoadingTransactions(false);
     }
   };
 
   useEffect(() => {
-    loadTransactions();
-  }, []);
+    loadCreditTransactions();
+  }, [user]);
+
+  // Filter transactions
+  const filteredTransactions = creditTransactions.filter(transaction => {
+    // Filter by type
+    if (filterType !== 'all' && transaction.transaction_type !== filterType) {
+      return false;
+    }
+
+    // Filter by period
+    if (filterPeriod !== 'all') {
+      const transactionDate = new Date(transaction.created_at);
+      const now = new Date();
+
+      if (filterPeriod === 'today') {
+        const isToday = transactionDate.toDateString() === now.toDateString();
+        if (!isToday) return false;
+      } else if (filterPeriod === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (transactionDate < weekAgo) return false;
+      } else if (filterPeriod === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        if (transactionDate < monthAgo) return false;
+      }
+    }
+
+    // Filter by AI-generated (only for usage transactions)
+    if (filterAiOnly && transaction.transaction_type === 'usage') {
+      const hasGeminiTokens = (transaction.metadata as any)?.gemini_total_tokens > 0;
+      if (!hasGeminiTokens) return false;
+    }
+
+    return true;
+  });
 
   return (
     <Box>
@@ -131,7 +194,7 @@ export const TokensSection = () => {
             </Typography>
           </Box>
           <Typography variant="h3" sx={{ fontWeight: 700 }}>
-            {creditsStats.loading ? <CircularProgress size={32} color="inherit" /> : formatNumber(creditsStats.personalCredits)}
+            {creditsLoading ? <CircularProgress size={32} color="inherit" /> : formatNumber(personalCredits)}
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.8, mt: 1, display: 'block' }}>
             Verfügbar für Inserate
@@ -153,7 +216,7 @@ export const TokensSection = () => {
             </Typography>
           </Box>
           <Typography variant="h4" sx={{ fontWeight: 700, color: '#e91e63' }}>
-            {creditsStats.loading ? <CircularProgress size={28} /> : formatNumber(creditsStats.communityPotBalance)}
+            {creditsLoading ? <CircularProgress size={28} /> : formatNumber(communityPotBalance)}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
             Kostenlose Inserate
@@ -207,9 +270,174 @@ export const TokensSection = () => {
         </Paper>
       </Box>
 
+      {/* Credit Usage Statistics */}
+      {creditTransactions.length > 0 && (
+        <Paper sx={{ p: 3, mb: 4, borderRadius: 2, bgcolor: '#f8f9fa' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            Nutzungsstatistik
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 3 }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                Gesamt gekauft
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
+                +{creditTransactions.filter(t => t.transaction_type === 'purchase').reduce((sum, t) => sum + t.amount, 0)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                Gesamt verbraucht
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: 'error.main' }}>
+                {creditTransactions.filter(t => t.transaction_type === 'usage').reduce((sum, t) => sum + Math.abs(t.amount), 0)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                Anzahl Transaktionen
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                {creditTransactions.length}
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Filters */}
+      {creditTransactions.length > 0 && (
+        <Paper sx={{ p: 2.5, mb: 3, borderRadius: 2, bgcolor: '#fafafa' }}>
+          <Stack spacing={2}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Filter size={18} color="#666" />
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                Filter
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
+                Transaktionstyp
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                <Chip
+                  label={`Alle (${creditTransactions.length})`}
+                  onClick={() => setFilterType('all')}
+                  color={filterType === 'all' ? 'primary' : 'default'}
+                  variant={filterType === 'all' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+                <Chip
+                  icon={<ShoppingCart size={14} />}
+                  label={`Käufe (${creditTransactions.filter(t => t.transaction_type === 'purchase').length})`}
+                  onClick={() => setFilterType('purchase')}
+                  color={filterType === 'purchase' ? 'success' : 'default'}
+                  variant={filterType === 'purchase' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+                <Chip
+                  icon={<TrendingDown size={14} />}
+                  label={`Verbrauch (${creditTransactions.filter(t => t.transaction_type === 'usage').length})`}
+                  onClick={() => setFilterType('usage')}
+                  color={filterType === 'usage' ? 'error' : 'default'}
+                  variant={filterType === 'usage' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+                <Chip
+                  icon={<Gift size={14} />}
+                  label={`Bonus (${creditTransactions.filter(t => t.transaction_type === 'bonus').length})`}
+                  onClick={() => setFilterType('bonus')}
+                  color={filterType === 'bonus' ? 'info' : 'default'}
+                  variant={filterType === 'bonus' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+              </Stack>
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
+                Zeitraum
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                <Chip
+                  icon={<Calendar size={14} />}
+                  label="Alle"
+                  onClick={() => setFilterPeriod('all')}
+                  color={filterPeriod === 'all' ? 'primary' : 'default'}
+                  variant={filterPeriod === 'all' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+                <Chip
+                  label="Heute"
+                  onClick={() => setFilterPeriod('today')}
+                  color={filterPeriod === 'today' ? 'primary' : 'default'}
+                  variant={filterPeriod === 'today' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+                <Chip
+                  label="Letzte 7 Tage"
+                  onClick={() => setFilterPeriod('week')}
+                  color={filterPeriod === 'week' ? 'primary' : 'default'}
+                  variant={filterPeriod === 'week' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+                <Chip
+                  label="Letzte 30 Tage"
+                  onClick={() => setFilterPeriod('month')}
+                  color={filterPeriod === 'month' ? 'primary' : 'default'}
+                  variant={filterPeriod === 'month' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+              </Stack>
+            </Box>
+
+            {filterType === 'usage' && (
+              <>
+                <Divider />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
+                    KI-Inserate
+                  </Typography>
+                  <Chip
+                    icon={<Sparkles size={14} />}
+                    label="Nur AI-generierte Inserate"
+                    onClick={() => setFilterAiOnly(!filterAiOnly)}
+                    color={filterAiOnly ? 'secondary' : 'default'}
+                    variant={filterAiOnly ? 'filled' : 'outlined'}
+                    size="small"
+                  />
+                </Box>
+              </>
+            )}
+
+            {(filterType !== 'all' || filterPeriod !== 'all' || filterAiOnly) && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  {filteredTransactions.length} von {creditTransactions.length} Transaktionen
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setFilterType('all');
+                    setFilterPeriod('all');
+                    setFilterAiOnly(false);
+                  }}
+                  sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                >
+                  Filter zurücksetzen
+                </Button>
+              </Box>
+            )}
+          </Stack>
+        </Paper>
+      )}
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Legacy Token-Transaktionen
+          Credit-Transaktionen
         </Typography>
       </Box>
 
@@ -217,9 +445,13 @@ export const TokensSection = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
-      ) : transactions.length === 0 ? (
+      ) : creditTransactions.length === 0 ? (
         <Alert severity="info" sx={{ borderRadius: 2 }}>
           Noch keine Transaktionen vorhanden.
+        </Alert>
+      ) : filteredTransactions.length === 0 ? (
+        <Alert severity="warning" sx={{ borderRadius: 2 }}>
+          Keine Transaktionen mit den aktuellen Filtern gefunden. Versuchen Sie, die Filter zurückzusetzen.
         </Alert>
       ) : (
         <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
@@ -228,12 +460,12 @@ export const TokensSection = () => {
               <TableRow sx={{ bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
                 <TableCell sx={{ fontWeight: 600 }}>Typ</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Betrag</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Gemini Tokens</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Beschreibung</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Datum</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {transactions.map((transaction) => (
+              {filteredTransactions.map((transaction) => (
                 <TableRow
                   key={transaction.id}
                   sx={{
@@ -262,19 +494,40 @@ export const TokensSection = () => {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {transaction.gemini_total_tokens ? (
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {transaction.gemini_total_tokens.toLocaleString()} total
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {transaction.gemini_input_tokens?.toLocaleString()} in / {transaction.gemini_output_tokens?.toLocaleString()} out
-                        </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {transaction.description || '-'}
+                    </Typography>
+                    {transaction.metadata && (
+                      <Box sx={{ mt: 0.5 }}>
+                        {/* Purchase metadata */}
+                        {(transaction.metadata as any).package_id && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                            Paket: {(transaction.metadata as any).package_id}
+                            {(transaction.metadata as any).amount_paid && ` • ${(transaction.metadata as any).amount_paid}€`}
+                          </Typography>
+                        )}
+
+                        {/* Gemini Token breakdown */}
+                        {(transaction.metadata as any).gemini_total_tokens && (
+                          <Box sx={{ mt: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>
+                              Gemini Token-Verbrauch:
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 1 }}>
+                              • Input Tokens: {(transaction.metadata as any).gemini_input_tokens?.toLocaleString() || 0}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 1 }}>
+                              • Output Tokens: {(transaction.metadata as any).gemini_output_tokens?.toLocaleString() || 0}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 1, fontWeight: 600 }}>
+                              • Total: {(transaction.metadata as any).gemini_total_tokens?.toLocaleString() || 0} Tokens
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block', ml: 1, mt: 0.5, color: 'primary.main', fontWeight: 600 }}>
+                              → {(transaction.metadata as any).credits_calculated || Math.abs(transaction.amount)} Credits
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        -
-                      </Typography>
                     )}
                   </TableCell>
                   <TableCell>
