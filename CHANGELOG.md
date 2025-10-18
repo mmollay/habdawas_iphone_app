@@ -4,6 +4,106 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.7.5] - 2025-10-19
+
+### Changed
+- 🔧 **Tab-Menü Komprimierung**: Platzsparende Navigation (aus Web-Version synchronisiert)
+  - **Mobile**: 52px → 44px Höhe (-8px / -15%)
+  - **Desktop**: 60px → 52px Höhe (-8px / -13%)
+  - **Icons**: Einheitlich 16px (von 18-20px)
+  - **Labels**: Verkürzt
+    - "Alle Inserate" → "Alle"
+    - "Meine Inserate" → "Meine"
+    - "Favoriten" bleibt gleich
+  - **Badges**: Kleinere Größe
+    - Höhe: 22px → 18px
+    - Font: 0.75rem → 0.6875rem
+    - Border-Radius: 3 → 2.5
+  - **Indikator**: 3px → 2px Höhe
+  - **Datei**: `src/App.tsx` (Tab-Styling)
+
+### Added
+- ✨ **Gallery View Infinite Scroll**: Load-More Funktionalität (aus Web-Version synchronisiert)
+  - **Feature**: "Mehr laden" Button am Ende der Galerie
+    - Erscheint wenn `hasMore === true`
+    - Verwendet bestehende `loadMoreItems()` Funktion
+  - **Loading State**: CircularProgress Indikator
+    - Zeigt sich während `loadingMore === true`
+  - **Konsistenz**: Gleiche UX wie Grid/List/Compact Views
+  - **Datei**: `src/App.tsx` (Gallery-Rendering)
+
+### Technical Details
+- **Sync Status**: UI-Änderungen aus bazar_bold v1.7.5 übernommen
+- **Keine Backend-Änderungen**: Nutzt bestehende Load-More-Logik
+- **Mobile-First**: Kompakte Tabs optimiert für iPhone-Bildschirme
+
+## [1.7.2] - 2025-10-18
+
+### Added
+- 🤖 **KI-Einstellungen im Admin-Bereich**: Gemini-Modell-Auswahl für Bildanalyse
+  - **Neue Komponente**: `src/components/Admin/AISettings.tsx`
+    - Dropdown-Menü zur Auswahl des Gemini-Modells
+    - 4 verfügbare Modelle: Flash 2.0 Experimental, Flash 1.5, Flash 8B, Pro 1.5
+    - Live-Vorschau des ausgewählten Modells mit Beschreibung
+    - Modell-Informationen Panel mit Verwendungshinweisen
+  - **Admin-Navigation**: Neue "KI-Einstellungen" Sektion
+    - **AdminSidebar.tsx**: Brain-Icon für KI-Settings
+    - **AdminPage.tsx**: Routing zur AISettings-Komponente
+  - **Datenbank**: Neues Setting `ai_model` in `credit_system_settings`
+  - **Edge Function Update**: `analyze-image/index.ts`
+    - Lädt ausgewähltes Modell aus Datenbank
+    - Default: `gemini-2.0-flash-exp`
+    - Dynamische URL-Generierung basierend auf Setting
+
+### Changed
+- 🎛️ **Admin-Bereich erweitert**: KI-Konfiguration für Administratoren
+  - Ermöglicht Testing verschiedener Gemini-Modelle
+  - Zentrale Steuerung der AI-Analyse-Qualität
+  - Flexibilität für Kosten-/Qualitäts-Optimierung
+
+### Technical Details
+- **Available Models**:
+  - `gemini-2.0-flash-exp`: Neuestes experimentelles Modell (Default)
+  - `gemini-1.5-flash`: Standard schnelles Modell
+  - `gemini-1.5-flash-8b`: Sehr schnelles, kleines Modell
+  - `gemini-1.5-pro`: Leistungsstärkstes Modell für höchste Qualität
+- **Database Schema**: `credit_system_settings.ai_model` (VARCHAR)
+- **Admin Access**: Nur für Benutzer mit Admin-Rolle verfügbar
+- **Real-time Updates**: Änderungen wirken sofort bei nächster Bildanalyse
+
+## [1.7.1] - 2025-10-18
+
+### Changed
+- 🎨 **Tab Bar UX-Redesign**: Listing-Info und Community-Topf in Tab-Leiste verschoben
+  - **Desktop**: Info rechts neben Tabs inline angezeigt (flexbox row layout)
+  - **Mobile**: Info als separate Zeilen unter Tabs (flexbox column layout mit border-top)
+  - **Gratis-Inserate**: 🗓️ Calendar Icon + "X gratis" (grüne Farbe)
+  - **Credits**: 💰 Coins Icon + "Y Credits" (orange Farbe)
+  - **Community-Topf**: ❤️ Heart Icon (filled, grün) + "Community-Topf: Z Credits" (klickbar zu `/tokens?tab=community`)
+  - **Hover-Effekt**: Community-Topf mit grünem Hover-Background (rgba(76, 175, 80, 0.08))
+  - **App.tsx** (Zeilen 150-170, 738-962): Neue Hooks, State und Info-Display integriert
+  - **Hooks verwendet**: `useCreditCheck()`, `useSystemSettings()`, `useCommunityStats()`
+
+### Removed
+- 🗑️ **Avatar-Menü: "Verfügbare Inserate" Sektion entfernt**
+  - **Grund**: Informationen wurden in Tab-Leiste verschoben (bessere Sichtbarkeit)
+  - **Header.tsx** (Zeilen 557-646): Komplette Sektion entfernt
+  - **Beibehalten**: "Mein Guthaben" Menüpunkt bleibt erhalten
+  - **Beibehalten**: Status-Badge im "Inserat anlegen" Button bleibt erhalten
+
+### Improved
+- ♿ **Barrierefreiheit**: Informationen jetzt immer sichtbar (nicht im versteckten Menü)
+- 📱 **Mobile UX**: Klare Trennung der Info-Bereiche mit border-top
+- 🖱️ **Interaktivität**: Community-Topf ist jetzt anklickbar und lädt zum Spenden ein
+- 🎯 **Konsistenz**: Einheitliches Icon-System (Calendar, Coins, Heart)
+
+### Technical Details
+- **App.tsx**: Tabs-Wrapper zu flexbox Box geändert (row/column je nach Viewport)
+- **Responsive Breakpoints**: `isMobile` für md-Breakpoint verwendet
+- **State Management**: `creditInfo` mit `CreditCheckResult` Type
+- **useEffect**: Credit-Info lädt automatisch bei User-Änderung
+- **Conditional Rendering**: Info nur angezeigt wenn `creditInfo` und `user` vorhanden
+
 ## [1.7.0] - 2025-10-18
 
 ### Improved

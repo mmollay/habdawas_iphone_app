@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Box, Button, IconButton, TextField, InputAdornment, useMediaQuery, useTheme, Badge, Avatar, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
-import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp, Calendar } from 'lucide-react';
+import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 import { useCreditsStats } from '../../hooks/useCreditsStats';
 import { useUserStatus } from '../../hooks/useUserStatus';
-import { useCreditCheck } from '../../hooks/useCreditCheck';
-import { useSystemSettings } from '../../hooks/useSystemSettings';
 import { SearchAutocomplete } from '../Common/SearchAutocomplete';
+import { CommunityPotWidget } from '../Community/CommunityPotWidget';
 import { supabase, Profile } from '../../lib/supabase';
 
 interface HeaderProps {
@@ -50,8 +49,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
   const { unreadCount } = useUnreadMessages(30000);
   const { personalCredits } = useCreditsStats();
   const { status: userStatus } = useUserStatus();
-  const { checkCredit } = useCreditCheck();
-  const { settings } = useSystemSettings();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -60,14 +57,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
   const [myItemsCount, setMyItemsCount] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [creditInfo, setCreditInfo] = useState<{
-    canCreate: boolean;
-    source?: string;
-    message: string;
-    remainingDailyListings?: number;
-    personalCredits?: number;
-    communityPotBalance?: number;
-  } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -109,12 +98,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
       setFavoritesCount(0);
     }
   }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      checkCredit().then(setCreditInfo);
-    }
-  }, [user, checkCredit]);
 
   useEffect(() => {
     setAnchorEl(null);
@@ -167,6 +150,16 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
           </Box>
         )}
 
+        {/* Community Pot Widget - Desktop only, visible for everyone */}
+        {!isMobile && (
+          <Box sx={{ mr: 2 }}>
+            <CommunityPotWidget
+              variant="compact"
+              onDonate={() => navigate('/tokens?tab=community')}
+            />
+          </Box>
+        )}
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, ml: 'auto' }}>
           {customButtons ? (
             customButtons
@@ -191,26 +184,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
                           }}
                         >
                           Inserat anlegen
-                          {creditInfo && (
-                            <Box
-                              component="span"
-                              sx={{
-                                ml: 1,
-                                px: 0.75,
-                                py: 0.25,
-                                bgcolor: 'rgba(255, 255, 255, 0.25)',
-                                borderRadius: 1,
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                              }}
-                            >
-                              {creditInfo.remainingDailyListings !== undefined && creditInfo.remainingDailyListings > 0
-                                ? `${creditInfo.remainingDailyListings} gratis`
-                                : creditInfo.personalCredits && creditInfo.personalCredits > 0
-                                ? `${creditInfo.personalCredits} Credits`
-                                : '0'}
-                            </Box>
-                          )}
                         </Button>
                       )}
                       {isMobile && (
@@ -553,97 +526,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             {personalCredits}
           </Box>
         </MenuItem>
-
-        {/* Verfügbare Inserate Info */}
-        {creditInfo && (
-          <Box
-            sx={{
-              px: 2.5,
-              py: 1.5,
-              bgcolor: 'rgba(76, 175, 80, 0.06)',
-              borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-              <Typography variant="caption" fontWeight={700} color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>
-                Verfügbare Inserate
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-              {creditInfo.remainingDailyListings !== undefined && creditInfo.remainingDailyListings > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      bgcolor: 'rgba(76, 175, 80, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Calendar size={14} style={{ color: '#4caf50' }} />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.8rem' }}>
-                      {creditInfo.remainingDailyListings} gratis heute
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      Reset: {settings?.dailyFreeListings || 5} pro Tag
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-              {creditInfo.personalCredits !== undefined && creditInfo.personalCredits > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      bgcolor: 'rgba(102, 126, 234, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Coins size={14} style={{ color: '#667eea' }} />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.8rem' }}>
-                      {creditInfo.personalCredits} Credits
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                      = {creditInfo.personalCredits} Inserate
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-              {(!creditInfo.remainingDailyListings || creditInfo.remainingDailyListings === 0) &&
-               (!creditInfo.personalCredits || creditInfo.personalCredits === 0) && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      bgcolor: 'rgba(244, 67, 54, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Coins size={14} style={{ color: '#f44336' }} />
-                  </Box>
-                  <Typography variant="caption" color="text.secondary" fontWeight={500} sx={{ fontSize: '0.75rem' }}>
-                    Keine verfügbar. Credits kaufen?
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          </Box>
-        )}
 
         <Box sx={{ py: 1 }}>
           <Typography variant="caption" color="text.secondary" sx={{ px: 2.5, py: 1, display: 'block', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>
