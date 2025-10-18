@@ -4,6 +4,17 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.7.6] - 2025-10-19
+
+### Fixed
+- 🔧 **PostgREST Foreign Key Recognition**: Endgültige Lösung für Schema Cache Problem (synchronisiert von Web-Version)
+  - **Root Cause**: Foreign Key Constraints hatten inkonsistente Namen
+  - **Lösung**: Migration `fix_postgrest_foreign_key_recognition.sql`
+    - Foreign Keys mit standardisierten Namen neu erstellt
+    - Proper `ON DELETE SET NULL` Constraints
+    - CONSTRAINT COMMENTS für Dokumentation
+  - **Ergebnis**: Keine "Could not find a relationship" Fehler mehr
+
 ## [1.7.5] - 2025-10-19
 
 ### Changed
