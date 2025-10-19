@@ -19,10 +19,11 @@ import TaskManagementTab from './TaskManagementTab';
 import { CreditSystemSettings } from './CreditSystemSettings';
 import { AISettings } from './AISettings';
 import { ProductManagement } from './ProductManagement';
+import { NewsletterManagement } from './NewsletterManagement';
 import { Header } from '../Layout/Header';
 import { Footer } from '../Layout/Footer';
 
-type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'products';
+type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'products' | 'newsletter';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -90,6 +91,8 @@ const AdminPage = () => {
         return <AISettings />;
       case 'products':
         return <ProductManagement />;
+      case 'newsletter':
+        return <NewsletterManagement />;
       default:
         return <UserManagementTab />;
     }
@@ -109,6 +112,8 @@ const AdminPage = () => {
         return 'KI-Einstellungen';
       case 'products':
         return 'Produktverwaltung';
+      case 'newsletter':
+        return 'Newsletter-Verwaltung';
       default:
         return 'Admin-Bereich';
     }
