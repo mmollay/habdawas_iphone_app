@@ -4,19 +4,115 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
-## [1.9.0] - 2025-10-19
+## [1.9.3] - 2025-10-19
+
+### Added
+- ✨ **Desktop Favorite & Share Buttons**: Jetzt auch im Desktop-Modus verfügbar
+  - **Änderung**: Favorite (❤️) und Share (📤) Buttons wurden im Desktop-Header hinzugefügt
+  - **Position**: Zwischen Flexbox-Spacer und Navigation-Buttons (Zeilen 1155-1176)
+  - **Styling**: Konsistent mit Mobile-Buttons, aber mit size={20}
+  - **Verhalten**: Immer sichtbar (auch bei eigenen Inseraten)
+  - **Dateien**:
+    - `src/components/Items/ItemDetailPage.tsx` (Zeilen 1155-1176)
+  - **User Report**: "ich sehe es aber noch nicht in der Detailansicht im Webmodus"
+
+## [1.9.2] - 2025-10-19
+
+### Fixed
+- 🐛 **Mobile Image Display Fix**: Item-Detail-Bilder nun mit voller Höhe auf Mobile
+  - **Problem**: Bilder in Mobile-Ansicht wurden mit nur 100px Höhe angezeigt statt 400px
+  - **Root Cause**: Platzhalter-Box für fixiertes Bild hatte `height: { xs: '100px', md: '400px' }`
+  - **Lösung**: Mobile-Höhe von 100px auf 400px erhöht (ItemDetailPage.tsx:1613-1614)
+  - **Ergebnis**:
+    - Bilder werden nun mit voller Höhe (400px) auf Mobile angezeigt
+    - Deutlich bessere User Experience auf Smartphones
+    - Konsistente Darstellung über alle Viewports
+  - **Getestet**: Mit Playwright im Mobile-Viewport (375x812) verifiziert
+  - **Dateien**:
+    - `src/components/Items/ItemDetailPage.tsx` (Zeilen 1613-1614)
+  - **User Report**: "das musst statt 100px @media (min-width: 0px) { .css-16barvy { height: 400px; } } sein sonst ist das Bild nicht sichtbar"
 
 ### Changed
-- 🎯 **Version Sync**: Version auf 1.9.0 angehoben
-  - **Info**: Admin User Management Multi-Select Features in bazar_bold
-  - **Hinweis**: UserManagementTab existiert nicht in iphone_app
+- ✨ **Share & Favorite Buttons**: Jetzt auch auf eigenen Inseraten verfügbar
+  - **Änderung**: Favorite (❤️) und Share (📤) Buttons werden nun IMMER angezeigt
+  - **Vorher**: Nur bei fremden Inseraten sichtbar (`user?.id !== item.user_id`)
+  - **Jetzt**: Auch bei eigenen Inseraten verfügbar
+  - **Begründung**:
+    - Benutzer möchten ihre eigenen Inserate teilen können
+    - Praktisch für schnelles Favorisieren eigener Items
+  - **Eigentümer-Ansicht zeigt nun**:
+    - Status Badge
+    - Bearbeiten Button
+    - Favorite Button ❤️
+    - Share Button 📤
+  - **Dateien**:
+    - `src/components/Items/ItemDetailPage.tsx` (Zeilen 1725-1746)
+  - **User Request**: "kann man im Detail dennoch das Teilen und Favoriten anzeigen, weil ich ja meines auf teilen können möchte, und Herz möchte ich vielleicht auch haben"
+
+## [1.9.1] - 2025-10-19
+
+### Fixed
+- 🐛 **Performance Fix**: Doppelte Item-Ladungen beim Seller-Filter behoben
+  - **Problem**: Beim Aufruf von `?seller=xxx` wurden Items doppelt geladen, Bilder blinkten
+  - **Root Cause**: `user` in useEffect dependency array löste Kaskaden-Trigger aus
+  - **Lösung 1**: `user` aus Filter-Change useEffect entfernt (App.tsx:467)
+    - Filter-Änderungen triggern nicht mehr bei User-State-Changes
+    - Initial Load übernimmt User-abhängige Logik
+  - **Lösung 2**: Error Handling zu `loadCounts()` hinzugefügt (App.tsx:228-260)
+    - HEAD requests werden gracefully behandelt
+    - Verhindert Crashes bei RLS-Policy-Issues
+  - **Ergebnis**:
+    - Items laden nur 1x statt 2x
+    - Bilder blinken nicht mehr
+    - Ladezeit: ~0.37s (sehr schnell)
+  - **Getestet**: Mit Playwright verifiziert
+  - **Dateien**:
+    - `src/App.tsx` (Zeilen 228-260, 467)
+  - **User Report**: "es blinken die Bilder auch 2mal auf wie wenn es doppeld geladen werden würde"
+
+## [1.9.0] - 2025-10-19
+
+### Added
+- 🎯 **Admin User Management**: Multi-Select mit Bulk-Aktionen
+  - **Checkbox-Spalte**: Alle Benutzer können einzeln ausgewählt werden
+  - **Select All**: Alle nicht-Admin Benutzer auf einmal auswählen
+  - **Bulk-Action Toolbar**: Erscheint bei Auswahl von Benutzern
+  - **Bulk Delete**: Mehrere Benutzer gleichzeitig löschen
+  - **Smart Dialog**: Zeigt Liste aller ausgewählten Benutzer vor Löschung
+  - **Admin-Schutz**: Admin-Benutzer können nicht ausgewählt/gelöscht werden
+  - **Features**:
+    - Indeterminate Checkbox State für teilweise Auswahl
+    - Zähler zeigt Anzahl ausgewählter Benutzer
+    - Scrollbare Liste bei vielen ausgewählten Benutzern
+    - Items und Nachrichten-Count pro Benutzer im Dialog
+  - **Datei**: `src/components/Admin/UserManagementTab.tsx`
+  - **User Request**: "ich möchte die Benutzerverwaltung überarbeiten! ich würde gerne multi remove einführen über checkboxen"
+  - **Komponenten**:
+    - Neue Imports: `Checkbox`, `Toolbar`
+    - State: `selectedUserIds`
+    - Handlers: `handleSelectAll`, `handleSelectUser`, `handleBulkDelete`
+    - UI: Bulk-Action Toolbar mit Löschen-Button
 
 ## [1.8.1] - 2025-10-19
 
 ### Changed
-- 🎨 **Version Sync**: Version auf 1.8.1 angehoben
-  - **Info**: Tokens Page UX Improvements in bazar_bold
-  - **Hinweis**: CreditPurchasePage existiert nicht in iphone_app
+- 🎨 **Tokens Page UX Improvement**: Tab-Buttons mit integrierten Counters
+  - **Problem**: Zwei Tab-Buttons und darunter zwei Info-Boxen sahen zu ähnlich aus
+  - **Lösung**: Counter-Informationen direkt in Tab-Buttons integriert
+  - **Entfernt**: Separate Info-Boxen unter den Tabs (Meine Credits / Community-Topf)
+  - **Anzeige in Buttons**:
+    - "Personal Credits - 255 Credits"
+    - "Community Spenden - 348 Inserate"
+  - **Vorteile**:
+    - Klarere Trennung zwischen Navigation und Information
+    - Weniger visuelle Redundanz
+    - Sofort erkennbar dass Buttons zum Wechseln dienen
+  - **Datei**: `src/components/Tokens/CreditPurchasePage.tsx`
+    - Zeilen 674-683: Personal Credits Counter in Tab
+    - Zeilen 746-755: Community Spenden Counter in Tab
+    - Zeilen 762-853: Separate Counter-Boxen entfernt
+  - **User Request**: "Die zwei Buttons und darunter die 2 Felder verwirren etwas weiß sie so gleich aussehen"
+  - **Getestet**: Mit Playwright verifiziert
 
 ## [1.8.0] - 2025-10-19
 
