@@ -85,6 +85,7 @@ export const NewsletterManagement = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  const [templateToOverwrite, setTemplateToOverwrite] = useState<string>(''); // 'new' or template ID
 
   useEffect(() => {
     fetchSubscribersCount();
@@ -140,13 +141,18 @@ export const NewsletterManagement = () => {
   };
 
   const handleSaveTemplate = async () => {
-    if (!templateName.trim()) {
-      setError('Bitte gib einen Namen für die Vorlage ein');
+    if (!subject.trim() || !body.trim()) {
+      setError('Betreff und Nachricht dürfen nicht leer sein');
       return;
     }
 
-    if (!subject.trim() || !body.trim()) {
-      setError('Betreff und Nachricht dürfen nicht leer sein');
+    if (templateToOverwrite === 'new' && !templateName.trim()) {
+      setError('Bitte gib einen Namen für die neue Vorlage ein');
+      return;
+    }
+
+    if (!templateToOverwrite) {
+      setError('Bitte wähle eine Option aus');
       return;
     }
 
@@ -154,19 +160,38 @@ export const NewsletterManagement = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Nicht authentifiziert');
 
-      const { error: insertError } = await supabase
-        .from('newsletter_templates')
-        .insert({
-          name: templateName,
-          subject,
-          body,
-          created_by: user.id,
-        });
+      if (templateToOverwrite === 'new') {
+        // Create new template
+        const { error: insertError } = await supabase
+          .from('newsletter_templates')
+          .insert({
+            name: templateName,
+            subject,
+            body,
+            created_by: user.id,
+          });
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+        setSuccess('✨ Vorlage erfolgreich erstellt!');
+      } else {
+        // Update existing template
+        const { error: updateError } = await supabase
+          .from('newsletter_templates')
+          .update({
+            subject,
+            body,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', templateToOverwrite);
 
-      setSuccess('✨ Vorlage erfolgreich gespeichert!');
+        if (updateError) throw updateError;
+
+        const template = templates.find(t => t.id === templateToOverwrite);
+        setSuccess(`✨ Vorlage "${template?.name}" erfolgreich aktualisiert!`);
+      }
+
       setTemplateName('');
+      setTemplateToOverwrite('');
       setSaveTemplateOpen(false);
       fetchTemplates();
     } catch (err) {
@@ -581,20 +606,63 @@ export const NewsletterManagement = () => {
         </DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 3 }}>
-            Speichere den aktuellen Newsletter als Vorlage für zukünftige Verwendung.
+            Erstelle eine neue Vorlage oder überschreibe eine bestehende Vorlage mit dem aktuellen Newsletter-Inhalt.
           </Alert>
-          <TextField
-            fullWidth
-            label="Vorlagenname"
-            value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
-            placeholder="z.B. Monatsupdate, Feature-Ankündigung"
-            autoFocus
-          />
+
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel>Aktion wählen</InputLabel>
+            <Select
+              value={templateToOverwrite}
+              onChange={(e) => setTemplateToOverwrite(e.target.value)}
+              label="Aktion wählen"
+            >
+              <MenuItem value="new">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Save size={16} />
+                  Neue Vorlage erstellen
+                </Box>
+              </MenuItem>
+              {templates.length > 0 && (
+                <>
+                  <MenuItem disabled>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                      Bestehende Vorlage überschreiben:
+                    </Typography>
+                  </MenuItem>
+                  {templates.map((template) => (
+                    <MenuItem key={template.id} value={template.id}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <FileText size={16} />
+                        {template.name}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </>
+              )}
+            </Select>
+          </FormControl>
+
+          {templateToOverwrite === 'new' && (
+            <TextField
+              fullWidth
+              label="Name der neuen Vorlage"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="z.B. Monatsupdate, Feature-Ankündigung"
+              autoFocus
+            />
+          )}
+
+          {templateToOverwrite && templateToOverwrite !== 'new' && (
+            <Alert severity="warning">
+              Die ausgewählte Vorlage "{templates.find(t => t.id === templateToOverwrite)?.name}" wird mit dem aktuellen Inhalt überschrieben.
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => {
             setTemplateName('');
+            setTemplateToOverwrite('');
             setSaveTemplateOpen(false);
           }}>
             Abbrechen
@@ -602,7 +670,7 @@ export const NewsletterManagement = () => {
           <Button
             variant="contained"
             onClick={handleSaveTemplate}
-            disabled={!templateName.trim()}
+            disabled={!templateToOverwrite || (templateToOverwrite === 'new' && !templateName.trim())}
           >
             Speichern
           </Button>

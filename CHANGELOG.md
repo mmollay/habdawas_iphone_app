@@ -4,6 +4,29 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.4] - 2025-10-19
+
+### Added
+- ✨ **Newsletter-Verwaltung: Template-Überschreiben-Funktion**
+  - Beim "Als Vorlage speichern" kann man jetzt wählen:
+    - Neue Vorlage erstellen (wie bisher)
+    - Bestehende Vorlage überschreiben
+  - Dropdown zeigt alle vorhandenen Vorlagen zum Überschreiben
+  - Warnung bei Überschreiben einer bestehenden Vorlage
+  - Verbesserte UX mit klarer Trennung zwischen neuen und bestehenden Vorlagen
+  - Erfolgsmelding zeigt je nach Aktion "erstellt" oder "aktualisiert"
+
+### Improved
+- 🔧 **Edge Function: Detailliertes Error-Logging**
+  - Schrittweise Logging-Ausgaben in generate-newsletter Edge Function
+  - 12 Logging-Punkte zur Fehleranalyse hinzugefügt
+  - Bessere Fehler-Diagnostik für Newsletter-AI-Generierung
+
+### Technical Details
+- **Geänderte Dateien**:
+  - `src/components/Admin/NewsletterManagement.tsx` - Template-Überschreiben-Dialog (Lines 143-201, 595-678)
+  - `supabase/functions/generate-newsletter/index.ts` - Detailliertes Logging hinzugefügt
+
 ## [1.15.3] - 2025-10-19
 
 ### Added

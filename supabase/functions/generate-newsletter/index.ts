@@ -16,8 +16,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log("[1] Request received");
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.log("[ERROR] Missing authorization header");
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
         {
@@ -30,6 +32,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log("[2] Creating Supabase client");
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -41,8 +44,10 @@ Deno.serve(async (req: Request) => {
     );
 
     // Verify user is admin
+    console.log("[3] Verifying user authentication");
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
+      console.log("[ERROR] User error:", userError);
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         {
@@ -55,13 +60,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: profile } = await supabaseClient
+    console.log("[4] Checking admin status for user:", user.id);
+    const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("is_admin")
       .eq("id", user.id)
       .single();
 
+    if (profileError) {
+      console.log("[ERROR] Profile fetch error:", profileError);
+    }
+
     if (!profile?.is_admin) {
+      console.log("[ERROR] User is not admin");
       return new Response(
         JSON.stringify({ error: "Admin access required" }),
         {
@@ -75,8 +86,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // Check if Google Gemini API key is configured
+    console.log("[5] Checking Gemini API key");
     const geminiApiKey = Deno.env.get("GOOGLE_GEMINI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
     if (!geminiApiKey) {
+      console.log("[ERROR] No Gemini API key configured");
       return new Response(
         JSON.stringify({
           error: "AI generation not configured. Please add GOOGLE_GEMINI_API_KEY to your Edge Function secrets."
@@ -90,8 +103,10 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+    console.log("[5.1] Gemini API key found");
 
     // Fetch CHANGELOG.md from the repository
+    console.log("[6] Fetching CHANGELOG");
     const changelogUrl = "https://raw.githubusercontent.com/mmollay/bazar-bolt/main/CHANGELOG.md";
     let changelogContent = "";
 
@@ -99,16 +114,18 @@ Deno.serve(async (req: Request) => {
       const changelogResponse = await fetch(changelogUrl);
       if (changelogResponse.ok) {
         changelogContent = await changelogResponse.text();
+        console.log("[6.1] CHANGELOG fetched, length:", changelogContent.length);
       } else {
-        console.warn("Could not fetch CHANGELOG.md, will generate without it");
+        console.warn("[6.2] Could not fetch CHANGELOG.md (status:", changelogResponse.status, "), will generate without it");
         changelogContent = "Keine Changelog-Informationen verfügbar.";
       }
     } catch (error) {
-      console.error("Error fetching CHANGELOG:", error);
+      console.error("[ERROR] Error fetching CHANGELOG:", error);
       changelogContent = "Keine Changelog-Informationen verfügbar.";
     }
 
     // Get last 10 sent newsletters to avoid repetition
+    console.log("[7] Fetching previous newsletters");
     const { data: previousNewsletters, error: newslettersError } = await supabaseClient
       .from("newsletters")
       .select("subject, body")
@@ -117,7 +134,9 @@ Deno.serve(async (req: Request) => {
       .limit(10);
 
     if (newslettersError) {
-      console.error("Error fetching previous newsletters:", newslettersError);
+      console.error("[ERROR] Error fetching previous newsletters:", newslettersError);
+    } else {
+      console.log("[7.1] Found", previousNewsletters?.length || 0, "previous newsletters");
     }
 
     // Build context for AI
@@ -126,6 +145,7 @@ Deno.serve(async (req: Request) => {
       : "Keine bisherigen Newsletter vorhanden.";
 
     // Call Google Gemini API to generate newsletter
+    console.log("[8] Building prompt for Gemini");
     const prompt = `Du bist ein freundlicher Newsletter-Autor für die Plattform "HabDaWas" - einen Online-Flohmarkt und Community-Marktplatz.
 
 Deine Aufgabe ist es, einen ansprechenden Newsletter zu erstellen, der die neuesten Features und Verbesserungen der Plattform vorstellt.
@@ -154,6 +174,7 @@ AUSGABEFORMAT - Antworte NUR mit einem gültigen JSON-Objekt ohne zusätzlichen 
 
 Generiere jetzt einen neuen, einzigartigen Newsletter:`;
 
+    console.log("[9] Calling Gemini API");
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`,
       {
@@ -175,22 +196,36 @@ Generiere jetzt einen neuen, einzigartigen Newsletter:`;
       }
     );
 
+    console.log("[9.1] Gemini response status:", geminiResponse.status);
     if (!geminiResponse.ok) {
       const errorText = await geminiResponse.text();
-      console.error("Gemini API error:", errorText);
-      throw new Error("Failed to generate newsletter with AI");
+      console.error("[ERROR] Gemini API error (status", geminiResponse.status, "):", errorText);
+      throw new Error("Failed to generate newsletter with AI: " + errorText.substring(0, 100));
     }
 
+    console.log("[10] Parsing Gemini response");
     const geminiData = await geminiResponse.json();
+    console.log("[10.1] Gemini response structure:", JSON.stringify(geminiData).substring(0, 200));
+
+    if (!geminiData.candidates || !geminiData.candidates[0]?.content?.parts?.[0]?.text) {
+      console.error("[ERROR] Unexpected Gemini response structure:", JSON.stringify(geminiData));
+      throw new Error("Unexpected response structure from Gemini API");
+    }
+
     const generatedText = geminiData.candidates[0].content.parts[0].text;
+    console.log("[10.2] Generated text length:", generatedText.length);
 
     // Extract JSON from response (Gemini might wrap it in markdown code blocks)
+    console.log("[11] Extracting JSON from response");
     const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("[ERROR] Could not find JSON in response:", generatedText.substring(0, 200));
       throw new Error("Could not parse AI response as JSON");
     }
 
+    console.log("[12] Parsing JSON");
     const generated = JSON.parse(jsonMatch[0]);
+    console.log("[12.1] Successfully generated newsletter with subject:", generated.subject);
 
     return new Response(
       JSON.stringify({
