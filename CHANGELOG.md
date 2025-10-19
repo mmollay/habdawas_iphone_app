@@ -4,6 +4,43 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.0] - 2025-10-19
+
+### Added
+- 🗄️ **Datenbank-Tabellen für Credit-System**
+  - Neue Tabelle `donations` für Benutzer-Spenden
+  - Neue Tabelle `community_pot_transactions` für Community-Pot-Transaktionen
+  - Foreign Keys zu `profiles` statt `auth.users` für korrekte Supabase-Joins
+  - Vollständige RLS-Policies für Datensicherheit
+  - Migrations: `20251019000004_create_donations_table.sql` und `20251019000005_create_community_pot_transactions_table.sql`
+
+### Changed
+- 🎨 **Einheitliche Admin-UI mit h5-Titeln**
+  - Alle Admin-Komponenten haben jetzt konsistentes Titel-Format
+  - h5-Titel + Kurzbeschreibung + Refresh-Button bei jedem Tab
+  - Betrifft: NewsletterManagement, UserManagementTab, TaskManagementTab, SystemSettingsTab, RoleManagementTab, AISettings, CreditSystemSettings, ManualCreditGrant, ProductManagement
+  - Verbesserte UX durch einheitliches Design
+
+### Fixed
+- 🐛 **Behoben: Foreign-Key-Fehler bei donations und community_pot_transactions**
+  - Fehler "Could not find a relationship between 'donations' and 'profiles'" behoben
+  - Fehler "Could not find a relationship between 'community_pot_transactions' and 'profiles'" behoben
+  - Korrekte Supabase-Query-Joins für `.select('*, user:profiles!user_id(...)')`
+
+### Technical Details
+- **Neue Dateien**:
+  - `supabase/migrations/20251019000004_create_donations_table.sql`
+  - `supabase/migrations/20251019000005_create_community_pot_transactions_table.sql`
+- **Geänderte Dateien** (alle mit h5-Titel-Format):
+  - `src/components/Admin/NewsletterManagement.tsx`
+  - `src/components/Admin/UserManagementTab.tsx`
+  - `src/components/Admin/TaskManagementTab.tsx`
+  - `src/components/Admin/SystemSettingsTab.tsx`
+  - `src/components/Admin/RoleManagementTab.tsx`
+  - `src/components/Admin/AISettings.tsx`
+  - `src/components/Admin/CreditSystemSettings.tsx`
+  - `src/components/Admin/ManualCreditGrant.tsx`
+
 ## [1.14.0] - 2025-10-19
 
 ### Added

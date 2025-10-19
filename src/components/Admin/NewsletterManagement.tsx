@@ -32,6 +32,7 @@ import {
   InputLabel,
 } from '@mui/material';
 import { Send, X, Mail, Users, History, Eye, RefreshCw, Sparkles, ChevronDown, ChevronUp, Save, FileText } from 'lucide-react';
+import { Box as MuiBox } from '@mui/material';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -688,13 +689,18 @@ export const NewsletterManagement = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Newsletter-Verwaltung
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Versende personalisierte Newsletter an alle Abonnenten
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Newsletter-Verwaltung
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Versende personalisierte Newsletter an alle Abonnenten
+          </Typography>
+        </Box>
+        <IconButton onClick={() => { fetchNewsletters(); fetchSubscribersCount(); }} disabled={loading}>
+          <RefreshCw size={20} />
+        </IconButton>
       </Box>
 
       <Tabs value={selectedTab} onChange={(_, v) => setSelectedTab(v)} sx={{ mb: 3 }}>

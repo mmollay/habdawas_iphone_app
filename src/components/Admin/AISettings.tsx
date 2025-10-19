@@ -20,8 +20,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  IconButton,
 } from '@mui/material';
-import { Brain, Save, TrendingUp, DollarSign } from 'lucide-react';
+import { Brain, Save, TrendingUp, DollarSign, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface AISettings {
@@ -154,11 +155,25 @@ export const AISettings = () => {
 
   return (
     <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+            KI-Einstellungen
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Konfiguriere KI-Funktionen und API-Einstellungen
+          </Typography>
+        </Box>
+        <IconButton onClick={fetchSettings} disabled={loading}>
+          <RefreshCw size={20} />
+        </IconButton>
+      </Box>
+
       <Paper sx={{ p: { xs: 2, md: 3 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, mb: { xs: 2, md: 3 } }}>
           <Brain size={isMobile ? 20 : 24} />
           <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{ fontWeight: 600 }}>
-            KI-Einstellungen
+            Modell-Auswahl
           </Typography>
         </Box>
 

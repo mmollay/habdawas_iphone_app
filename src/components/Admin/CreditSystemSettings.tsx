@@ -15,8 +15,9 @@ import {
   InputAdornment,
   Tabs,
   Tab,
+  IconButton,
 } from '@mui/material';
-import { Save, Info, Users, DollarSign, Gift, List, Settings } from 'lucide-react';
+import { Save, Info, Users, DollarSign, Gift, List, Settings, RefreshCw } from 'lucide-react';
 import { useSystemSettings } from '../../hooks/useSystemSettings';
 import { ManualCreditGrant } from './ManualCreditGrant';
 import { TransactionsList } from '../Shared/TransactionsList';
@@ -36,6 +37,20 @@ export const CreditSystemSettings = () => {
 
   return (
     <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Credit-System Einstellungen
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Konfiguriere das Community-Spendentopf & Power-User System
+          </Typography>
+        </Box>
+        <IconButton onClick={() => window.location.reload()} disabled={loading}>
+          <RefreshCw size={20} />
+        </IconButton>
+      </Box>
+
       {/* Sub-Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs
@@ -160,14 +175,6 @@ const CreditSystemSettingsTab = () => {
 
   return (
     <Box>
-      {/* Header - Hidden on mobile */}
-      <Typography variant="h5" fontWeight={700} gutterBottom sx={{ mb: 1, display: { xs: 'none', md: 'block' } }}>
-        Credit-System Einstellungen
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: { xs: 2, md: 4 }, display: { xs: 'none', md: 'block' } }}>
-        Konfiguriere das Community-Spendentopf & Power-User System
-      </Typography>
-
       {/* Info Alert */}
       <Alert severity="info" icon={<Info size={20} />} sx={{ mb: 3 }}>
         <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
