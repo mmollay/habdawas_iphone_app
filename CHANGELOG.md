@@ -4,6 +4,31 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.9.5] - 2025-10-19
+
+### Added
+- ✨ **Admin-Seite Tab-Persistenz**: Admin-Sidebar merkt sich die zuletzt besuchte Section (localStorage)
+  - Beim Reload wird automatisch die zuletzt aktive Section wiederhergestellt
+  - Auch Sidebar-Collapsed-State wird gespeichert
+  - Verbesserte UX für Admin-Benutzer
+  - **localStorage Keys**: `adminCurrentSection`, `adminSidebarCollapsed`
+  - **Dateien**:
+    - `src/components/Admin/AdminPage.tsx` (localStorage Integration)
+  - **User Request**: "Ausserdem sol er sich die Einstellung merken wenn ich aus der Sidebar einen Tab wähle! damit ich bei einem Reload wieder auf richten Seite bin"
+
+- ✨ **Credit-System Sub-Tab-Persistenz**: Credit-System-Einstellungen merken sich den aktiven Sub-Tab
+  - Sub-Tabs: Einstellungen, Spenden, Credits vergeben, Transaktionen
+  - State wird in localStorage gespeichert (`creditSystemSubTab`)
+  - Beim Reload wird der zuletzt aktive Sub-Tab wiederhergestellt
+  - **Dateien**:
+    - `src/components/Admin/CreditSystemSettings.tsx` (localStorage Integration)
+
+### Changed
+- **Bestehende Features beibehalten**:
+  - Tokens-Seite (`/tokens`) nutzt bereits URL-Parameter für Tab-Persistenz (`?tab=community`)
+  - Credit-System-Einstellungen wirken weiterhin auf die Tokens-Seite (dynamische Berechnungen)
+  - Admin Credit-System-Einstellungen sind bereits voll funktionsfähig
+
 ## [1.9.4] - 2025-10-19
 
 ### Added
