@@ -105,6 +105,17 @@ Deno.serve(async (req: Request) => {
     }
     console.log("[5.1] Gemini API key found");
 
+    // Fetch newsletter AI model from settings
+    console.log("[5.2] Fetching newsletter AI model from settings");
+    const { data: modelSetting, error: modelError } = await supabaseClient
+      .from("credit_system_settings")
+      .select("setting_value")
+      .eq("setting_key", "newsletter_ai_model")
+      .single();
+
+    const aiModel = modelSetting?.setting_value || "gemini-2.0-flash-exp";
+    console.log("[5.3] Using AI model:", aiModel);
+
     // Fetch CHANGELOG.md from the repository
     console.log("[6] Fetching CHANGELOG");
     const changelogUrl = "https://raw.githubusercontent.com/mmollay/bazar-bolt/main/CHANGELOG.md";
@@ -174,9 +185,9 @@ AUSGABEFORMAT - Antworte NUR mit einem gültigen JSON-Objekt ohne zusätzlichen 
 
 Generiere jetzt einen neuen, einzigartigen Newsletter:`;
 
-    console.log("[9] Calling Gemini API");
+    console.log("[9] Calling Gemini API with model:", aiModel);
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiApiKey}`,
       {
         method: "POST",
         headers: {

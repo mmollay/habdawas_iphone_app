@@ -4,6 +4,40 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.5] - 2025-10-19
+
+### Added
+- ✨ **KI-Einstellungen: Getrennte Modell-Auswahl**
+  - Neues Dropdown für Newsletter-KI-Modell hinzugefügt (zusätzlich zum Inserate-Modell)
+  - Admin kann jetzt unterschiedliche Gemini-Modelle wählen für:
+    - 📦 **Inserate-Erstellung** (Bildanalyse)
+    - 📧 **Newsletter-Generierung** (Text-KI)
+  - Neue Datenbank-Einstellung: `newsletter_ai_model`
+  - Default: `gemini-2.0-flash-exp` (aktuellste Version, kostenlos während Preview)
+  - Übersichtliche Darstellung mit Icons und Kategorien
+  - Separate Info-Karten zeigen die Kosten pro Verwendung
+
+### Improved
+- 🔧 **Edge Function: Dynamische Modell-Auswahl**
+  - `generate-newsletter` Edge Function liest jetzt das KI-Modell aus den Settings
+  - Keine hartcodierten Modell-Namen mehr
+  - Admin kann Modell jederzeit ohne Code-Änderung wechseln
+  - Logging zeigt verwendetes Modell für bessere Transparenz
+
+### Changed
+- 🎨 **UI-Verbesserungen in KI-Einstellungen**
+  - Beschreibung angepasst: "Konfiguriere KI-Modelle für verschiedene Funktionen"
+  - Klare Trennung zwischen Inserate- und Newsletter-Modell mit Divider
+  - Info-Box zeigt spezifische Kosten für Inserate vs. Newsletter
+  - Erweiterte Modell-Informationen mit separaten Abschnitten
+
+### Technical Details
+- **Neue Dateien**:
+  - Datenbank-Einstellung `newsletter_ai_model` in `credit_system_settings` Tabelle
+- **Geänderte Dateien**:
+  - `src/components/Admin/AISettings.tsx` - Erweitert um Newsletter-Modell-Auswahl (Lines 28-31, 95-162, 172-345, 467-502)
+  - `supabase/functions/generate-newsletter/index.ts` - Dynamische Modell-Auswahl (Lines 108-117, 188-190)
+
 ## [1.15.4] - 2025-10-19
 
 ### Added

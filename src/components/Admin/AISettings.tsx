@@ -27,6 +27,7 @@ import { supabase } from '../../lib/supabase';
 
 interface AISettings {
   ai_model: string;
+  newsletter_ai_model: string;
 }
 
 interface ModelPricing {
@@ -99,13 +100,18 @@ export const AISettings = () => {
       const { data, error } = await supabase
         .from('credit_system_settings')
         .select('setting_key, setting_value')
-        .eq('setting_key', 'ai_model')
-        .single();
+        .in('setting_key', ['ai_model', 'newsletter_ai_model']);
 
       if (error) throw error;
 
+      const settingsMap = data?.reduce((acc, item) => {
+        acc[item.setting_key] = item.setting_value;
+        return acc;
+      }, {} as Record<string, string>) || {};
+
       setSettings({
-        ai_model: data?.setting_value || 'gemini-2.0-flash-exp',
+        ai_model: settingsMap.ai_model || 'gemini-2.0-flash-exp',
+        newsletter_ai_model: settingsMap.newsletter_ai_model || 'gemini-2.0-flash-exp',
       });
     } catch (err) {
       console.error('Error loading AI settings:', err);
@@ -123,7 +129,8 @@ export const AISettings = () => {
       setError(null);
       setSuccess(false);
 
-      const { error } = await supabase
+      // Update ai_model (Inserate)
+      const { error: aiModelError } = await supabase
         .from('credit_system_settings')
         .update({
           setting_value: settings.ai_model,
@@ -131,7 +138,18 @@ export const AISettings = () => {
         })
         .eq('setting_key', 'ai_model');
 
-      if (error) throw error;
+      if (aiModelError) throw aiModelError;
+
+      // Update newsletter_ai_model
+      const { error: newsletterModelError } = await supabase
+        .from('credit_system_settings')
+        .update({
+          setting_value: settings.newsletter_ai_model,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('setting_key', 'newsletter_ai_model');
+
+      if (newsletterModelError) throw newsletterModelError;
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -151,7 +169,8 @@ export const AISettings = () => {
     );
   }
 
-  const selectedModel = GEMINI_MODELS.find(m => m.value === settings?.ai_model);
+  const selectedInserateModel = GEMINI_MODELS.find(m => m.value === settings?.ai_model);
+  const selectedNewsletterModel = GEMINI_MODELS.find(m => m.value === settings?.newsletter_ai_model);
 
   return (
     <Box>
@@ -161,7 +180,7 @@ export const AISettings = () => {
             KI-Einstellungen
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Konfiguriere KI-Funktionen und API-Einstellungen
+            Konfiguriere KI-Modelle für verschiedene Funktionen
           </Typography>
         </Box>
         <IconButton onClick={fetchSettings} disabled={loading}>
@@ -191,13 +210,17 @@ export const AISettings = () => {
           </Alert>
         )}
 
+        {/* Inserate KI-Modell */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
+          📦 Inserate-Erstellung (Bildanalyse)
+        </Typography>
         <FormControl fullWidth sx={{ mb: 3 }}>
-          <InputLabel id="ai-model-label">Gemini-Modell</InputLabel>
+          <InputLabel id="ai-model-label">KI-Modell für Inserate</InputLabel>
           <Select
             labelId="ai-model-label"
             id="ai-model"
             value={settings?.ai_model || ''}
-            label="Gemini-Modell"
+            label="KI-Modell für Inserate"
             onChange={(e) => setSettings({ ...settings!, ai_model: e.target.value })}
           >
             {GEMINI_MODELS.map((model) => (
@@ -231,22 +254,90 @@ export const AISettings = () => {
           </Select>
         </FormControl>
 
-        {selectedModel && (
-          <Alert severity="info" sx={{ mb: 3 }}>
+        {selectedInserateModel && (
+          <Alert severity="info" sx={{ mb: 4 }}>
             <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-              Aktuell ausgewählt: {selectedModel.label}
+              Inserate: {selectedInserateModel.label}
             </Typography>
             <Typography variant="body2" sx={{ mb: 1 }}>
-              {selectedModel.description}
+              {selectedInserateModel.description}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
               <Chip
                 icon={<TrendingUp size={14} />}
-                label={selectedModel.pricing.estimatedCostFor5kTokens > 0
-                  ? `~${selectedModel.pricing.estimatedCostFor5kTokens.toFixed(4)}€ / großes Inserat`
+                label={selectedInserateModel.pricing.estimatedCostFor5kTokens > 0
+                  ? `~${selectedInserateModel.pricing.estimatedCostFor5kTokens.toFixed(4)}€ / großes Inserat`
                   : 'Kostenlos während Preview'}
                 size="small"
-                color={selectedModel.pricing.estimatedCostFor5kTokens > 0 ? 'primary' : 'success'}
+                color={selectedInserateModel.pricing.estimatedCostFor5kTokens > 0 ? 'primary' : 'success'}
+                sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }}
+              />
+            </Box>
+          </Alert>
+        )}
+
+        <Divider sx={{ my: 3 }} />
+
+        {/* Newsletter KI-Modell */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
+          📧 Newsletter-Generierung (Text-KI)
+        </Typography>
+        <FormControl fullWidth sx={{ mb: 3 }}>
+          <InputLabel id="newsletter-ai-model-label">KI-Modell für Newsletter</InputLabel>
+          <Select
+            labelId="newsletter-ai-model-label"
+            id="newsletter-ai-model"
+            value={settings?.newsletter_ai_model || ''}
+            label="KI-Modell für Newsletter"
+            onChange={(e) => setSettings({ ...settings!, newsletter_ai_model: e.target.value })}
+          >
+            {GEMINI_MODELS.map((model) => (
+              <MenuItem key={model.value} value={model.value}>
+                <Box sx={{ width: '100%' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body1">{model.label}</Typography>
+                    {model.pricing.estimatedCostFor5kTokens > 0 ? (
+                      <Chip
+                        icon={<DollarSign size={12} />}
+                        label={`${model.pricing.estimatedCostFor5kTokens.toFixed(4)}€`}
+                        size="small"
+                        color="primary"
+                        sx={{ fontSize: '0.7rem', height: 20 }}
+                      />
+                    ) : (
+                      <Chip
+                        label="GRATIS"
+                        size="small"
+                        color="success"
+                        sx={{ fontSize: '0.7rem', height: 20, fontWeight: 600 }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    {model.description}
+                  </Typography>
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {selectedNewsletterModel && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+              Newsletter: {selectedNewsletterModel.label}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              {selectedNewsletterModel.description}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+              <Chip
+                icon={<TrendingUp size={14} />}
+                label={selectedNewsletterModel.pricing.estimatedCostFor5kTokens > 0
+                  ? `~${selectedNewsletterModel.pricing.estimatedCostFor5kTokens.toFixed(4)}€ / Newsletter`
+                  : 'Kostenlos während Preview'}
+                size="small"
+                color={selectedNewsletterModel.pricing.estimatedCostFor5kTokens > 0 ? 'primary' : 'success'}
                 sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }}
               />
             </Box>
@@ -381,11 +472,20 @@ export const AISettings = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '0.85rem', md: '0.875rem' } }}>
-              Verwendung
+              📦 Inserate-Modell
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-              Das ausgewählte Modell wird für die KI-gestützte Bildanalyse beim Erstellen von Inseraten verwendet.
-              Nutzer sehen die Ergebnisse des hier ausgewählten Modells.
+              Wird für die KI-gestützte Bildanalyse beim Erstellen von Inseraten verwendet.
+              Nutzer sehen die Ergebnisse dieses Modells in der Inserate-Erstellung.
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '0.85rem', md: '0.875rem' } }}>
+              📧 Newsletter-Modell
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+              Wird für die automatische Generierung von Newsletter-Inhalten verwendet.
+              Das Modell erstellt kreative Texte basierend auf dem Changelog und früheren Newslettern.
             </Typography>
           </Box>
           <Box>
@@ -394,8 +494,8 @@ export const AISettings = () => {
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
               Um die verschiedenen Modelle zu testen, wählen Sie ein Modell aus, speichern Sie die Einstellung
-              und erstellen Sie anschließend ein Test-Inserat mit Bildanalyse. Vergleichen Sie Qualität,
-              Geschwindigkeit und Kosten der verschiedenen Modelle.
+              und testen Sie die jeweilige Funktion (Inserat mit Bildanalyse oder Newsletter-Generierung).
+              Vergleichen Sie Qualität, Geschwindigkeit und Kosten.
             </Typography>
           </Box>
         </Box>
