@@ -4,6 +4,263 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.12.0] - 2025-10-19
+
+### Added
+- 🛍️ **Produktverwaltung im Admin-Bereich**
+  - Neue Datenbanktabelle `credit_packages` für Stripe-Produktkonfiguration
+  - Admin-Komponente zur Verwaltung von Credit-Paketen und Community-Spenden
+  - Bearbeitung von Produktnamen, Beschreibungen, Preisen und Bonus-Prozenten
+  - Aktivierung/Deaktivierung von Produkten ohne Code-Änderungen
+  - Live-Anpassung der Stripe Checkout-Texte und -Branding
+  - Neue Sidebar-Navigation: "Produktverwaltung" mit ShoppingBag-Icon
+  - Tabs für Personal Credits (3 Pakete) und Community Spenden (3 Pakete)
+
+### Changed
+- 🔄 **Edge Function: Dynamisches Produktladen aus Datenbank**
+  - `supabase/functions/create-checkout-session/index.ts` liest jetzt Produktdaten aus `credit_packages`
+  - Produktkonfigurationen sind nicht mehr im Code hardcoded
+  - Stripe Product Name und Description werden aus Datenbank geladen
+  - Bonus-Prozente werden dynamisch aus der Datenbank berechnet
+  - Unterstützt Aktivierung/Deaktivierung von Paketen via `is_active` Flag
+
+### Technical Details
+- **Neue Dateien**:
+  - **Neu**: `src/components/Admin/ProductManagement.tsx` - Admin UI für Produktverwaltung
+  - **Migration**: `create_credit_packages_table` - Datenbank-Schema mit RLS Policies
+- **Geänderte Dateien**:
+  - **Geändert**: `supabase/functions/create-checkout-session/index.ts` (Zeilen 17-127)
+    - Hinzugefügt: `CreditPackage` Interface
+    - Entfernt: Hardcoded `PERSONAL_PACKAGES` und `COMMUNITY_PACKAGES`
+    - Neu: Dynamisches Laden aus Supabase `credit_packages` Tabelle
+  - **Geändert**: `src/components/Admin/AdminPage.tsx`
+    - Neue Route: `'products'` in AdminSection Type
+    - Neuer Case in `renderContent()` für ProductManagement Komponente
+    - Neuer Titel: "Produktverwaltung" in `getSectionTitle()`
+  - **Geändert**: `src/components/Admin/AdminSidebar.tsx`
+    - Neues Icon: `ShoppingBag` für Produktverwaltung
+    - Neue Navigation: "Produktverwaltung" nach "Credit-System"
+  - **Version**: `package.json` (1.11.1 → 1.12.0) in beiden Projekten
+- **Datenbank-Schema**: `credit_packages` Tabelle
+  - Felder: package_id, package_type, display_name, price, bonus_percent
+  - Felder: stripe_product_name, stripe_product_description
+  - Felder: icon_name, icon_color, is_popular, is_best_value, is_active
+  - Features: JSONB Array für Feature-Listen
+  - RLS: Public Read für aktive Pakete, Admin-Only Write
+- **Seed-Daten**: 6 Pakete (3 Personal + 3 Community) wurden initial angelegt
+  - Personal: STARTER (5€), POPULAR (10€ + 10% Bonus), PRO (20€ + 15% Bonus)
+  - Community: SUPPORTER (5€), CONTRIBUTOR (10€), CHAMPION (25€)
+- **User Request**: "im Checkout.stripe.com stehen nicht aktuelle Texte Community Spende - 5€ [...] ich möchte im Adminbereich eine Produkt verwaltung machen, damit ich die Produkte anpassen kann"
+- **Lösung**: Vollständig editierbare Produktverwaltung ohne Code-Deployment
+
+### Benefits
+- ✅ **Keine Code-Deployments** mehr nötig für Produktänderungen
+- ✅ **Echtzeit-Anpassungen** von Stripe Checkout-Texten über Admin-UI
+- ✅ **Flexible Preisgestaltung** - Preise und Bonus-Prozente jederzeit änderbar
+- ✅ **A/B Testing** möglich durch Aktivieren/Deaktivieren von Paketen
+- ✅ **Mehrsprachigkeit** vorbereitet durch separate Name/Description Felder
+
+## [1.11.1] - 2025-10-19
+
+### Added
+- 🔍 **Suchfunktion in TransactionsList** (Admin-Bereich)
+  - Neues Suchfeld zum Filtern von Transaktionen nach Benutzername oder E-Mail
+  - Nur im Admin-Modus verfügbar (showUserColumn=true)
+  - Live-Suche mit Textfeld und Clear-Button (X-Icon)
+  - Integration in bestehende Filter-Architektur
+
+### Changed
+- ✨ **Verbesserte Spaltenbezeichnungen in Transaktionsliste**
+  - **"Betrag" → "Credits"**: Eindeutige Spaltenbezeichnung, verhindert Verwechslung mit Euro-Beträgen
+  - Bei Käufen wird der Euro-Betrag jetzt in der Beschreibung angezeigt (z.B. "50€ bezahlt")
+  - Klarere Darstellung: Credits-Spalte zeigt nur Credit-Werte (+55, -14, etc.)
+  - Verbesserte UX durch reduzierten kognitiven Load
+
+### Technical Details
+- **Betroffene Dateien**:
+  - **Geändert**: `src/components/Shared/TransactionsList.tsx`
+    - Spalten-Header "Betrag" → "Credits" (Zeile 545)
+    - Beschreibung erweitert um Euro-Betrag bei Käufen (Zeilen 656-660)
+    - Suchfunktion mit State-Management (Zeile 165, 263-270)
+    - Suchfeld-UI mit MUI TextField und InputAdornments (Zeilen 449-476)
+  - **Geändert**: `package.json` (1.11.0 → 1.11.1) in beiden Projekten
+- **User Feedback**: "Es ist noch nicht ganz klar was mit Betrag gemeint ist geht es um die Euro? Weil bei Verbrauch steht dann -14 das kann aber nicht Euro sein. Wie können wir das Konzept überhaupt vereinfachen?"
+- **Lösung**: Klare Trennung zwischen Credits (Spalte) und Euro (Details/Beschreibung)
+
+## [1.11.0] - 2025-10-19
+
+### Added
+- ✨ **Neue Shared TransactionsList Komponente** (`src/components/Shared/TransactionsList.tsx`)
+  - Wiederverwendbare Transaktionsliste für Admin und User Bereiche
+  - Unterstützt flexible Props (mode, userId, showUserColumn, showFilters, showStats, etc.)
+  - Erweiterte Filter-Funktionen: Transaktionstyp, Zeitraum, AI-Only
+  - Expandable Details für Gemini Token-Verbrauch und Paket-Informationen
+  - Mobile-optimiert mit Material Design 3 Styling
+  - Automatische Anpassung für Admin (alle Transaktionen + User-Spalte) vs User (nur eigene Transaktionen)
+
+### Changed
+- 🔄 **Admin Credit System konsolidiert**
+  - **Vorher**: 4 Tabs (Einstellungen, Spenden, Credits vergeben, Transaktionen)
+  - **Nachher**: 3 Tabs (Einstellungen, Transaktionen & Spenden, Credits vergeben)
+  - Tabs "Spenden" und "Transaktionen" wurden in einen einzigen Tab "Transaktionen & Spenden" zusammengeführt
+  - Verwendet neue shared `TransactionsList` Komponente mit Admin-Modus (showUserColumn=true)
+  - Limit von 100 Transaktionen im Admin-Bereich
+- 🔄 **User TokensSection refactored**
+  - Verwendet jetzt die shared `TransactionsList` Komponente
+  - Credit Balance Cards (Personal Credits & Community-Topf) beibehalten
+  - Transaktionsliste vollständig durch wiederverwendbare Komponente ersetzt
+  - Limit von 50 Transaktionen im User-Bereich
+
+### Removed
+- ❌ **Obsolete Komponenten gelöscht**:
+  - `src/components/Admin/DonationsOverview.tsx`
+  - `src/components/Admin/CommunityPotTransactions.tsx`
+  - Diese Funktionalität ist jetzt in `TransactionsList.tsx` integriert
+
+### Technical Details
+- **Code Reusability**: Einheitliche Transaktionsdarstellung über Admin und User Bereiche
+- **Filter Architecture**: Multi-Level Filtering (Typ, Zeitraum, AI-Only für Usage Transaktionen)
+- **Stats Cards**: Dynamische Anzeige basierend auf Transaktionstypen (Käufe, Spenden, Verbrauch, Bonus)
+- **Expandable UI**: Collapsible Details für Gemini Tokens und Package Metadata
+- **Betroffene Dateien**:
+  - **Neu**: `src/components/Shared/TransactionsList.tsx`
+  - **Geändert**: `src/components/Admin/CreditSystemSettings.tsx`
+  - **Geändert**: `src/components/Settings/sections/TokensSection.tsx`
+  - **Gelöscht**: `src/components/Admin/DonationsOverview.tsx`
+  - **Gelöscht**: `src/components/Admin/CommunityPotTransactions.tsx`
+  - **Version**: `package.json` (1.10.0 → 1.11.0)
+- **User Request**: "ich würde gerne Credit-System etwas übarbeiten. Wir haben momentan einen Reiter mit 'Spenden' und einen mit Transaktionen. Ich glaube das beides nicht notwendig ist. In dem Sinn wäre einen Darstellung genug, die aber mit guten Filtern ausgestattet so dass man nach allem gut suchen kann."
+- **User Confirmation**: "ja" (Bestätigung zur Konsolidierung)
+
+### Migration Notes
+- Keine Datenbank-Änderungen erforderlich
+- Keine Breaking Changes für Endnutzer
+- Alle Transaktionsdaten werden weiterhin aus `credit_transactions` Tabelle geladen
+- Admin-Bereich zeigt jetzt alle Transaktionen konsolidiert mit User-Informationen
+- User-Bereich zeigt nur eigene Transaktionen ohne User-Spalte
+
+## [1.10.0] - 2025-10-19
+
+### Changed
+- 🔄 **BREAKING: Gemini AI-Modelle auf 2.5 Serie aktualisiert**
+  - **Entfernt** (deprecated seit 29. April 2025):
+    - ❌ Gemini 1.5 Pro
+    - ❌ Gemini 1.5 Flash
+    - ❌ Gemini 1.5 Flash 8B
+  - **Neu hinzugefügt** (Gemini 2.5 Serie):
+    - ✅ **Gemini 2.5 Flash-Lite** - Am Günstigsten
+      - Günstigste Option, optimiert für High-Volume & Low-Latency
+      - Input: $0.02/1M Tokens, Output: $0.08/1M Tokens
+      - ~0.0001€ pro großem Inserat (~5000 Tokens)
+    - ✅ **Gemini 2.5 Flash** - Beste Balance
+      - Optimales Preis-Leistungs-Verhältnis, "Thinking" Mode, 1M Context
+      - Input: $0.15/1M Tokens, Output: $0.60/1M Tokens
+      - ~0.0009€ pro großem Inserat (~5000 Tokens)
+    - ✅ **Gemini 2.5 Pro** - Höchste Qualität
+      - Premium Qualität, optimiert für Coding & komplexe Reasoning-Tasks
+      - Input: $1.25/1M Tokens, Output: $10.00/1M Tokens
+      - ~0.0150€ pro großem Inserat (~5000 Tokens)
+  - **Beibehalten**:
+    - ✅ **Gemini 2.0 Flash (Preview)** - Gratis & Schnell
+      - Kostenlos während Preview, Native Tool Use, 1M Token Context
+      - Gratis während Preview-Phase
+
+### Improved
+- 📊 **Aktualisierte Preis-Leistungs-Bewertungen**:
+  - ⭐ **Gratis**: Gemini 2.0 Flash (Preview)
+  - 💰 **Günstigste**: Gemini 2.5 Flash-Lite
+  - ⚡ **Balance**: Gemini 2.5 Flash
+  - 🎯 **Premium**: Gemini 2.5 Pro
+
+### Technical Details
+- **Model Migration**: Gemini 1.5 → 2.5 Serie
+- **Deprecation Notice**: Gemini 1.5 models wurden am 29. April 2025 von Google eingestellt
+- **Pricing Updates**: Alle Preise basieren auf aktuellem Google AI Preismodell (Stand: Oktober 2025)
+- **API Compatibility**: Model-Namen in `credit_system_settings` Tabelle müssen aktualisiert werden
+- **Betroffene Dateien**:
+  - `src/components/Admin/AISettings.tsx` (GEMINI_MODELS Array komplett neu)
+  - `package.json` (Version 1.9.8 → 1.10.0)
+- **User Request**: "bitte suche aus dem Netz noch weitere Modelle die ich verwenden kann wenn es die bibt?! und liste sich auf mit den Vorügen zur Auswah"
+- **User Confirmation**: "ja" (Bestätigung zur Aktualisierung auf Gemini 2.5 Serie)
+
+### Migration Guide
+Wenn Sie ein älteres Modell in der Datenbank konfiguriert haben:
+1. Admin → KI-Einstellungen öffnen
+2. Neues Modell aus der Liste auswählen (empfohlen: Gemini 2.5 Flash)
+3. "Einstellungen speichern" klicken
+4. Test-Inserat mit Bildanalyse erstellen, um das neue Modell zu testen
+
+## [1.9.8] - 2025-10-19
+
+### Fixed
+- 🐛 **KRITISCHER FEHLER: Preisanzeige um Faktor 1000 zu hoch**: Behoben
+  - **Problem**: Alle Preise wurden mit 1000 multipliziert angezeigt
+    - Gemini 1.5 Pro zeigte 10.0000€ statt 0.0100€ (~1 Cent)
+    - Gemini 1.5 Flash zeigte 0.6000€ statt 0.0006€ (~0.06 Cent)
+    - Gemini 1.5 Flash 8B zeigte 0.3000€ statt 0.0003€ (~0.03 Cent)
+  - **Root Cause**: Versehentliche `* 1000` Multiplikation in der Preisanzeige
+  - **Lösung**: Entfernung der falschen Multiplikation an 3 Stellen:
+    - Model-Auswahl Dropdown Chip (Zeile 196)
+    - Info-Alert Chip (Zeile 231)
+    - Preisvergleich-Tabelle (Zeile 333)
+  - **Betroffene Datei**: `src/components/Admin/AISettings.tsx`
+  - **User Report**: "verstehe ich nicht hoer sagst du kostet bei Gemini 1.5 pro 0.0100 Euro und im Preisvergleich schreibst du bei Geminie 1.5 pro 10 Euro?!!!"
+
+## [1.9.7] - 2025-10-19
+
+### Improved
+- 🎨 **KI-Einstellungen Mobile Responsiveness**: Admin → KI-Einstellungen jetzt optimal für Smartphones
+  - Adaptive Schriftgrößen und Abstände für mobile Geräte
+  - Kompaktere Icons und Headers auf kleinen Bildschirmen
+  - Optimierte Tabellen-Darstellung mit horizontalem Scrolling
+  - Reduzierte Spaltenanzahl auf mobilen Geräten für bessere Lesbarkeit
+  - **Betroffene Datei**: `src/components/Admin/AISettings.tsx`
+  - **User Request**: "bei http://localhost:5173/admin bei KI-Einstellungen bitte etwas besser auf Smart-Phone anpassen"
+
+### Added
+- ✨ **Preisvergleich für KI-Modelle**: Neue Preis-Tabelle zeigt Kosten pro großem Inserat (~5000 Tokens)
+  - Geschätzte Kosten basierend auf 4000 Input + 1000 Output Tokens
+  - Detaillierte Preisangaben: Input-Kosten/1M, Output-Kosten/1M, Gesamtkosten pro Inserat
+  - Preis-Leistungs-Bewertungen: ⭐ Beste, 💰 Günstig, ⚡ Schnell, 🎯 Präzise
+  - Aktuelle Preise (Stand: Oktober 2025):
+    - **Gemini 2.0 Flash Exp**: Gratis (während Preview) - ⭐ Beste
+    - **Gemini 1.5 Flash 8B**: ~0.0003€ (~0.03 Cent) pro Inserat - 💰 Günstig
+    - **Gemini 1.5 Flash**: ~0.0006€ (~0.06 Cent) pro Inserat - ⚡ Schnell
+    - **Gemini 1.5 Pro**: ~0.0100€ (~1 Cent) pro Inserat - 🎯 Präzise
+  - Preis-Chips direkt im Model-Auswahl-Dropdown
+  - Mobile-optimierte Tabelle mit angepassten Spalten
+  - **Betroffene Datei**: `src/components/Admin/AISettings.tsx`
+  - **User Request**: "den Preis für ca. 5000 Token (großes Inserate) den Preis anzeigen damit ich sehen was welches Modelel für Preise und Leistung hat"
+
+### Technical Details
+- Neue TypeScript Interface `ModelPricing` für Preisstruktur
+- Berechnungen basieren auf Google's offiziellem Preismodell
+- Responsive Design mit `useMediaQuery` und `useTheme` Hooks
+- MUI Table mit `TableContainer` für horizontales Scrolling auf mobilen Geräten
+
+## [1.9.6] - 2025-10-19
+
+### Fixed
+- 🐛 **Supabase Relationship Query Errors**: Behoben
+  - **Problem**: "Could not find a relationship between 'donations' and 'profiles'"
+  - **Problem**: "Could not find a relationship between 'community_pot_transactions' and 'profiles'"
+  - **Root Cause**: Fehlerhafte Foreign Key Relationship Syntax in Supabase-Queries
+  - **Lösung**:
+    - `profiles!user_id` → `profiles` (Auto-Detection der FK-Relationship)
+    - `items!item_id` → `items` (Auto-Detection der FK-Relationship)
+  - **Betroffene Dateien**:
+    - `src/hooks/useDonations.ts` (Zeile 26: Query-Syntax korrigiert)
+    - `src/hooks/useCommunityPotTransactions.ts` (Zeilen 26, 31: Query-Syntax korrigiert)
+  - **Komponenten** (bereits kompatibel):
+    - `src/components/Admin/DonationsOverview.tsx` (verwendet `donation.profiles`)
+    - `src/components/Admin/CommunityPotTransactions.tsx` (verwendet `transaction.profiles`, `transaction.items`)
+  - **Ergebnis**:
+    - Admin Credit-System → Spenden-Übersicht lädt jetzt korrekt
+    - Admin Credit-System → Transaktionen-Übersicht lädt jetzt korrekt
+    - User-Informationen (Name, E-Mail) werden korrekt angezeigt
+    - Item-Informationen werden korrekt angezeigt
+  - **User Report**: "Abrufen konnte nicht geladen werden: GET (...) Could not find a relationship between 'donations' and 'profiles' in the schema cache"
+
 ## [1.9.5] - 2025-10-19
 
 ### Added

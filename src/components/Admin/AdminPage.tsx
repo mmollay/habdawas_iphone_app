@@ -18,10 +18,11 @@ import RoleManagementTab from './RoleManagementTab';
 import TaskManagementTab from './TaskManagementTab';
 import { CreditSystemSettings } from './CreditSystemSettings';
 import { AISettings } from './AISettings';
+import { ProductManagement } from './ProductManagement';
 import { Header } from '../Layout/Header';
 import { Footer } from '../Layout/Footer';
 
-type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai';
+type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'products';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -87,6 +88,8 @@ const AdminPage = () => {
         return <CreditSystemSettings />;
       case 'ai':
         return <AISettings />;
+      case 'products':
+        return <ProductManagement />;
       default:
         return <UserManagementTab />;
     }
@@ -104,6 +107,8 @@ const AdminPage = () => {
         return 'Credit-System';
       case 'ai':
         return 'KI-Einstellungen';
+      case 'products':
+        return 'Produktverwaltung';
       default:
         return 'Admin-Bereich';
     }
