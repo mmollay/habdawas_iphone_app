@@ -18,9 +18,8 @@ import {
 } from '@mui/material';
 import { Save, Info, Users, DollarSign, Gift, List, Settings } from 'lucide-react';
 import { useSystemSettings } from '../../hooks/useSystemSettings';
-import { DonationsOverview } from './DonationsOverview';
 import { ManualCreditGrant } from './ManualCreditGrant';
-import { CommunityPotTransactions } from './CommunityPotTransactions';
+import { TransactionsList } from '../Shared/TransactionsList';
 import { formatNumber } from '../../utils/formatNumber';
 
 export const CreditSystemSettings = () => {
@@ -53,8 +52,8 @@ export const CreditSystemSettings = () => {
             sx={{ textTransform: 'none', minHeight: 48 }}
           />
           <Tab
-            icon={<DollarSign size={18} />}
-            label="Spenden"
+            icon={<List size={18} />}
+            label="Transaktionen & Spenden"
             iconPosition="start"
             sx={{ textTransform: 'none', minHeight: 48 }}
           />
@@ -64,20 +63,22 @@ export const CreditSystemSettings = () => {
             iconPosition="start"
             sx={{ textTransform: 'none', minHeight: 48 }}
           />
-          <Tab
-            icon={<List size={18} />}
-            label="Transaktionen"
-            iconPosition="start"
-            sx={{ textTransform: 'none', minHeight: 48 }}
-          />
         </Tabs>
       </Paper>
 
       {/* Tab Content */}
       {currentSubTab === 0 && <CreditSystemSettingsTab />}
-      {currentSubTab === 1 && <DonationsOverview />}
+      {currentSubTab === 1 && (
+        <TransactionsList
+          mode="admin"
+          showUserColumn={true}
+          showFilters={true}
+          showStats={true}
+          showRefresh={true}
+          limit={100}
+        />
+      )}
       {currentSubTab === 2 && <ManualCreditGrant />}
-      {currentSubTab === 3 && <CommunityPotTransactions />}
     </Box>
   );
 };
