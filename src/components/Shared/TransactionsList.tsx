@@ -20,6 +20,8 @@ import {
   useTheme,
   useMediaQuery,
   Collapse,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -36,6 +38,8 @@ import {
   Coins,
   AlertCircle,
   User,
+  Search,
+  X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -158,6 +162,7 @@ export const TransactionsList = ({
     defaultFilters.period || 'all'
   );
   const [filterAiOnly, setFilterAiOnly] = useState(defaultFilters.aiOnly || false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Expandable details state
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set());
@@ -252,6 +257,16 @@ export const TransactionsList = ({
     if (filterAiOnly && transaction.transaction_type === 'usage') {
       const hasGeminiTokens = (transaction.metadata as any)?.gemini_total_tokens > 0;
       if (!hasGeminiTokens) return false;
+    }
+
+    // Filter by search query (user name or email)
+    if (searchQuery.trim() && showUserColumn) {
+      const query = searchQuery.toLowerCase();
+      const userName = transaction.profiles?.full_name?.toLowerCase() || '';
+      const userEmail = transaction.profiles?.email?.toLowerCase() || '';
+      if (!userName.includes(query) && !userEmail.includes(query)) {
+        return false;
+      }
     }
 
     return true;
@@ -372,13 +387,14 @@ export const TransactionsList = ({
               </Typography>
             </Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              {(filterType !== 'all' || filterPeriod !== 'all' || filterAiOnly) && (
+              {(filterType !== 'all' || filterPeriod !== 'all' || filterAiOnly || searchQuery) && (
                 <Button
                   size="small"
                   onClick={() => {
                     setFilterType('all');
                     setFilterPeriod('all');
                     setFilterAiOnly(false);
+                    setSearchQuery('');
                   }}
                   sx={{ textTransform: 'none', fontSize: '0.75rem' }}
                 >
@@ -428,6 +444,36 @@ export const TransactionsList = ({
                 <MenuItem value="month">30 Tage</MenuItem>
               </Select>
             </FormControl>
+
+            {/* Search Field (Admin mode only) */}
+            {showUserColumn && (
+              <TextField
+                size="small"
+                placeholder="Benutzer suchen..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ minWidth: { xs: '100%', sm: 200 } }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={18} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchQuery && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => setSearchQuery('')}
+                        edge="end"
+                        sx={{ p: 0.5 }}
+                      >
+                        <X size={16} />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
 
             {/* AI-Only Filter */}
             {filterType === 'usage' && (
@@ -496,7 +542,7 @@ export const TransactionsList = ({
                   component="th"
                   sx={{ textAlign: 'right', p: 1.5, fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary' }}
                 >
-                  Betrag
+                  Credits
                 </Box>
                 <Box
                   component="th"
@@ -607,6 +653,11 @@ export const TransactionsList = ({
                         <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
                           {transaction.description || '-'}
                         </Typography>
+                        {transaction.transaction_type === 'purchase' && metadata?.amount_paid && (
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mt: 0.25 }}>
+                            {metadata.amount_paid}€ bezahlt
+                          </Typography>
+                        )}
                       </Box>
                       <Box component="td" sx={{ p: 1.5, textAlign: 'right', verticalAlign: 'middle' }}>
                         <Typography
