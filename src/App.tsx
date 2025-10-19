@@ -29,7 +29,7 @@ import {
   Tabs,
   Badge,
 } from '@mui/material';
-import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, Calendar, Coins, Share2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { HandPreferenceProvider, useHandPreference } from './contexts/HandPreferenceContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
@@ -44,8 +44,12 @@ import { Header } from './components/Layout/Header';
 import { Footer } from './components/Layout/Footer';
 import { ErrorBoundary } from './components/Common/ErrorBoundary';
 import { SearchAutocomplete } from './components/Common/SearchAutocomplete';
+import { ShareFilterDialog } from './components/Common/ShareFilterDialog';
 import { supabase, Item } from './lib/supabase';
 import { useSellerProfiles } from './hooks/useSellerProfiles';
+import { useCreditCheck } from './hooks/useCreditCheck';
+import { useSystemSettings } from './hooks/useSystemSettings';
+import { useCommunityStats } from './hooks/useCommunityStats';
 
 const ItemDetailPage = lazy(() => import('./components/Items/ItemDetailPage').then(m => ({ default: m.ItemDetailPage })));
 const ItemEditPage = lazy(() => import('./components/Items/ItemEditPage').then(m => ({ default: m.ItemEditPage })));
@@ -112,6 +116,7 @@ const MainContent = () => {
   });
   const [currentPage, setCurrentPage] = useState<'items' | 'messages' | 'settings'>('items');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSearchQuery, setActiveSearchQuery] = useState('');
@@ -121,6 +126,7 @@ const MainContent = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showMyItems, setShowMyItems] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [filterBySeller, setFilterBySeller] = useState<string | null>(null);
   const [urlParamsLoaded, setUrlParamsLoaded] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string[]>(() => {
     const saved = localStorage.getItem('statusFilter');
@@ -143,6 +149,28 @@ const MainContent = () => {
 
   const userIds = [...new Set(filteredItems.map(item => item.user_id))];
   const { profiles } = useSellerProfiles(userIds);
+
+  // Credit and Community Pot hooks
+  const { checkCredit } = useCreditCheck();
+  const { settings } = useSystemSettings();
+  const { stats: communityStats } = useCommunityStats();
+  const [creditInfo, setCreditInfo] = useState<{
+    canCreate: boolean;
+    source?: string;
+    message: string;
+    remainingDailyListings?: number;
+    personalCredits?: number;
+    communityPotBalance?: number;
+  } | null>(null);
+
+  // Load credit info
+  useEffect(() => {
+    if (user) {
+      checkCredit().then(setCreditInfo);
+    } else {
+      setCreditInfo(null);
+    }
+  }, [user, checkCredit]);
 
   const handleViewModeChange = async (newMode: 'grid' | 'list' | 'gallery' | 'compact') => {
     setViewMode(newMode);
@@ -197,29 +225,38 @@ const MainContent = () => {
         return;
       }
 
-      const [allCountRes, myCountRes, favCountRes, ...statusResults] = await Promise.all([
-        supabase.from('items').select('*', { count: 'exact', head: true }).eq('status', 'published'),
-        supabase.from('items').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('favorites').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        ...['draft', 'published', 'paused', 'sold', 'expired', 'archived'].map((status) =>
-          supabase
-            .from('items')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('status', status)
-            .then(res => ({ status, count: res.count || 0 }))
-        )
-      ]);
+      try {
+        // Use regular queries with count instead of HEAD requests to avoid RLS issues
+        const [allCountRes, myCountRes, favCountRes, ...statusResults] = await Promise.all([
+          supabase.from('items').select('id', { count: 'exact', head: true }).eq('status', 'published').then(res => ({ count: res.count || 0, error: res.error })),
+          supabase.from('items').select('id', { count: 'exact', head: true }).eq('user_id', user.id).then(res => ({ count: res.count || 0, error: res.error })),
+          supabase.from('favorites').select('id', { count: 'exact', head: true }).eq('user_id', user.id).then(res => ({ count: res.count || 0, error: res.error })),
+          ...['draft', 'published', 'paused', 'sold', 'expired', 'archived'].map((status) =>
+            supabase
+              .from('items')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('status', status)
+              .then(res => ({ status, count: res.count || 0, error: res.error }))
+          )
+        ]);
 
-      setAllItemsCount(allCountRes.count || 0);
-      setMyItemsCount(myCountRes.count || 0);
-      setFavoritesCount(favCountRes.count || 0);
+        // Only set counts if there were no errors
+        if (!allCountRes.error) setAllItemsCount(allCountRes.count);
+        if (!myCountRes.error) setMyItemsCount(myCountRes.count);
+        if (!favCountRes.error) setFavoritesCount(favCountRes.count);
 
-      const counts: Record<string, number> = {};
-      statusResults.forEach((result) => {
-        counts[result.status] = result.count;
-      });
-      setStatusCounts(counts);
+        const counts: Record<string, number> = {};
+        statusResults.forEach((result) => {
+          if (!result.error) {
+            counts[result.status] = result.count;
+          }
+        });
+        setStatusCounts(counts);
+      } catch (error) {
+        // Silently handle errors - counts will remain at previous values
+        console.error('Error loading counts (non-critical):', error);
+      }
     };
 
     loadCounts();
@@ -351,6 +388,10 @@ const MainContent = () => {
         if (statusFilter.length > 0) {
           query = query.in('status', statusFilter);
         }
+      } else if (filterBySeller) {
+        query = query
+          .eq('user_id', filterBySeller)
+          .eq('status', 'published');
       } else {
         query = query.eq('status', 'published');
       }
@@ -432,7 +473,7 @@ const MainContent = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [activeSearchQuery, selectedCategories, priceRange, sortBy, statusFilter, showMyItems, showFavorites, user]);
+  }, [activeSearchQuery, selectedCategories, priceRange, sortBy, statusFilter, showMyItems, showFavorites, filterBySeller]); // Removed 'user' to prevent double loading
 
   const allCategories = [...new Set(items.map(item => item.category).filter(Boolean))] as string[];
 
@@ -472,6 +513,55 @@ const MainContent = () => {
       search: null,
       sort: null
     });
+  };
+
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (selectedCategories.length > 0) count += selectedCategories.length;
+    if (priceRange[0] > 0 || priceRange[1] < 10000) count += 1;
+    if (activeSearchQuery) count += 1;
+    if (sortBy !== 'newest') count += 1;
+    return count;
+  };
+
+  const generateShareableURL = () => {
+    const baseURL = window.location.origin;
+    const params = new URLSearchParams();
+
+    if (activeSearchQuery) params.set('search', activeSearchQuery);
+    if (sortBy !== 'newest') params.set('sort', sortBy);
+    if (priceRange[0] > 0) params.set('minPrice', priceRange[0].toString());
+    if (priceRange[1] < 10000) params.set('maxPrice', priceRange[1].toString());
+    if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
+    if (showMyItems) params.set('view', 'myitems');
+    if (showFavorites) params.set('view', 'favorites');
+    if (filterBySeller) params.set('seller', filterBySeller);
+
+    const queryString = params.toString();
+    return queryString ? `${baseURL}/?${queryString}` : baseURL;
+  };
+
+  const getFilterDescription = () => {
+    const parts: string[] = [];
+
+    if (activeSearchQuery) parts.push(`Suche: "${activeSearchQuery}"`);
+    if (selectedCategories.length > 0) parts.push(`Kategorien: ${selectedCategories.join(', ')}`);
+    if (priceRange[0] > 0 || priceRange[1] < 10000) {
+      parts.push(`Preis: ${priceRange[0]}€ - ${priceRange[1]}€`);
+    }
+    if (sortBy !== 'newest') {
+      const sortLabels = {
+        oldest: 'Älteste zuerst',
+        price_asc: 'Preis aufsteigend',
+        price_desc: 'Preis absteigend',
+        newest: 'Neueste zuerst'
+      };
+      parts.push(`Sortierung: ${sortLabels[sortBy]}`);
+    }
+    if (showMyItems) parts.push('Meine Artikel');
+    if (showFavorites) parts.push('Favoriten');
+
+    return parts.length > 0 ? parts.join(' | ') : 'Alle Artikel';
   };
 
   useEffect(() => {
@@ -594,6 +684,7 @@ const MainContent = () => {
       const maxPrice = parseInt(params.get('maxPrice') || '10000');
       const categories = params.get('categories') ? params.get('categories')!.split(',') : [];
       const view = params.get('view');
+      const seller = params.get('seller');
 
       const newShowMyItems = view === 'myitems';
       const newShowFavorites = view === 'favorites';
@@ -605,6 +696,7 @@ const MainContent = () => {
       setSelectedCategories(categories);
       setShowMyItems(newShowMyItems);
       setShowFavorites(newShowFavorites);
+      setFilterBySeller(seller);
 
       if (!urlParamsLoaded) {
         setUrlParamsLoaded(true);
@@ -710,56 +802,57 @@ const MainContent = () => {
               }}
             >
               <Container maxWidth="xl" sx={{ maxWidth: '1400px !important' }}>
-                <Tabs
-                  value={showFavorites ? 2 : showMyItems ? 1 : 0}
-                  onChange={(_, value) => {
-                    setLoading(true);
-                    setItems([]);
-                    setFilteredItems([]);
-                    setShowMyItems(value === 1);
-                    setShowFavorites(value === 2);
-                    updateURL({
-                      view: value === 1 ? 'myitems' : value === 2 ? 'favorites' : null
-                    });
-                  }}
-                  variant={isMobile ? 'scrollable' : 'standard'}
-                  scrollButtons={isMobile ? 'auto' : false}
-                  allowScrollButtonsMobile
-                  sx={{
-                    minHeight: isMobile ? 44 : 52,
-                    flex: isMobile ? 'none' : 1,
-                    '& .MuiTabs-indicator': {
-                      height: 2,
-                      borderRadius: '2px 2px 0 0',
-                    },
-                    '& .MuiTab-root': {
+                <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 3 }}>
+                  <Tabs
+                    value={showFavorites ? 2 : showMyItems ? 1 : 0}
+                    onChange={(_, value) => {
+                      setLoading(true);
+                      setItems([]);
+                      setFilteredItems([]);
+                      setShowMyItems(value === 1);
+                      setShowFavorites(value === 2);
+                      updateURL({
+                        view: value === 1 ? 'myitems' : value === 2 ? 'favorites' : null
+                      });
+                    }}
+                    variant={isMobile ? 'scrollable' : 'standard'}
+                    scrollButtons={isMobile ? 'auto' : false}
+                    allowScrollButtonsMobile
+                    sx={{
                       minHeight: isMobile ? 44 : 52,
-                      textTransform: 'none',
-                      fontSize: isMobile ? '0.8125rem' : '0.875rem',
-                      fontWeight: 600,
-                      minWidth: isMobile ? 'auto' : 100,
-                      px: isMobile ? 1.5 : 2.5,
-                      py: isMobile ? 0.75 : 1,
-                      color: 'text.secondary',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        color: 'primary.main',
-                        bgcolor: 'rgba(25, 118, 210, 0.04)',
+                      flex: isMobile ? 'none' : 1,
+                      '& .MuiTabs-indicator': {
+                        height: 2,
+                        borderRadius: '2px 2px 0 0',
                       },
-                      '&.Mui-selected': {
-                        color: 'primary.main',
-                        fontWeight: 700,
+                      '& .MuiTab-root': {
+                        minHeight: isMobile ? 44 : 52,
+                        textTransform: 'none',
+                        fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                        fontWeight: 600,
+                        minWidth: isMobile ? 'auto' : 100,
+                        px: isMobile ? 1.5 : 2.5,
+                        py: isMobile ? 0.75 : 1,
+                        color: 'text.secondary',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          color: 'primary.main',
+                          bgcolor: 'rgba(25, 118, 210, 0.04)',
+                        },
+                        '&.Mui-selected': {
+                          color: 'primary.main',
+                          fontWeight: 700,
+                        }
                       }
-                    }
-                  }}
-                >
+                    }}
+                  >
                   <Tab
                     icon={isMobile ? undefined : <Globe size={16} />}
                     iconPosition="start"
                     label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                         {isMobile ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Globe size={16} />
                             <span>Alle</span>
                           </Box>
@@ -781,6 +874,7 @@ const MainContent = () => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
+                              lineHeight: 1,
                             }}
                           >
                             {allItemsCount > 999 ? '999+' : allItemsCount}
@@ -793,9 +887,9 @@ const MainContent = () => {
                     icon={isMobile ? undefined : <User size={16} />}
                     iconPosition="start"
                     label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                         {isMobile ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <User size={16} />
                             <span>Meine</span>
                           </Box>
@@ -817,6 +911,7 @@ const MainContent = () => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
+                              lineHeight: 1,
                             }}
                           >
                             {myItemsCount > 999 ? '999+' : myItemsCount}
@@ -829,9 +924,9 @@ const MainContent = () => {
                     icon={isMobile ? undefined : <Heart size={16} />}
                     iconPosition="start"
                     label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                         {isMobile ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Heart size={16} />
                             <span>Favoriten</span>
                           </Box>
@@ -853,6 +948,7 @@ const MainContent = () => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
+                              lineHeight: 1,
                             }}
                           >
                             {favoritesCount > 999 ? '999+' : favoritesCount}
@@ -862,6 +958,96 @@ const MainContent = () => {
                     }
                   />
                 </Tabs>
+
+                {/* Listing Info & Community-Topf Display - Material Design 3 */}
+                {creditInfo && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: isMobile ? 2 : 0,
+                      py: isMobile ? 1.25 : 0,
+                      borderTop: isMobile ? '1px solid' : 'none',
+                      borderColor: 'divider',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {/* Listing Credits Display */}
+                    {creditInfo.remainingDailyListings !== undefined && creditInfo.remainingDailyListings > 0 && (
+                      <Chip
+                        icon={<Calendar size={14} />}
+                        label={`${creditInfo.remainingDailyListings} gratis`}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          bgcolor: 'rgba(76, 175, 80, 0.08)',
+                          color: 'success.main',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          '& .MuiChip-icon': {
+                            color: 'success.main',
+                            fontSize: 14,
+                          },
+                        }}
+                      />
+                    )}
+
+                    {creditInfo.personalCredits !== undefined && creditInfo.personalCredits > 0 && (
+                      <Chip
+                        icon={<Coins size={14} />}
+                        label={`${creditInfo.personalCredits} Credits`}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          bgcolor: 'rgba(255, 152, 0, 0.08)',
+                          color: 'warning.main',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          '& .MuiChip-icon': {
+                            color: 'warning.main',
+                            fontSize: 14,
+                          },
+                        }}
+                      />
+                    )}
+
+                    {/* Community-Topf Display */}
+                    {communityStats && communityStats.totalBalance > 0 && (
+                      <Chip
+                        icon={<Heart size={14} fill="currentColor" />}
+                        label={`${communityStats.totalBalance} Community`}
+                        size="small"
+                        onClick={() => navigate('/tokens?tab=community')}
+                        sx={{
+                          height: 24,
+                          bgcolor: 'rgba(76, 175, 80, 0.08)',
+                          color: 'success.main',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          '& .MuiChip-icon': {
+                            color: 'success.main',
+                            fontSize: 14,
+                          },
+                          '&:hover': {
+                            bgcolor: 'rgba(76, 175, 80, 0.16)',
+                            transform: 'scale(1.02)',
+                          },
+                        }}
+                      />
+                    )}
+
+                    {(!creditInfo.remainingDailyListings || creditInfo.remainingDailyListings === 0) &&
+                     (!creditInfo.personalCredits || creditInfo.personalCredits === 0) && (
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', ml: 1 }}>
+                        Keine Inserate verfügbar
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </Box>
               </Container>
             </Paper>
           )}
@@ -876,11 +1062,12 @@ const MainContent = () => {
                   alignItems: 'center',
                   mb: 2,
                   py: 0,
-                  gap: 2,
+                  gap: 1,
                   flexWrap: 'wrap',
                 }}
+                data-testid="toolbar"
               >
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
                   <IconButton
                     onClick={() => setFilterOpen(true)}
                     sx={{
@@ -1001,7 +1188,7 @@ const MainContent = () => {
                   )}
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography
                     variant="body2"
                     sx={{
@@ -1074,15 +1261,30 @@ const MainContent = () => {
                     onClick={() => loadItems(false, true)}
                     size="small"
                     sx={{
-                      ml: 1,
                       bgcolor: 'background.paper',
                       border: '1px solid',
                       borderColor: 'divider',
                       '&:hover': { bgcolor: 'action.hover' }
                     }}
                     title="Aktualisieren"
+                    aria-label="Aktualisieren"
                   >
                     <RefreshCw size={isMobile ? 16 : 18} />
+                  </IconButton>
+
+                  <IconButton
+                    onClick={() => setShareDialogOpen(true)}
+                    size="small"
+                    sx={{
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      '&:hover': { bgcolor: 'action.hover' }
+                    }}
+                    title="Filter teilen"
+                    aria-label="Filter teilen"
+                  >
+                    <Share2 size={isMobile ? 16 : 18} />
                   </IconButton>
                 </Box>
               </Box>
@@ -1464,6 +1666,14 @@ const MainContent = () => {
           <ArrowUp size={28} />
         </IconButton>
       )}
+
+      <ShareFilterDialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        url={generateShareableURL()}
+        description={getFilterDescription()}
+        filterCount={getActiveFilterCount()}
+      />
 
       <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
       <OnboardingWizard

@@ -4,6 +4,52 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.9.4] - 2025-10-19
+
+### Added
+- ✨ **Einheitlicher Share-Dialog mit QR-Code**: Vereint das Beste aus beiden Welten
+  - **Neue Component**: `ItemShareDialog` (`src/components/Common/ItemShareDialog.tsx`)
+  - **Features**:
+    - Item-Informationen (Titel & Preis) oben im Dialog
+    - URL-Feld mit Copy-Button
+    - Teilen über: WhatsApp, Telegram, E-Mail, Drucken
+    - QR-Code Section mit Toggle-Button (Anzeigen/Ausblenden)
+    - Native Share API Support für Mobile
+    - Snackbar-Feedback bei Aktionen
+  - **Styling**: Material Design 3, responsive (Mobile fullscreen, Desktop modal)
+  - **Icons**: Lucide React Icons mit Farb-Highlights (WhatsApp grün, Telegram blau)
+  - **Ersetzt**: Altes Share-Menu (Menu Component) in ItemDetailPage
+  - **Entfernt**: Redundante Share-Handler-Funktionen
+  - **Bereinigte Imports**: Menu, MenuItem, ListItemIcon, ListItemText, Link, Mail, Printer
+  - **Getestet**: Mit Playwright verifiziert - QR-Code wird korrekt generiert und angezeigt
+  - **Dateien**:
+    - `src/components/Common/ItemShareDialog.tsx` (NEU)
+    - `src/components/Items/ItemDetailPage.tsx` (Integration, Code-Cleanup)
+  - **User Request**: "Wir haben ja auch in der Listübersicht den teilen Button, dort ich auch der QR-Code verbaut, ich würde gerne im Detail und in der List es einheitlich (components) haben wobei ich das beste aus beiden Welten vereinen will"
+
+- ✨ **ShareFilterDialog modernisiert**: Gleiche moderne Funktionen wie ItemShareDialog
+  - **Neue Features hinzugefügt**:
+    - "Teilen über" Section mit WhatsApp, Telegram, E-Mail, Drucken
+    - WhatsApp-Icon in Grün (#25D366), Telegram-Icon in Blau (#0088cc)
+    - Verbesserter Copy-Fallback für ältere Browser (textarea-Methode)
+    - flexWrap für DialogActions (besseres Layout auf kleinen Bildschirmen)
+  - **Bestehende Features beibehalten**:
+    - QR-Code Section mit Toggle-Button
+    - Filter-Beschreibung (z.B. "Alle Artikel", "X Filter aktiv")
+    - URL-Feld mit Copy-Button
+    - Native Share API Support
+    - Snackbar-Feedback
+  - **Handler-Funktionen**:
+    - `shareViaWhatsApp()` - Öffnet WhatsApp Web mit vorformatiertem Text
+    - `shareViaTelegram()` - Öffnet Telegram mit URL und Text
+    - `shareViaEmail()` - Öffnet E-Mail-Client mit Betreff und Body
+    - `handlePrint()` - Druckt die aktuelle Seite
+  - **Styling**: Konsistent mit ItemShareDialog, Material Design 3
+  - **Getestet**: Mit Playwright verifiziert - Alle Share-Optionen und QR-Code funktionieren
+  - **Dateien**:
+    - `src/components/Common/ShareFilterDialog.tsx` (AKTUALISIERT)
+  - **User Request**: "Ich meine das die Übersichtsseite der Inserate auch das Teilen so aussehen soll mit all den Funktionen wie die auf der Detailsansicht"
+
 ## [1.9.3] - 2025-10-19
 
 ### Added
