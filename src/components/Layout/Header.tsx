@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Box, Button, IconButton, TextField, InputAdornment, useMediaQuery, useTheme, Badge, Avatar, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
-import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp } from 'lucide-react';
+import { AppBar, Toolbar, Typography, Box, Button, IconButton, TextField, InputAdornment, useMediaQuery, useTheme, Badge, Avatar, Menu, MenuItem, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
+import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 import { useCreditsStats } from '../../hooks/useCreditsStats';
 import { useUserStatus } from '../../hooks/useUserStatus';
+import { useCreditCheck } from '../../hooks/useCreditCheck';
+import { useSystemSettings } from '../../hooks/useSystemSettings';
 import { SearchAutocomplete } from '../Common/SearchAutocomplete';
-import { CommunityPotWidget } from '../Community/CommunityPotWidget';
 import { supabase, Profile } from '../../lib/supabase';
 
 interface HeaderProps {
@@ -49,6 +50,8 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
   const { unreadCount } = useUnreadMessages(30000);
   const { personalCredits } = useCreditsStats();
   const { status: userStatus } = useUserStatus();
+  const { checkCredit } = useCreditCheck();
+  const { settings } = useSystemSettings();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -57,6 +60,14 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
   const [myItemsCount, setMyItemsCount] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [creditInfo, setCreditInfo] = useState<{
+    canCreate: boolean;
+    source?: string;
+    message: string;
+    remainingDailyListings?: number;
+    personalCredits?: number;
+    communityPotBalance?: number;
+  } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -98,6 +109,12 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
       setFavoritesCount(0);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      checkCredit().then(setCreditInfo);
+    }
+  }, [user, checkCredit]);
 
   useEffect(() => {
     setAnchorEl(null);
@@ -150,16 +167,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
           </Box>
         )}
 
-        {/* Community Pot Widget - Desktop only, visible for everyone */}
-        {!isMobile && (
-          <Box sx={{ mr: 2 }}>
-            <CommunityPotWidget
-              variant="compact"
-              onDonate={() => navigate('/tokens?tab=community')}
-            />
-          </Box>
-        )}
-
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, ml: 'auto' }}>
           {customButtons ? (
             customButtons
@@ -184,6 +191,26 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
                           }}
                         >
                           Inserat anlegen
+                          {creditInfo && (
+                            <Box
+                              component="span"
+                              sx={{
+                                ml: 1,
+                                px: 0.75,
+                                py: 0.25,
+                                bgcolor: 'rgba(255, 255, 255, 0.25)',
+                                borderRadius: 1,
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {creditInfo.remainingDailyListings !== undefined && creditInfo.remainingDailyListings > 0
+                                ? `${creditInfo.remainingDailyListings} gratis`
+                                : creditInfo.personalCredits && creditInfo.personalCredits > 0
+                                ? `${creditInfo.personalCredits} Credits`
+                                : '0'}
+                            </Box>
+                          )}
                         </Button>
                       )}
                       {isMobile && (
@@ -436,57 +463,56 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             <User size={18} style={{ color: '#666', opacity: 0.5 }} />
           </Box>
 
-          {/* Badge Showcase - Compact for more badges */}
+          {/* Badge Showcase - Icon only, labels on hover */}
           {userStatus && userStatus.badges.some(b => b.achieved) && (
-            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', pt: 1, borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', pt: 1, borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
               {userStatus.badges
                 .filter(b => b.achieved)
                 .sort((a, b) => b.priority - a.priority)
                 .map((badge) => (
-                  <Box
+                  <Tooltip
                     key={badge.id}
-                    title={badge.description}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.375,
-                      bgcolor: `${badge.color}15`,
-                      border: `1px solid ${badge.color}40`,
-                      color: badge.color,
-                      px: 0.75,
-                      py: 0.375,
-                      borderRadius: 1,
-                      fontSize: '0.65rem',
-                      fontWeight: 600,
-                    }}
+                    title={
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="caption" fontWeight={600} display="block">
+                          {badge.name}
+                        </Typography>
+                        <Typography variant="caption" fontSize="0.65rem" display="block" sx={{ opacity: 0.9 }}>
+                          {badge.description}
+                        </Typography>
+                      </Box>
+                    }
+                    arrow
+                    enterDelay={200}
+                    enterTouchDelay={0}
                   >
-                    {getBadgeIcon(badge.icon, 10)}
-                    <span>{badge.name}</span>
-                  </Box>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        bgcolor: `${badge.color}15`,
+                        border: `1px solid ${badge.color}40`,
+                        color: badge.color,
+                        width: 26,
+                        height: 26,
+                        borderRadius: '50%',
+                        cursor: 'help',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          bgcolor: `${badge.color}25`,
+                          transform: 'scale(1.1)',
+                          boxShadow: `0 2px 8px ${badge.color}30`,
+                        },
+                      }}
+                    >
+                      {getBadgeIcon(badge.icon, 12)}
+                    </Box>
+                  </Tooltip>
                 ))}
             </Box>
           )}
         </Box>
-        <MenuItem
-          onClick={() => { handleMenuClose(); navigate('/create'); }}
-          sx={{
-            px: 2.5,
-            py: 1.5,
-            bgcolor: 'rgba(25, 118, 210, 0.08)',
-            '&:hover': {
-              bgcolor: 'rgba(25, 118, 210, 0.15)',
-            },
-            fontWeight: 600,
-          }}
-        >
-          <ListItemIcon>
-            <Camera size={20} style={{ color: '#1976d2' }} />
-          </ListItemIcon>
-          <ListItemText
-            primary="Inserat anlegen"
-            primaryTypographyProps={{ fontWeight: 600, color: 'primary.main' }}
-          />
-        </MenuItem>
 
         {/* Prominent Mein Guthaben */}
         <MenuItem
@@ -579,7 +605,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
         <Divider sx={{ my: 0.5 }} />
         {isAdmin && (
           <>
-            <Divider sx={{ my: 0.5 }} />
             <MenuItem
               onClick={() => { handleMenuClose(); navigate('/admin'); }}
               sx={{
@@ -613,7 +638,10 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
           <ListItemText>Über HABDAWAS</ListItemText>
         </MenuItem>
         <Divider sx={{ my: 0.5 }} />
-        <MenuItem onClick={handleLogout}>
+        <MenuItem
+          onClick={handleLogout}
+          sx={{ mb: 1.5 }}
+        >
           <ListItemIcon>
             <LogOut size={20} />
           </ListItemIcon>

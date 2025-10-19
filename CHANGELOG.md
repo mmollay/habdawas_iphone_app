@@ -4,24 +4,61 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.7.9] - 2025-10-19
+
+### Changed
+- 🎨 **Avatar Menu Cleanup**: Aufgeräumtes und kompakteres Profil-Menü
+  - **Entfernt**: "Inserat anlegen" Menüeintrag (bereits im Header vorhanden)
+  - **Kompakte Badges**: Nur Icons, Labels erscheinen bei Hover/Touch
+    - Kreisförmige Badge-Icons (26x26px) statt voller Labels
+    - Tooltip zeigt Badge-Name und Beschreibung bei Hover
+    - Touch-optimiert mit `enterTouchDelay={0}`
+  - **Divider-Optimierung**: Ein Divider über Admin-Bereich entfernt
+  - **Spacing**: Mehr Abstand bei "Abmelden" Button (mb: 1.5)
+  - **Datei**: `src/components/Layout/Header.tsx`
+  - **User Request**: "das Menü vom Avatar, bitte etwas cleaner!"
+  - **Getestet**: Mit Playwright verifiziert
+
+- 🎨 **ItemModerationBar Compact**: Kompaktere Moderations-Aktionen Box
+  - **Reduziertes Spacing**:
+    - Paper padding: 2 → 1.5
+    - Margins: 3→2, 2→1, 2→1.5
+    - Button gaps: 2 → 1.5
+  - **Kleinere Elemente**:
+    - Icons: 20→16, 18→16
+    - Border: 2px → 1px
+    - Font sizes: 0.8125rem
+    - Button size: "small"
+  - **Datei**: `src/components/Items/ItemModerationBar.tsx`
+  - **User Request**: "viel kompakter machen"
+
+### Technical Details
+- **Komponenten**:
+  - `Header.tsx`: Tooltip-Integration, Badge-Styling kompakt
+  - `ItemModerationBar.tsx`: Spacing-Optimierung
+- **Added Imports**: `Tooltip` from MUI
+- **Responsive**: Tooltips funktionieren auf Desktop (Hover) und Mobile (Touch)
+
 ## [1.7.8] - 2025-10-19
 
 ### Fixed
-- 🎨 **ItemDetailPage Responsive Spacing**: Reduzierter Abstand auf Smartphones (synchronisiert von Web-Version)
+- 🎨 **ItemDetailPage Responsive Spacing**: Reduzierter Abstand auf Smartphones
   - **Problem**: Zu großer weißer Abstand (400px) zwischen Bild und Content auf Smartphones
   - **Lösung**: Responsive Höhe für Platzhalter-Boxen
     - Smartphone (xs): 100px Höhe
-    - Desktop (md+): 400px Höhe
+    - Desktop (md+): 400px Höhe (unverändert)
+  - **Datei**: `src/components/Items/ItemDetailPage.tsx` (Zeilen 1556-1557)
   - **User Feedback**: "ja passt!"
 
 ### Technical Details
-- **Sync Status**: UI-Optimierung aus bazar_bold v1.7.8 übernommen
-- **Mobile-First**: Optimiert für iPhone-Bildschirme
+- **Komponente**: `ItemDetailPage.tsx`
+- **Änderung**: `height: '400px'` → `height: { xs: '100px', md: '400px' }`
+- **Mobile-First**: Optimiert für Smartphone-Bildschirme
 
 ## [1.7.7] - 2025-10-19
 
 ### Changed
-- 🎨 **Manual Load More for Grid & List Views**: Konsistente UX über alle Ansichten (synchronisiert von Web-Version)
+- 🎨 **Manual Load More for Grid & List Views**: Konsistente UX über alle Ansichten
   - **Entfernt**: Automatic Infinite Scroll (IntersectionObserver) aus Grid und List Views
   - **Neu**: Manual "Mehr laden" Button (wie Gallery View bereits hatte)
   - **Änderungen**:
@@ -30,6 +67,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - **Button**: Erscheint wenn `hasMore && !loadingMore && items.length > 0 && onLoadMore`
   - **Loading State**: CircularProgress während `loadingMore === true`
   - **Styling**: Konsistent mit Gallery View (outlined, rounded, 600 weight)
+  - **User Request**: "ich finde das mehr laden super, dass kann man auch bei den anderen beiden Darstellungen machen"
   - **Getestet**: Alle drei Views mit Playwright verifiziert
 
 ### Technical Details
@@ -42,18 +80,53 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ## [1.7.6] - 2025-10-19
 
 ### Fixed
-- 🔧 **PostgREST Foreign Key Recognition**: Endgültige Lösung für Schema Cache Problem (synchronisiert von Web-Version)
-  - **Root Cause**: Foreign Key Constraints hatten inkonsistente Namen
+- 🔧 **PostgREST Foreign Key Recognition**: Endgültige Lösung für Schema Cache Problem
+  - **Root Cause**: Foreign Key Constraints hatten inkonsistente Namen (`donations_user_id_profiles_fkey` statt `donations_user_id_fkey`)
   - **Lösung**: Migration `fix_postgrest_foreign_key_recognition.sql`
-    - Foreign Keys mit standardisierten Namen neu erstellt
+    - Alte Foreign Keys gedroppt
+    - Neue Foreign Keys mit standardisierten Namen neu erstellt
     - Proper `ON DELETE SET NULL` Constraints
-    - CONSTRAINT COMMENTS für Dokumentation
-  - **Ergebnis**: Keine "Could not find a relationship" Fehler mehr
+    - Dokumentation via CONSTRAINT COMMENTS
+    - 3x `NOTIFY pgrst, 'reload schema'` zur Sicherheit
+  - **Ergebnis**: PostgREST erkennt jetzt alle Foreign Keys korrekt
+    - `donations.user_id` → `profiles.id` funktioniert
+    - `community_pot_transactions.user_id` → `profiles.id` funktioniert
+    - `community_pot_transactions.item_id` → `items.id` funktioniert
+    - Keine "Could not find a relationship" Fehler mehr
+  - **Verifiziert**: Mit Playwright getestet, keine Console-Fehler
 
 ## [1.7.5] - 2025-10-19
 
+### Fixed
+- 🔧 **PostgREST Schema Cache**: Multi-Signal Approach für Foreign Key Recognition
+  - **Problem**: Schema Cache Reload aus v1.7.3 wurde nicht von PostgREST empfangen
+    - Donations und Community-Pot-Transaktionen konnten weiterhin nicht geladen werden
+    - Fehler: "Could not find a relationship between 'donations' and 'profiles' in the schema cache"
+  - **Lösung**: Neue Migration `20251019_force_postgrest_schema_reload_v2.sql`
+    - **Mehrfach-NOTIFY**: 3x `NOTIFY pgrst, 'reload schema'` Signale
+    - **Schema Touch**: Kommentare zu Tabellen/Spalten hinzugefügt um Schema-Änderung zu triggern
+    - **Verifizierung**: Foreign Keys werden vor Reload verifiziert
+  - **Ergebnis**: Admin-Bereich lädt jetzt alle Daten ohne Fehler
+    - Donations-Tabelle mit User-Profilen
+    - Community-Pot-Transaktionen mit User-Profilen
+
 ### Changed
-- 🔧 **Tab-Menü Komprimierung**: Platzsparende Navigation (aus Web-Version synchronisiert)
+- 🎨 **Credits-Anzeige Redesign**: Material Design 3 Chip-basierte Anzeige
+  - **Entfernt**: Grauer Divider-Balken vollständig gelöscht
+    - War zu komplex in der Conditional-Logic
+    - Wurde auch angezeigt wenn keine Inhalte vorhanden waren
+  - **Neu**: Moderne MD3 Chips für Credits
+    - "5 gratis" (grün, 24px hoch, 8% opacity background)
+    - "255 Credits" (orange, 24px hoch, 8% opacity background)
+    - "348 Community" (grün, 24px hoch, 8% opacity background, klickbar)
+  - **Design**:
+    - Icons: 14px (von 16px)
+    - Text: 0.75rem
+    - Kompakt und professionell
+    - Hover-Effekt bei Community-Chip
+  - **Datei**: `src/App.tsx` (Zeilen 895-982)
+
+- 🔧 **Tab-Menü Komprimierung**: Platzsparende Navigation
   - **Mobile**: 52px → 44px Höhe (-8px / -15%)
   - **Desktop**: 60px → 52px Höhe (-8px / -13%)
   - **Icons**: Einheitlich 16px (von 18-20px)
@@ -64,24 +137,82 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - **Badges**: Kleinere Größe
     - Höhe: 22px → 18px
     - Font: 0.75rem → 0.6875rem
-    - Border-Radius: 3 → 2.5
+    - Padding reduziert
   - **Indikator**: 3px → 2px Höhe
-  - **Datei**: `src/App.tsx` (Tab-Styling)
+  - **Datei**: `src/App.tsx` (Zeilen 754-892)
 
 ### Added
-- ✨ **Gallery View Infinite Scroll**: Load-More Funktionalität (aus Web-Version synchronisiert)
+- ✨ **Gallery View Infinite Scroll**: Load-More Funktionalität
   - **Feature**: "Mehr laden" Button am Ende der Galerie
     - Erscheint wenn `hasMore === true`
     - Verwendet bestehende `loadMoreItems()` Funktion
   - **Loading State**: CircularProgress Indikator
     - Zeigt sich während `loadingMore === true`
-  - **Konsistenz**: Gleiche UX wie Grid/List/Compact Views
-  - **Datei**: `src/App.tsx` (Gallery-Rendering)
+  - **Konsistenz**: Gleiche UX wie Grid/List Views
+  - **Datei**: `src/App.tsx` (Zeilen 1326-1386)
 
 ### Technical Details
-- **Sync Status**: UI-Änderungen aus bazar_bold v1.7.5 übernommen
-- **Keine Backend-Änderungen**: Nutzt bestehende Load-More-Logik
-- **Mobile-First**: Kompakte Tabs optimiert für iPhone-Bildschirme
+- **Migrationen**:
+  - `supabase/migrations/20251019_force_postgrest_schema_reload_v2.sql`
+- **Komponenten**:
+  - `src/App.tsx`: Credits-Chips, kompakte Tabs, Gallery Infinite Scroll
+- **Hooks**: Keine Änderungen (Credits-Logik aus v1.7.4 unverändert)
+
+## [1.7.4] - 2025-10-18
+
+### Fixed
+- 🎨 **Credits-Anzeige in Tab-Leiste**: Fehlende personalCredits-Anzeige behoben
+  - **Problem**: Credits wurden nicht angezeigt, nur "grauer Balken" (Divider) sichtbar
+    - Credits-Info fehlte wenn User noch kostenlose Listings hatte
+    - Divider wurde auch ohne Credits-Inhalt gerendert
+  - **Ursache**: `useCreditCheck` Hook gab `personalCredits` nicht in allen Fällen zurück
+    - Check 1 (kostenlose Listings verfügbar): `personalCredits` fehlte im Return
+    - Check 2 & 3: `remainingDailyListings` und `communityPotBalance` fehlten teilweise
+  - **Lösung**:
+    - `src/hooks/useCreditCheck.ts`: Alle Checks geben jetzt **vollständige** Credit-Info zurück
+      - Check 1: + `personalCredits`
+      - Check 2: + `remainingDailyListings`, `communityPotBalance`
+      - Check 3: + `remainingDailyListings`, `communityPotBalance`
+    - `src/App.tsx`: Divider nur anzeigen wenn es auch Inhalt zum Trennen gibt
+  - **Ergebnis**: Credits werden immer korrekt angezeigt
+    - "3 gratis" + "255 Credits" + Divider + "Community-Topf: 348 Credits"
+    - Divider verschwindet wenn keine Credits vorhanden
+
+### Technical Details
+- **Betroffene Dateien**:
+  - `src/hooks/useCreditCheck.ts` (Check 1, 2, 3 erweitert)
+  - `src/App.tsx` (Divider conditional rendering)
+- **Return Values jetzt konsistent**:
+  - `remainingDailyListings`: Immer vorhanden
+  - `personalCredits`: Immer vorhanden
+  - `communityPotBalance`: Immer vorhanden
+
+## [1.7.3] - 2025-10-18
+
+### Fixed
+- 🔧 **Datenbank Foreign Key Relationships**: PostgREST Schema Cache Reload
+  - **Problem**: Admin-Bereich konnte Donations und Community-Pot-Transaktionen nicht laden
+    - Browser-Fehler: "Could not find a relationship between 'donations' and 'profiles'"
+    - Browser-Fehler: "Could not find a relationship between 'community_pot_transactions' and 'profiles'"
+  - **Ursache**: PostgREST Schema Cache erkannte Foreign Keys nicht nach Migration 20251017140418
+  - **Lösung**: Neue Migration `20251018233436_force_schema_cache_reload_for_credit_fkeys.sql`
+    - Verifiziert bestehende Foreign Key Constraints
+    - Sendet `NOTIFY pgrst, 'reload schema'` Signal
+    - Zwingt PostgREST zur Aktualisierung der Schema-Informationen
+  - **Betroffene Queries**:
+    - `donations` mit `user:profiles!user_id` Join
+    - `community_pot_transactions` mit `user:profiles!user_id` Join
+
+### Technical Details
+- **Foreign Keys verifiziert**:
+  - `donations.user_id → profiles.id` (ON DELETE CASCADE)
+  - `community_pot_transactions.user_id → profiles.id` (ON DELETE SET NULL)
+- **Migration**: Schematische Überprüfung + Cache-Reload in einem Schritt
+- **Betroffene Komponenten**:
+  - `src/hooks/useDonations.ts`
+  - `src/hooks/useCommunityPotTransactions.ts`
+  - `src/components/Admin/DonationsOverview.tsx`
+  - `src/components/Admin/CommunityPotTransactions.tsx`
 
 ## [1.7.2] - 2025-10-18
 
