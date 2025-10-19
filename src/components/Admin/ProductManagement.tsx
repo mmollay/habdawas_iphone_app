@@ -254,7 +254,7 @@ export const ProductManagement = () => {
             Produktverwaltung
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Verwalte Credit-Pakete und Community-Spenden für Stripe Checkout
+            Verwalte Credit-Pakete und Spenden-Optionen
           </Typography>
         </Box>
         <IconButton onClick={fetchPackages} disabled={loading}>

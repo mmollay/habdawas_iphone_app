@@ -4,6 +4,19 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.3] - 2025-10-19
+
+### Added
+- 🎨 **Produktverwaltung: H5-Überschrift hinzugefügt**
+  - Einheitliche Überschrift wie bei allen anderen Admin-Komponenten
+  - Titel: "Produktverwaltung"
+  - Beschreibung: "Verwalte Credit-Pakete und Spenden-Optionen"
+  - Verbesserte Konsistenz im Admin-Bereich
+
+### Technical Details
+- **Geänderte Dateien**:
+  - `src/components/Admin/ProductManagement.tsx` - H5-Header hinzugefügt (Lines 251-263)
+
 ## [1.15.2] - 2025-10-19
 
 ### Changed
