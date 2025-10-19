@@ -9,7 +9,9 @@ const corsHeaders = {
 
 interface SendNewsletterRequest {
   subject: string;
+  header?: string;
   body: string;
+  footer?: string;
   newsletterId?: string; // Optional: If updating existing newsletter
 }
 
@@ -98,7 +100,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { subject, body, newsletterId }: SendNewsletterRequest = await req.json();
+    const { subject, header, body, footer, newsletterId }: SendNewsletterRequest = await req.json();
 
     if (!subject || !body) {
       return new Response(
@@ -203,7 +205,52 @@ Deno.serve(async (req: Request) => {
         try {
           // Replace placeholders with subscriber-specific data
           const personalizedSubject = replacePlaceholders(subject, subscriber, baseUrl);
+          const personalizedHeader = header ? replacePlaceholders(header, subscriber, baseUrl) : '';
           const personalizedBody = replacePlaceholders(body, subscriber, baseUrl);
+          const personalizedFooter = footer ? replacePlaceholders(footer, subscriber, baseUrl) : '';
+
+          // Build HTML with optional header and footer
+          let html = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
+
+          // Header section (if provided)
+          if (personalizedHeader) {
+            html += `
+              <div style="padding: 20px; border-bottom: 2px solid #1976d2; margin-bottom: 30px; color: #666; font-size: 14px;">
+                ${personalizedHeader.replace(/\n/g, '<br>')}
+              </div>
+            `;
+          }
+
+          // Subject as title
+          html += `<h2 style="color: #1976d2; margin-top: ${personalizedHeader ? '0' : '20px'};">${personalizedSubject}</h2>`;
+
+          // Body
+          html += `
+            <div style="line-height: 1.6; margin: 20px 0;">
+              ${personalizedBody.replace(/\n/g, '<br>')}
+            </div>
+          `;
+
+          // Footer section
+          html += '<hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">';
+
+          if (personalizedFooter) {
+            html += `
+              <div style="font-size: 12px; color: #666; line-height: 1.4;">
+                ${personalizedFooter.replace(/\n/g, '<br>')}
+              </div>
+            `;
+          } else {
+            // Default footer if none provided
+            html += `
+              <p style="font-size: 12px; color: #666;">
+                Du erhältst diese E-Mail, weil du den Newsletter von HabDaWas abonniert hast.<br>
+                <a href="${baseUrl}/settings" style="color: #1976d2;">Newsletter-Einstellungen ändern</a>
+              </p>
+            `;
+          }
+
+          html += '</div>';
 
           const response = await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -215,19 +262,7 @@ Deno.serve(async (req: Request) => {
               from: `HabDaWas <${fromEmail}>`,
               to: [subscriber.email],
               subject: personalizedSubject,
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #1976d2;">${personalizedSubject}</h2>
-                  <div style="line-height: 1.6;">
-                    ${personalizedBody.replace(/\n/g, '<br>')}
-                  </div>
-                  <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
-                  <p style="font-size: 12px; color: #666;">
-                    Du erhältst diese E-Mail, weil du den Newsletter von HabDaWas abonniert hast.<br>
-                    <a href="${baseUrl}/settings" style="color: #1976d2;">Newsletter-Einstellungen ändern</a>
-                  </p>
-                </div>
-              `,
+              html,
             }),
           });
 

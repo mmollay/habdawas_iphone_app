@@ -542,7 +542,7 @@ export const TransactionsList = ({
                   component="th"
                   sx={{ textAlign: 'right', p: 1.5, fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary' }}
                 >
-                  Credits
+                  Inserate
                 </Box>
                 <Box
                   component="th"
@@ -732,7 +732,7 @@ export const TransactionsList = ({
                                   )}
                                   {metadata.credits && (
                                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                                      Credits: {metadata.credits}
+                                      Inserate: {metadata.credits}
                                       {metadata.bonus > 0 && ` + ${metadata.bonus} Bonus`}
                                     </Typography>
                                   )}
@@ -786,7 +786,7 @@ export const TransactionsList = ({
                                   </Box>
                                   <Box>
                                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                                      Credits
+                                      Inserate
                                     </Typography>
                                     <Typography
                                       variant="body2"

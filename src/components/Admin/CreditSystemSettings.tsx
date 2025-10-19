@@ -17,10 +17,11 @@ import {
   Tab,
   IconButton,
 } from '@mui/material';
-import { Save, Info, Users, DollarSign, Gift, List, Settings, RefreshCw } from 'lucide-react';
+import { Save, Info, Users, DollarSign, Gift, List, Settings, RefreshCw, Package } from 'lucide-react';
 import { useSystemSettings } from '../../hooks/useSystemSettings';
 import { ManualCreditGrant } from './ManualCreditGrant';
 import { TransactionsList } from '../Shared/TransactionsList';
+import { ProductManagement } from './ProductManagement';
 import { formatNumber } from '../../utils/formatNumber';
 
 export const CreditSystemSettings = () => {
@@ -40,10 +41,10 @@ export const CreditSystemSettings = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-            Credit-System Einstellungen
+            Inserate-Verwaltung
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Konfiguriere das Community-Spendentopf & Power-User System
+            Preise, Community-Topf & Inserate-Pakete verwalten
           </Typography>
         </Box>
         <IconButton onClick={() => window.location.reload()}>
@@ -74,7 +75,13 @@ export const CreditSystemSettings = () => {
           />
           <Tab
             icon={<Gift size={18} />}
-            label="Credits vergeben"
+            label="Inserate vergeben"
+            iconPosition="start"
+            sx={{ textTransform: 'none', minHeight: 48 }}
+          />
+          <Tab
+            icon={<Package size={18} />}
+            label="Inserate-Pakete"
             iconPosition="start"
             sx={{ textTransform: 'none', minHeight: 48 }}
           />
@@ -94,6 +101,7 @@ export const CreditSystemSettings = () => {
         />
       )}
       {currentSubTab === 2 && <ManualCreditGrant />}
+      {currentSubTab === 3 && <ProductManagement />}
     </Box>
   );
 };
@@ -183,7 +191,7 @@ const CreditSystemSettingsTab = () => {
         <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
           <strong>Community-Topf</strong>: Alle User spenden in einen gemeinsamen Topf<br/>
           <strong>Gratis-User</strong>: Bekommen täglich X kostenlose Inserate (solange Topf nicht leer)<br/>
-          <strong>Power-User</strong>: Kaufen eigene Credits für unbegrenzte Inserate
+          <strong>Power-User</strong>: Kaufen eigene Inserate für unbegrenzte Nutzung
         </Typography>
       </Alert>
 
@@ -291,14 +299,14 @@ const CreditSystemSettingsTab = () => {
           <Grid size={{ xs: 12, md: 6 }}>
             <TextField
               fullWidth
-              label="Power-User Credit Preis"
+              label="Preis pro Inserat (Power-User)"
               type="number"
               inputProps={{ step: 0.01 }}
               value={formData.powerUserCreditPrice}
               onChange={(e) => setFormData({ ...formData, powerUserCreditPrice: parseFloat(e.target.value) })}
-              helperText="Preis pro Power-User Credit"
+              helperText="Preis pro Inserat für Power-User"
               InputProps={{
-                endAdornment: <InputAdornment position="end">EUR/Credit</InputAdornment>
+                endAdornment: <InputAdornment position="end">EUR/Inserat</InputAdornment>
               }}
             />
           </Grid>
@@ -326,7 +334,7 @@ const CreditSystemSettingsTab = () => {
               inputProps={{ step: 0.01 }}
               value={formData.powerUserMinPurchase}
               onChange={(e) => setFormData({ ...formData, powerUserMinPurchase: parseFloat(e.target.value) })}
-              helperText="Mindestbetrag für Power-User Credit Kauf"
+              helperText="Mindestbetrag für Power-User Inserate-Kauf"
               InputProps={{
                 endAdornment: <InputAdornment position="end">EUR</InputAdornment>
               }}
@@ -346,13 +354,13 @@ const CreditSystemSettingsTab = () => {
             1 EUR Spende = <strong>{formatNumber(Math.floor(1 / formData.costPerListing))} Inserate</strong> für Community-Topf
           </Typography>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            1 EUR Power-User = <strong>{formatNumber(Math.floor(1 / formData.powerUserCreditPrice))} Credits</strong> persönlich
+            1 EUR Power-User = <strong>{formatNumber(Math.floor(1 / formData.powerUserCreditPrice))} Inserate</strong> persönlich
           </Typography>
           <Typography variant="body2" sx={{ mb: 1 }}>
             Min. Spende {formData.minDonationAmount} EUR = <strong>{formatNumber(Math.floor(formData.minDonationAmount / formData.costPerListing))} Inserate</strong>
           </Typography>
           <Typography variant="body2">
-            Min. Power-User {formData.powerUserMinPurchase} EUR = <strong>{formatNumber(Math.floor(formData.powerUserMinPurchase / formData.powerUserCreditPrice))} Credits</strong>
+            Min. Power-User {formData.powerUserMinPurchase} EUR = <strong>{formatNumber(Math.floor(formData.powerUserMinPurchase / formData.powerUserCreditPrice))} Inserate</strong>
           </Typography>
         </Box>
 

@@ -180,7 +180,9 @@ ANFORDERUNGEN:
 AUSGABEFORMAT - Antworte NUR mit einem gültigen JSON-Objekt ohne zusätzlichen Text:
 {
   "subject": "Betreffzeile (max. 60 Zeichen, ansprechend)",
-  "body": "Newsletter-Text mit Platzhaltern"
+  "header": "Optional: Kurzer Header-Text (z.B. 'HabDaWas - Deine Community-Plattform' oder 'Hallo {{first_name}}!')",
+  "body": "Newsletter-Text mit Platzhaltern",
+  "footer": "Footer mit rechtlichen Informationen: Abmelde-Link {{unsubscribe_link}}, Impressum-Link, Firmenadresse (DSGVO-konform)"
 }
 
 Generiere jetzt einen neuen, einzigartigen Newsletter:`;
@@ -241,7 +243,9 @@ Generiere jetzt einen neuen, einzigartigen Newsletter:`;
     return new Response(
       JSON.stringify({
         subject: generated.subject,
+        header: generated.header || "",
         body: generated.body,
+        footer: generated.footer || "",
         source: "ai-generated",
       }),
       {

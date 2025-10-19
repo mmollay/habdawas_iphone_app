@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -31,7 +31,7 @@ import {
   FormControl,
   InputLabel,
 } from '@mui/material';
-import { Send, X, Mail, Users, History, Eye, RefreshCw, Sparkles, ChevronDown, ChevronUp, Save, FileText } from 'lucide-react';
+import { Send, X, Mail, Users, History, Eye, RefreshCw, Sparkles, ChevronDown, ChevronUp, Save, FileText, Trash2 } from 'lucide-react';
 import { Box as MuiBox } from '@mui/material';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
@@ -53,7 +53,9 @@ interface NewsletterTemplate {
   id: string;
   name: string;
   subject: string;
+  header: string;
   body: string;
+  footer: string;
   created_at: string;
 }
 
@@ -76,9 +78,18 @@ export const NewsletterManagement = () => {
 
   // Form state
   const [subject, setSubject] = useState('');
+  const [header, setHeader] = useState('');
   const [body, setBody] = useState('');
+  const [footer, setFooter] = useState('');
   const [sending, setSending] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Refs for text fields to track cursor position
+  const subjectRef = useRef<HTMLInputElement | null>(null);
+  const headerRef = useRef<HTMLTextAreaElement | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const footerRef = useRef<HTMLTextAreaElement | null>(null);
+  const [lastFocusedField, setLastFocusedField] = useState<'subject' | 'header' | 'body' | 'footer'>('body');
 
   // Template state
   const [templates, setTemplates] = useState<NewsletterTemplate[]>([]);
@@ -86,6 +97,8 @@ export const NewsletterManagement = () => {
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateToOverwrite, setTemplateToOverwrite] = useState<string>(''); // 'new' or template ID
+  const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<string>('');
 
   useEffect(() => {
     fetchSubscribersCount();
@@ -167,7 +180,9 @@ export const NewsletterManagement = () => {
           .insert({
             name: templateName,
             subject,
+            header,
             body,
+            footer,
             created_by: user.id,
           });
 
@@ -179,7 +194,9 @@ export const NewsletterManagement = () => {
           .from('newsletter_templates')
           .update({
             subject,
+            header,
             body,
+            footer,
             updated_at: new Date().toISOString(),
           })
           .eq('id', templateToOverwrite);
@@ -204,8 +221,33 @@ export const NewsletterManagement = () => {
     const template = templates.find(t => t.id === templateId);
     if (template) {
       setSubject(template.subject);
+      setHeader(template.header || '');
       setBody(template.body);
+      setFooter(template.footer || '');
       setSuccess(`Vorlage "${template.name}" geladen`);
+    }
+  };
+
+  const handleDeleteTemplate = async () => {
+    if (!templateToDelete) return;
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('newsletter_templates')
+        .delete()
+        .eq('id', templateToDelete);
+
+      if (deleteError) throw deleteError;
+
+      const template = templates.find(t => t.id === templateToDelete);
+      setSuccess(`🗑️ Vorlage "${template?.name}" erfolgreich gelöscht!`);
+      setDeleteTemplateOpen(false);
+      setTemplateToDelete('');
+      setSelectedTemplate('');
+      fetchTemplates();
+    } catch (err) {
+      console.error('Error deleting template:', err);
+      setError(err instanceof Error ? err.message : 'Fehler beim Löschen der Vorlage');
     }
   };
 
@@ -240,7 +282,9 @@ export const NewsletterManagement = () => {
       }
 
       setSubject(result.subject);
+      setHeader(result.header || '');
       setBody(result.body);
+      setFooter(result.footer || '');
       setSuccess('✨ Newsletter erfolgreich mit KI generiert!');
     } catch (err) {
       console.error('Error generating newsletter:', err);
@@ -292,7 +336,9 @@ export const NewsletterManagement = () => {
           },
           body: JSON.stringify({
             subject,
+            header,
             body,
+            footer,
           }),
         }
       );
@@ -316,7 +362,9 @@ export const NewsletterManagement = () => {
 
       // Clear form
       setSubject('');
+      setHeader('');
       setBody('');
+      setFooter('');
 
       // Refresh newsletters list
       fetchNewsletters();
@@ -329,7 +377,74 @@ export const NewsletterManagement = () => {
   };
 
   const insertPlaceholder = (placeholder: string) => {
-    setBody(body + placeholder);
+    // Insert placeholder at cursor position in the last focused field
+    switch (lastFocusedField) {
+      case 'subject': {
+        const ref = subjectRef.current;
+        if (ref) {
+          const start = ref.selectionStart || 0;
+          const end = ref.selectionEnd || 0;
+          const newValue = subject.substring(0, start) + placeholder + subject.substring(end);
+          setSubject(newValue);
+          // Set cursor position after placeholder
+          setTimeout(() => {
+            ref.focus();
+            ref.setSelectionRange(start + placeholder.length, start + placeholder.length);
+          }, 0);
+        } else {
+          setSubject(subject + placeholder);
+        }
+        break;
+      }
+      case 'header': {
+        const ref = headerRef.current;
+        if (ref) {
+          const start = ref.selectionStart || 0;
+          const end = ref.selectionEnd || 0;
+          const newValue = header.substring(0, start) + placeholder + header.substring(end);
+          setHeader(newValue);
+          setTimeout(() => {
+            ref.focus();
+            ref.setSelectionRange(start + placeholder.length, start + placeholder.length);
+          }, 0);
+        } else {
+          setHeader(header + placeholder);
+        }
+        break;
+      }
+      case 'body': {
+        const ref = bodyRef.current;
+        if (ref) {
+          const start = ref.selectionStart || 0;
+          const end = ref.selectionEnd || 0;
+          const newValue = body.substring(0, start) + placeholder + body.substring(end);
+          setBody(newValue);
+          setTimeout(() => {
+            ref.focus();
+            ref.setSelectionRange(start + placeholder.length, start + placeholder.length);
+          }, 0);
+        } else {
+          setBody(body + placeholder);
+        }
+        break;
+      }
+      case 'footer': {
+        const ref = footerRef.current;
+        if (ref) {
+          const start = ref.selectionStart || 0;
+          const end = ref.selectionEnd || 0;
+          const newValue = footer.substring(0, start) + placeholder + footer.substring(end);
+          setFooter(newValue);
+          setTimeout(() => {
+            ref.focus();
+            ref.setSelectionRange(start + placeholder.length, start + placeholder.length);
+          }, 0);
+        } else {
+          setFooter(footer + placeholder);
+        }
+        break;
+      }
+    }
   };
 
   const replacePlaceholdersForPreview = (text: string): string => {
@@ -354,12 +469,12 @@ export const NewsletterManagement = () => {
 
   const renderComposeTab = () => (
     <Box>
-      <Card sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+      <Card sx={{ p: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: subscribersCount === 0 ? 2 : 0 }}>
           <Box
             sx={{
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               borderRadius: 2,
               bgcolor: 'primary.light',
               display: 'flex',
@@ -367,55 +482,71 @@ export const NewsletterManagement = () => {
               justifyContent: 'center',
             }}
           >
-            <Users size={20} style={{ color: '#1565c0' }} />
+            <Users size={18} style={{ color: '#1565c0' }} />
           </Box>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '1rem' }}>
               {subscribersCount} Abonnenten
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
               Empfänger für diesen Newsletter
             </Typography>
           </Box>
         </Box>
 
         {subscribersCount === 0 && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
+          <Alert severity="warning" sx={{ mt: 2 }}>
             Aktuell gibt es keine Newsletter-Abonnenten. User können sich in ihren Einstellungen für den Newsletter anmelden.
           </Alert>
         )}
       </Card>
 
-      <Card sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+      <Card sx={{ p: 2.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
             Newsletter erstellen
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <FormControl sx={{ minWidth: 240 }} size="small">
-              <InputLabel>Vorlage laden</InputLabel>
-              <Select
-                value={selectedTemplate}
-                onChange={(e) => {
-                  setSelectedTemplate(e.target.value);
-                  handleLoadTemplate(e.target.value);
-                }}
-                label="Vorlage laden"
-                disabled={generating || sending}
-                startAdornment={
-                  <FileText size={16} style={{ marginLeft: 8, marginRight: 4, color: '#666' }} />
-                }
-              >
-                <MenuItem value="">
-                  <em>Keine Vorlage auswählen</em>
-                </MenuItem>
-                {templates.map((template) => (
-                  <MenuItem key={template.id} value={template.id}>
-                    {template.name}
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <FormControl sx={{ minWidth: 240 }} size="small">
+                <InputLabel>Vorlage laden</InputLabel>
+                <Select
+                  value={selectedTemplate}
+                  onChange={(e) => {
+                    setSelectedTemplate(e.target.value);
+                    handleLoadTemplate(e.target.value);
+                  }}
+                  label="Vorlage laden"
+                  disabled={generating || sending}
+                  startAdornment={
+                    <FileText size={16} style={{ marginLeft: 8, marginRight: 4, color: '#666' }} />
+                  }
+                >
+                  <MenuItem value="">
+                    <em>Keine Vorlage auswählen</em>
                   </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                  {templates.map((template) => (
+                    <MenuItem key={template.id} value={template.id}>
+                      {template.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {selectedTemplate && (
+                <IconButton
+                  color="error"
+                  size="small"
+                  onClick={() => {
+                    setTemplateToDelete(selectedTemplate);
+                    setDeleteTemplateOpen(true);
+                  }}
+                  disabled={generating || sending}
+                  title="Vorlage löschen"
+                >
+                  <Trash2 size={18} />
+                </IconButton>
+              )}
+            </Box>
             <Button
               variant="contained"
               startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <Sparkles size={18} />}
@@ -439,28 +570,62 @@ export const NewsletterManagement = () => {
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="z.B. Neue Features bei HabDaWas"
-          sx={{ mb: 3 }}
+          sx={{ mb: 2 }}
           disabled={sending || generating}
+          inputRef={subjectRef}
+          onFocus={() => setLastFocusedField('subject')}
         />
 
         <TextField
           fullWidth
           multiline
-          rows={12}
+          rows={3}
+          label="Header (optional)"
+          value={header}
+          onChange={(e) => setHeader(e.target.value)}
+          placeholder="z.B. HabDaWas - Deine Community-Plattform"
+          helperText="Erscheint ganz oben im Newsletter (z.B. Logo-Text, Begrüßung)"
+          sx={{ mb: 2 }}
+          disabled={sending || generating}
+          inputRef={headerRef}
+          onFocus={() => setLastFocusedField('header')}
+        />
+
+        <TextField
+          fullWidth
+          multiline
+          rows={10}
           label="Nachricht"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Schreibe hier deine Newsletter-Nachricht oder nutze die KI-Generierung..."
-          helperText="Du kannst Platzhalter verwenden (siehe unten). Zeilenumbrüche werden automatisch formatiert."
+          helperText="Hauptinhalt des Newsletters. Du kannst Platzhalter verwenden (siehe unten)."
           sx={{ mb: 2 }}
           disabled={sending || generating}
+          inputRef={bodyRef}
+          onFocus={() => setLastFocusedField('body')}
+        />
+
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          label="Footer (optional - empfohlen für DSGVO-Konformität)"
+          value={footer}
+          onChange={(e) => setFooter(e.target.value)}
+          placeholder={`z.B.:\n\nDu erhältst diese E-Mail, weil du den HabDaWas-Newsletter abonniert hast.\nZum Abmelden: {{unsubscribe_link}}\n\nHabDaWas GmbH | Musterstraße 1 | 1010 Wien\nImpressum: https://habdawas.at/impressum`}
+          helperText="Footer mit Abmelde-Link, Impressum, etc. (wichtig für gesetzliche Anforderungen)"
+          sx={{ mb: 2 }}
+          disabled={sending || generating}
+          inputRef={footerRef}
+          onFocus={() => setLastFocusedField('footer')}
         />
 
         {/* Placeholders Section */}
-        <Card sx={{ mb: 3, bgcolor: 'action.hover' }}>
+        <Card sx={{ mb: 2, bgcolor: 'action.hover' }}>
           <Box
             sx={{
-              p: 2,
+              p: 1.5,
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -468,14 +633,14 @@ export const NewsletterManagement = () => {
             }}
             onClick={() => setPlaceholdersExpanded(!placeholdersExpanded)}
           >
-            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
               Verfügbare Platzhalter
             </Typography>
-            {placeholdersExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            {placeholdersExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </Box>
           <Collapse in={placeholdersExpanded}>
-            <Box sx={{ px: 2, pb: 2 }}>
-              <List dense>
+            <Box sx={{ px: 1.5, pb: 1.5 }}>
+              <List dense sx={{ py: 0 }}>
                 {AVAILABLE_PLACEHOLDERS.map((placeholder) => (
                   <ListItem
                     key={placeholder.key}
@@ -483,7 +648,8 @@ export const NewsletterManagement = () => {
                       border: '1px solid',
                       borderColor: 'divider',
                       borderRadius: 1,
-                      mb: 1,
+                      mb: 0.5,
+                      py: 0.5,
                       '&:hover': { bgcolor: 'action.selected', cursor: 'pointer' }
                     }}
                     onClick={() => insertPlaceholder(placeholder.key)}
@@ -494,30 +660,34 @@ export const NewsletterManagement = () => {
                           <Chip
                             label={placeholder.key}
                             size="small"
-                            sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}
+                            sx={{ fontFamily: 'monospace', fontSize: '0.7rem', height: 20 }}
                           />
-                          <Typography variant="body2">{placeholder.description}</Typography>
+                          <Typography variant="caption" sx={{ fontSize: '0.8rem' }}>
+                            {placeholder.description}
+                          </Typography>
                         </Box>
                       }
                     />
                   </ListItem>
                 ))}
               </List>
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Klicke auf einen Platzhalter, um ihn in die Nachricht einzufügen. Beim Versand werden diese durch die tatsächlichen Daten ersetzt.
+              <Alert severity="info" sx={{ mt: 1.5, py: 0.5 }}>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                  Klicke auf einen Platzhalter, um ihn einzufügen.
+                </Typography>
               </Alert>
             </Box>
           </Collapse>
         </Card>
 
         {error && (
-          <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 3 }}>
+          <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
 
         {success && (
-          <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 3 }}>
+          <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>
             {success}
           </Alert>
         )}
@@ -567,23 +737,58 @@ export const NewsletterManagement = () => {
             Diese Vorschau zeigt Beispieldaten für Platzhalter. Beim Versand werden die echten Empfängerdaten eingesetzt.
           </Alert>
           <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 3 }}>
-            <Typography variant="h5" sx={{ mb: 2, color: 'primary.main', fontWeight: 700 }}>
+            {/* Header */}
+            {header && (
+              <Box sx={{ mb: 3, pb: 2, borderBottom: '2px solid', borderColor: 'primary.main' }}>
+                <Typography
+                  sx={{
+                    whiteSpace: 'pre-wrap',
+                    lineHeight: 1.4,
+                    fontSize: '0.9rem',
+                    color: 'text.secondary',
+                  }}
+                >
+                  {replacePlaceholdersForPreview(header)}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Subject */}
+            <Typography variant="h5" sx={{ mb: 3, color: 'primary.main', fontWeight: 700 }}>
               {replacePlaceholdersForPreview(subject)}
             </Typography>
+
+            {/* Body */}
             <Typography
               sx={{
                 whiteSpace: 'pre-wrap',
                 lineHeight: 1.6,
                 color: 'text.primary',
+                mb: 3,
               }}
             >
               {replacePlaceholdersForPreview(body)}
             </Typography>
+
+            {/* Footer */}
             <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="caption" color="text.secondary">
-                Du erhältst diese E-Mail, weil du den Newsletter von HabDaWas abonniert hast.<br />
-                <a href="#" style={{ color: '#1976d2' }}>Newsletter-Einstellungen ändern</a>
-              </Typography>
+              {footer ? (
+                <Typography
+                  sx={{
+                    whiteSpace: 'pre-wrap',
+                    lineHeight: 1.4,
+                    fontSize: '0.85rem',
+                    color: 'text.secondary',
+                  }}
+                >
+                  {replacePlaceholdersForPreview(footer)}
+                </Typography>
+              ) : (
+                <Typography variant="caption" color="text.secondary">
+                  Du erhältst diese E-Mail, weil du den Newsletter von HabDaWas abonniert hast.<br />
+                  <a href="#" style={{ color: '#1976d2' }}>Newsletter-Einstellungen ändern</a>
+                </Typography>
+              )}
             </Box>
           </Box>
         </DialogContent>
@@ -673,6 +878,42 @@ export const NewsletterManagement = () => {
             disabled={!templateToOverwrite || (templateToOverwrite === 'new' && !templateName.trim())}
           >
             Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Template Dialog */}
+      <Dialog open={deleteTemplateOpen} onClose={() => setDeleteTemplateOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Trash2 size={20} color="#d32f2f" />
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Vorlage löschen?
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Bist du sicher, dass du die Vorlage "<strong>{templates.find(t => t.id === templateToDelete)?.name}</strong>" löschen möchtest?
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            Diese Aktion kann nicht rückgängig gemacht werden.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => {
+            setDeleteTemplateOpen(false);
+            setTemplateToDelete('');
+          }}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            startIcon={<Trash2 size={18} />}
+            onClick={handleDeleteTemplate}
+          >
+            Löschen
           </Button>
         </DialogActions>
       </Dialog>

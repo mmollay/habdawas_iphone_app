@@ -33,7 +33,7 @@ interface AISettings {
 interface ModelPricing {
   inputCostPerMillion: number;
   outputCostPerMillion: number;
-  estimatedCostFor5kTokens: number; // Assuming 4000 input + 1000 output tokens
+  estimatedCostPerListing: number; // Assuming 8000 input + 2000 output tokens (≈10k total)
 }
 
 const GEMINI_MODELS = [
@@ -44,7 +44,7 @@ const GEMINI_MODELS = [
     pricing: {
       inputCostPerMillion: 0.00, // Free during preview
       outputCostPerMillion: 0.00,
-      estimatedCostFor5kTokens: 0.00,
+      estimatedCostPerListing: 0.00,
     } as ModelPricing,
   },
   {
@@ -54,7 +54,7 @@ const GEMINI_MODELS = [
     pricing: {
       inputCostPerMillion: 0.02,
       outputCostPerMillion: 0.08,
-      estimatedCostFor5kTokens: (4000 * 0.02 / 1000000) + (1000 * 0.08 / 1000000),
+      estimatedCostPerListing: (8000 * 0.02 / 1000000) + (2000 * 0.08 / 1000000),
     } as ModelPricing,
   },
   {
@@ -64,7 +64,7 @@ const GEMINI_MODELS = [
     pricing: {
       inputCostPerMillion: 0.15,
       outputCostPerMillion: 0.60,
-      estimatedCostFor5kTokens: (4000 * 0.15 / 1000000) + (1000 * 0.60 / 1000000),
+      estimatedCostPerListing: (8000 * 0.15 / 1000000) + (2000 * 0.60 / 1000000),
     } as ModelPricing,
   },
   {
@@ -74,7 +74,7 @@ const GEMINI_MODELS = [
     pricing: {
       inputCostPerMillion: 1.25,
       outputCostPerMillion: 10.00,
-      estimatedCostFor5kTokens: (4000 * 1.25 / 1000000) + (1000 * 10.00 / 1000000),
+      estimatedCostPerListing: (8000 * 1.25 / 1000000) + (2000 * 10.00 / 1000000),
     } as ModelPricing,
   },
 ];
@@ -196,7 +196,17 @@ export const AISettings = () => {
           </Typography>
         </Box>
 
-        <Divider sx={{ mb: 3 }} />
+        <Divider sx={{ mb: 2 }} />
+
+        {/* Preis-Info */}
+        <Alert severity="info" sx={{ mb: 3, fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+            💰 Preisangaben pro Inserat
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block' }}>
+            Die angezeigten Kosten beziehen sich auf <strong>ein durchschnittliches Inserat</strong> mit ca. <strong>10.000 Tokens</strong> (≈8.000 Input + 2.000 Output). Dies entspricht einer typischen Bildanalyse mit mehreren API-Aufrufen.
+          </Typography>
+        </Alert>
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -211,11 +221,21 @@ export const AISettings = () => {
         )}
 
         {/* Inserate KI-Modell */}
-        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+            mb: 1.5,
+            color: 'text.secondary',
+            fontSize: { xs: '0.85rem', md: '0.875rem' }
+          }}
+        >
           📦 Inserate-Erstellung (Bildanalyse)
         </Typography>
         <FormControl fullWidth sx={{ mb: 3 }}>
-          <InputLabel id="ai-model-label">KI-Modell für Inserate</InputLabel>
+          <InputLabel id="ai-model-label" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+            KI-Modell für Inserate
+          </InputLabel>
           <Select
             labelId="ai-model-label"
             id="ai-model"
@@ -225,27 +245,39 @@ export const AISettings = () => {
           >
             {GEMINI_MODELS.map((model) => (
               <MenuItem key={model.value} value={model.value}>
-                <Box sx={{ width: '100%' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                    <Typography variant="body1">{model.label}</Typography>
-                    {model.pricing.estimatedCostFor5kTokens > 0 ? (
+                <Box sx={{ width: '100%', py: { xs: 0.5, md: 0 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, gap: 1, flexWrap: 'wrap' }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: { xs: '0.85rem', md: '0.875rem' },
+                        flex: { xs: '1 1 100%', sm: '1 1 auto' }
+                      }}
+                    >
+                      {model.label}
+                    </Typography>
+                    {model.pricing.estimatedCostPerListing > 0 ? (
                       <Chip
-                        icon={<DollarSign size={12} />}
-                        label={`${model.pricing.estimatedCostFor5kTokens.toFixed(4)}€`}
+                        icon={<DollarSign size={10} />}
+                        label={`${model.pricing.estimatedCostPerListing.toFixed(4)}€`}
                         size="small"
                         color="primary"
-                        sx={{ fontSize: '0.7rem', height: 20 }}
+                        sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, height: { xs: 18, md: 20 } }}
                       />
                     ) : (
                       <Chip
                         label="GRATIS"
                         size="small"
                         color="success"
-                        sx={{ fontSize: '0.7rem', height: 20, fontWeight: 600 }}
+                        sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, height: { xs: 18, md: 20 }, fontWeight: 600 }}
                       />
                     )}
                   </Box>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                  >
                     {model.description}
                   </Typography>
                 </Box>
@@ -254,36 +286,24 @@ export const AISettings = () => {
           </Select>
         </FormControl>
 
-        {selectedInserateModel && (
-          <Alert severity="info" sx={{ mb: 4 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-              Inserate: {selectedInserateModel.label}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              {selectedInserateModel.description}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-              <Chip
-                icon={<TrendingUp size={14} />}
-                label={selectedInserateModel.pricing.estimatedCostFor5kTokens > 0
-                  ? `~${selectedInserateModel.pricing.estimatedCostFor5kTokens.toFixed(4)}€ / großes Inserat`
-                  : 'Kostenlos während Preview'}
-                size="small"
-                color={selectedInserateModel.pricing.estimatedCostFor5kTokens > 0 ? 'primary' : 'success'}
-                sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }}
-              />
-            </Box>
-          </Alert>
-        )}
-
-        <Divider sx={{ my: 3 }} />
+        <Divider sx={{ my: 2.5 }} />
 
         {/* Newsletter KI-Modell */}
-        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: 'text.secondary' }}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+            mb: 1.5,
+            color: 'text.secondary',
+            fontSize: { xs: '0.85rem', md: '0.875rem' }
+          }}
+        >
           📧 Newsletter-Generierung (Text-KI)
         </Typography>
         <FormControl fullWidth sx={{ mb: 3 }}>
-          <InputLabel id="newsletter-ai-model-label">KI-Modell für Newsletter</InputLabel>
+          <InputLabel id="newsletter-ai-model-label" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+            KI-Modell für Newsletter
+          </InputLabel>
           <Select
             labelId="newsletter-ai-model-label"
             id="newsletter-ai-model"
@@ -293,27 +313,39 @@ export const AISettings = () => {
           >
             {GEMINI_MODELS.map((model) => (
               <MenuItem key={model.value} value={model.value}>
-                <Box sx={{ width: '100%' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                    <Typography variant="body1">{model.label}</Typography>
-                    {model.pricing.estimatedCostFor5kTokens > 0 ? (
+                <Box sx={{ width: '100%', py: { xs: 0.5, md: 0 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, gap: 1, flexWrap: 'wrap' }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: { xs: '0.85rem', md: '0.875rem' },
+                        flex: { xs: '1 1 100%', sm: '1 1 auto' }
+                      }}
+                    >
+                      {model.label}
+                    </Typography>
+                    {model.pricing.estimatedCostPerListing > 0 ? (
                       <Chip
-                        icon={<DollarSign size={12} />}
-                        label={`${model.pricing.estimatedCostFor5kTokens.toFixed(4)}€`}
+                        icon={<DollarSign size={10} />}
+                        label={`${model.pricing.estimatedCostPerListing.toFixed(4)}€`}
                         size="small"
                         color="primary"
-                        sx={{ fontSize: '0.7rem', height: 20 }}
+                        sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, height: { xs: 18, md: 20 } }}
                       />
                     ) : (
                       <Chip
                         label="GRATIS"
                         size="small"
                         color="success"
-                        sx={{ fontSize: '0.7rem', height: 20, fontWeight: 600 }}
+                        sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, height: { xs: 18, md: 20 }, fontWeight: 600 }}
                       />
                     )}
                   </Box>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                  >
                     {model.description}
                   </Typography>
                 </Box>
@@ -322,29 +354,7 @@ export const AISettings = () => {
           </Select>
         </FormControl>
 
-        {selectedNewsletterModel && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-              Newsletter: {selectedNewsletterModel.label}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              {selectedNewsletterModel.description}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-              <Chip
-                icon={<TrendingUp size={14} />}
-                label={selectedNewsletterModel.pricing.estimatedCostFor5kTokens > 0
-                  ? `~${selectedNewsletterModel.pricing.estimatedCostFor5kTokens.toFixed(4)}€ / Newsletter`
-                  : 'Kostenlos während Preview'}
-                size="small"
-                color={selectedNewsletterModel.pricing.estimatedCostFor5kTokens > 0 ? 'primary' : 'success'}
-                sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }}
-              />
-            </Box>
-          </Alert>
-        )}
-
-        <Box sx={{ mt: 3 }}>
+        <Box sx={{ mt: 2.5 }}>
           <Button
             variant="contained"
             startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <Save size={18} />}
@@ -359,145 +369,6 @@ export const AISettings = () => {
           >
             {saving ? 'Speichern...' : 'Einstellungen speichern'}
           </Button>
-        </Box>
-      </Paper>
-
-      {/* Pricing Comparison Table */}
-      <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, mb: 2 }}>
-          <DollarSign size={isMobile ? 18 : 22} />
-          <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{ fontWeight: 600 }}>
-            Preisvergleich (~5000 Tokens)
-          </Typography>
-        </Box>
-        <Divider sx={{ mb: 2 }} />
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-          Geschätzte Kosten für ein großes Inserat mit Bildanalyse (ca. 4000 Input + 1000 Output Tokens)
-        </Typography>
-
-        <TableContainer sx={{
-          overflowX: 'auto',
-          '& .MuiTable-root': {
-            minWidth: isMobile ? 280 : 650,
-          }
-        }}>
-          <Table size={isMobile ? "small" : "medium"}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>Modell</TableCell>
-                {!isMobile && (
-                  <>
-                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Input €/1M</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Output €/1M</TableCell>
-                  </>
-                )}
-                <TableCell align="right" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
-                  Kosten/Inserat
-                </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
-                  Preis-Leistung
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {GEMINI_MODELS.map((model) => (
-                <TableRow
-                  key={model.value}
-                  sx={{
-                    bgcolor: model.value === settings?.ai_model ? 'primary.50' : 'transparent',
-                    '&:hover': { bgcolor: 'action.hover' }
-                  }}
-                >
-                  <TableCell sx={{ fontSize: { xs: '0.7rem', md: '0.875rem' } }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: model.value === settings?.ai_model ? 600 : 400, fontSize: { xs: '0.7rem', md: '0.875rem' } }}>
-                        {model.label.split(' - ')[0]}
-                      </Typography>
-                      {!isMobile && (
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                          {model.description}
-                        </Typography>
-                      )}
-                    </Box>
-                  </TableCell>
-                  {!isMobile && (
-                    <>
-                      <TableCell align="right" sx={{ fontSize: '0.875rem' }}>
-                        {model.pricing.inputCostPerMillion > 0
-                          ? `${model.pricing.inputCostPerMillion.toFixed(4)}€`
-                          : 'Gratis'}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '0.875rem' }}>
-                        {model.pricing.outputCostPerMillion > 0
-                          ? `${model.pricing.outputCostPerMillion.toFixed(4)}€`
-                          : 'Gratis'}
-                      </TableCell>
-                    </>
-                  )}
-                  <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, fontWeight: 600 }}>
-                    {model.pricing.estimatedCostFor5kTokens > 0
-                      ? `${model.pricing.estimatedCostFor5kTokens.toFixed(4)}€`
-                      : 'Gratis'}
-                  </TableCell>
-                  <TableCell align="center">
-                    {model.pricing.estimatedCostFor5kTokens === 0 ? (
-                      <Chip label="⭐ Gratis" color="success" size="small" sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }} />
-                    ) : model.value === 'gemini-2.5-flash-lite' ? (
-                      <Chip label="💰 Günstigste" color="primary" size="small" sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }} />
-                    ) : model.value === 'gemini-2.5-flash' ? (
-                      <Chip label="⚡ Balance" color="info" size="small" sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }} />
-                    ) : (
-                      <Chip label="🎯 Premium" color="warning" size="small" sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }} />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-
-        <Alert severity="warning" sx={{ mt: 2, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
-          <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
-            Hinweis: Dies sind Schätzungen basierend auf Google's Preismodell. Tatsächliche Kosten können je nach
-            Bildgröße und Analysekomplexität variieren.
-          </Typography>
-        </Alert>
-      </Paper>
-
-      <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3 }}>
-        <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{ fontWeight: 600, mb: 2 }}>
-          Modell-Informationen
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '0.85rem', md: '0.875rem' } }}>
-              📦 Inserate-Modell
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-              Wird für die KI-gestützte Bildanalyse beim Erstellen von Inseraten verwendet.
-              Nutzer sehen die Ergebnisse dieses Modells in der Inserate-Erstellung.
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '0.85rem', md: '0.875rem' } }}>
-              📧 Newsletter-Modell
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-              Wird für die automatische Generierung von Newsletter-Inhalten verwendet.
-              Das Modell erstellt kreative Texte basierend auf dem Changelog und früheren Newslettern.
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '0.85rem', md: '0.875rem' } }}>
-              Test-Empfehlung
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-              Um die verschiedenen Modelle zu testen, wählen Sie ein Modell aus, speichern Sie die Einstellung
-              und testen Sie die jeweilige Funktion (Inserat mit Bildanalyse oder Newsletter-Generierung).
-              Vergleichen Sie Qualität, Geschwindigkeit und Kosten.
-            </Typography>
-          </Box>
         </Box>
       </Paper>
     </Box>

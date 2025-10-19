@@ -136,10 +136,10 @@ export const ProductManagement = () => {
   };
 
   const renderPackageCard = (pkg: CreditPackage) => {
-    const calculateCredits = (price: number) => Math.floor(price * 5);
-    const credits = calculateCredits(pkg.price);
-    const bonus = Math.floor(credits * pkg.bonus_percent);
-    const totalCredits = credits + bonus;
+    const calculateInserate = (price: number) => Math.floor(price * 5);
+    const inserate = calculateInserate(pkg.price);
+    const bonus = Math.floor(inserate * pkg.bonus_percent);
+    const totalInserate = inserate + bonus;
 
     return (
       <Card
@@ -214,10 +214,10 @@ export const ProductManagement = () => {
             <>
               <Box>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                  Credits
+                  Inserate
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {credits} + {bonus} = {totalCredits}
+                  {inserate} + {bonus} = {totalInserate}
                 </Typography>
               </Box>
             </>
@@ -251,10 +251,10 @@ export const ProductManagement = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-            Produktverwaltung
+            Inserate-Pakete
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Verwalte Credit-Pakete und Spenden-Optionen
+            Verwalte Inserate-Pakete und Spenden-Optionen
           </Typography>
         </Box>
         <IconButton onClick={fetchPackages} disabled={loading}>
@@ -286,7 +286,7 @@ export const ProductManagement = () => {
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Zap size={16} />
-                  Personal Credits ({personalPackages.length})
+                  Personal Inserate ({personalPackages.length})
                 </Box>
               }
             />
@@ -305,7 +305,7 @@ export const ProductManagement = () => {
             <Box>
               {personalPackages.length === 0 ? (
                 <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                  Keine Personal Credit Pakete vorhanden
+                  Keine Personal Inserate-Pakete vorhanden
                 </Typography>
               ) : (
                 personalPackages.map(renderPackageCard)
