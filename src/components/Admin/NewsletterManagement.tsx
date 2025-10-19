@@ -219,7 +219,15 @@ export const NewsletterManagement = () => {
       setSuccess('✨ Newsletter erfolgreich mit KI generiert!');
     } catch (err) {
       console.error('Error generating newsletter:', err);
-      setError(err instanceof Error ? err.message : 'Fehler bei der KI-Generierung');
+      if (err instanceof Error && err.message === 'Failed to fetch') {
+        setError(
+          '⚠️ Edge Function nicht erreichbar. Bitte stelle sicher, dass die "generate-newsletter" ' +
+          'Edge Function deployed ist und der GOOGLE_GEMINI_API_KEY gesetzt ist. ' +
+          'Siehe Deployment-Anleitung für Details.'
+        );
+      } else {
+        setError(err instanceof Error ? err.message : 'Fehler bei der KI-Generierung');
+      }
     } finally {
       setGenerating(false);
     }
@@ -359,19 +367,22 @@ export const NewsletterManagement = () => {
             Newsletter erstellen
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <FormControl sx={{ minWidth: 200 }} size="small">
-              <InputLabel><FileText size={16} style={{ marginRight: 4 }} /> Vorlage</InputLabel>
+            <FormControl sx={{ minWidth: 240 }} size="small">
+              <InputLabel>Vorlage laden</InputLabel>
               <Select
                 value={selectedTemplate}
                 onChange={(e) => {
                   setSelectedTemplate(e.target.value);
                   handleLoadTemplate(e.target.value);
                 }}
-                label="Vorlage"
+                label="Vorlage laden"
                 disabled={generating || sending}
+                startAdornment={
+                  <FileText size={16} style={{ marginLeft: 8, marginRight: 4, color: '#666' }} />
+                }
               >
                 <MenuItem value="">
-                  <em>Keine Vorlage</em>
+                  <em>Keine Vorlage auswählen</em>
                 </MenuItem>
                 {templates.map((template) => (
                   <MenuItem key={template.id} value={template.id}>

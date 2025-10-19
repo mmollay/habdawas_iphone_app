@@ -201,13 +201,6 @@ const AdminPage = () => {
               </Box>
             )}
 
-            {/* Desktop Title */}
-            {!isMobile && (
-              <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>
-                {getSectionTitle()}
-              </Typography>
-            )}
-
             {/* Content Area */}
             {renderContent()}
           </Container>
