@@ -46,7 +46,7 @@ export const CreditSystemSettings = () => {
             Konfiguriere das Community-Spendentopf & Power-User System
           </Typography>
         </Box>
-        <IconButton onClick={() => window.location.reload()} disabled={loading}>
+        <IconButton onClick={() => window.location.reload()}>
           <RefreshCw size={20} />
         </IconButton>
       </Box>

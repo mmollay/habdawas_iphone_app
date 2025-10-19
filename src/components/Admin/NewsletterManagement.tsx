@@ -329,12 +329,12 @@ export const NewsletterManagement = () => {
 
   const renderComposeTab = () => (
     <Box>
-      <Card sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+      <Card sx={{ p: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
           <Box
             sx={{
-              width: 48,
-              height: 48,
+              width: 40,
+              height: 40,
               borderRadius: 2,
               bgcolor: 'primary.light',
               display: 'flex',
@@ -342,20 +342,20 @@ export const NewsletterManagement = () => {
               justifyContent: 'center',
             }}
           >
-            <Users size={24} style={{ color: '#1976d2' }} />
+            <Users size={20} style={{ color: '#1565c0' }} />
           </Box>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
               {subscribersCount} Abonnenten
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
               Empfänger für diesen Newsletter
             </Typography>
           </Box>
         </Box>
 
         {subscribersCount === 0 && (
-          <Alert severity="warning" sx={{ mb: 3 }}>
+          <Alert severity="warning" sx={{ mb: 2 }}>
             Aktuell gibt es keine Newsletter-Abonnenten. User können sich in ihren Einstellungen für den Newsletter anmelden.
           </Alert>
         )}

@@ -4,6 +4,54 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.2] - 2025-10-19
+
+### Changed
+- 🎨 **Newsletter-Verwaltung: Kompakteres Abonnenten-Design**
+  - Subscriber-Card padding reduziert (p: 3 → p: 2) für kompakteres Layout
+  - Icon-Box verkleinert (48x48 → 40x40px) mit besserem Kontrast
+  - Icon-Farbe von #1976d2 auf #1565c0 geändert (dunklere, kontrastreichere Farbe)
+  - Icon-Größe von 24 auf 20px reduziert
+  - Gap zwischen Elementen von 2 auf 1.5 reduziert
+  - Typography-Größen optimiert für kompakteres Erscheinungsbild
+  - Alert margin-bottom auf mb: 2 angepasst
+
+### Fixed
+- 🐛 **Behoben: "loading is not defined" Fehler in CreditSystemSettings**
+  - Entfernung des ungültigen `disabled={loading}` von RefreshCw IconButton
+  - Component rendert jetzt ohne Fehler
+  - Behoben in `src/components/Admin/CreditSystemSettings.tsx:49`
+
+### Technical Details
+- **Geänderte Dateien**:
+  - `src/components/Admin/NewsletterManagement.tsx` - Subscriber-Card Styling optimiert
+  - `src/components/Admin/CreditSystemSettings.tsx` - Loading-State-Fehler behoben
+
+## [1.15.1] - 2025-10-19
+
+### Changed
+- 🎨 **Admin-Page: Titel-Duplikate entfernt**
+  - Entfernung des doppelten h4-Desktop-Titels in AdminPage.tsx
+  - Komponenten-eigene h5-Titel bleiben für konsistente Navigation
+
+### Changed
+- 🎨 **Newsletter-Verwaltung: Verbesserte Template-Auswahl**
+  - Label von "Vorlage" auf "Vorlage laden" geändert
+  - Dropdown-Breite von 200px auf 240px erweitert
+  - Icon als startAdornment statt im Label für bessere visuelle Hierarchie
+  - Besserer Placeholder-Text: "Keine Vorlage auswählen"
+
+### Fixed
+- 🐛 **Behoben: Bessere Fehlermeldung bei fehlendem Edge Function Deployment**
+  - "Failed to fetch" Fehler wird jetzt mit benutzerfreundlicher Anleitung angezeigt
+  - Hinweis auf benötigtes Edge Function Deployment und API-Key-Konfiguration
+  - Hilft Admins bei der Fehlersuche und gibt konkrete Lösungsschritte
+
+### Technical Details
+- **Geänderte Dateien**:
+  - `src/components/Admin/AdminPage.tsx` - Desktop-Titel entfernt (Lines 204-209)
+  - `src/components/Admin/NewsletterManagement.tsx` - Template-Dropdown verbessert
+
 ## [1.15.0] - 2025-10-19
 
 ### Added
