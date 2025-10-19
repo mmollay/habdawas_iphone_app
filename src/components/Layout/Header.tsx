@@ -514,7 +514,7 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
           </ListItemIcon>
           <ListItemText
             primary="Mein Guthaben"
-            secondary={`${personalCredits} Credits verfügbar`}
+            secondary={`${personalCredits} Inserate verfügbar`}
             primaryTypographyProps={{ fontWeight: 600, color: '#667eea' }}
             secondaryTypographyProps={{ fontSize: '0.75rem' }}
           />
