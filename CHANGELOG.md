@@ -4,6 +4,13 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.8.1] - 2025-10-19
+
+### Changed
+- 🎨 **Version Sync**: Version auf 1.8.1 angehoben
+  - **Info**: Tokens Page UX Improvements in bazar_bold
+  - **Hinweis**: CreditPurchasePage existiert nicht in iphone_app
+
 ## [1.8.0] - 2025-10-19
 
 ### Changed
