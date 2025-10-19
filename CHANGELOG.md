@@ -4,6 +4,51 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.8.0] - 2025-10-19
+
+### Changed
+- 🎨 **Header Button Cleanup**: "Inserat anlegen" Button vereinfacht
+  - **Entfernt**: Credit-Badge aus Header-Button (zeigt nicht mehr "5 gratis")
+  - **Grund**: Information wird bereits darunter angezeigt - Badge war redundant
+  - **Datei**: `src/components/Layout/Header.tsx` (Zeilen 179-194)
+  - **User Request**: "Den Button 'Inserate anlegen' im Header bitte wieder ohne der Anzahl"
+  - **Getestet**: Mit Playwright verifiziert
+
+- 🔧 **Admin Moderation UX Improvement**: "Sperren" Button in Header verschoben
+  - **Neu**: "Sperren" Button erscheint direkt im ItemDetailPage Header
+    - Positioniert neben "Bearbeiten" Button
+    - Nur sichtbar für Admins mit `items.reject` Permission
+    - Nur bei veröffentlichten Items (status === 'published')
+  - **Entfernt**: Gesamte ItemModerationBar Komponente
+  - **Vorteile**:
+    - Weniger Platzverschwendung für Admins
+    - Direkter Zugriff auf wichtigste Moderations-Aktion
+    - Konsistente Button-Platzierung im Header
+  - **Dateien**:
+    - `src/components/Items/ItemDetailPage.tsx`: Sperren Button + Dialog hinzugefügt
+    - Import von `ItemModerationBar` entfernt
+    - `usePermissions` Hook integriert
+    - Reject-Dialog und Snackbar implementiert
+  - **User Request**: "Ich denke die Moderations-Aktionen kann man den 'Sperren' Button auch dort hingeben wo der Bearbeiten Button ist"
+  - **Getestet**: Mit Playwright verifiziert
+
+### Technical Details
+- **Neue Imports in ItemDetailPage.tsx**:
+  - `Dialog`, `DialogTitle`, `DialogContent`, `DialogActions`, `Snackbar` from MUI
+  - `XCircle` from lucide-react
+  - `usePermissions` from hooks
+- **Neue State in ItemDetailPage**:
+  - `rejectDialog`: Dialog-Zustand
+  - `rejectReason`: Eingabefeld für Ablehnungsgrund
+  - `rejectLoading`: Loading-State während Ablehnung
+  - `snackbar`: Feedback-Nachrichten
+- **Neue Funktionen**:
+  - `handleReject()`: Ruft `reject_item` RPC auf, lädt Item neu nach Ablehnung
+- **Komponenten**:
+  - `Header.tsx`: Credit-Badge entfernt
+  - `ItemDetailPage.tsx`: Sperren-Button, Dialog, Snackbar hinzugefügt
+  - `ItemModerationBar.tsx`: Wird nicht mehr verwendet (kann später entfernt werden)
+
 ## [1.7.9] - 2025-10-19
 
 ### Changed

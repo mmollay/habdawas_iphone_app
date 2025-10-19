@@ -191,26 +191,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
                           }}
                         >
                           Inserat anlegen
-                          {creditInfo && (
-                            <Box
-                              component="span"
-                              sx={{
-                                ml: 1,
-                                px: 0.75,
-                                py: 0.25,
-                                bgcolor: 'rgba(255, 255, 255, 0.25)',
-                                borderRadius: 1,
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                              }}
-                            >
-                              {creditInfo.remainingDailyListings !== undefined && creditInfo.remainingDailyListings > 0
-                                ? `${creditInfo.remainingDailyListings} gratis`
-                                : creditInfo.personalCredits && creditInfo.personalCredits > 0
-                                ? `${creditInfo.personalCredits} Credits`
-                                : '0'}
-                            </Box>
-                          )}
                         </Button>
                       )}
                       {isMobile && (
