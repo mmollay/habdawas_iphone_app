@@ -13,6 +13,24 @@ interface SendNewsletterRequest {
   newsletterId?: string; // Optional: If updating existing newsletter
 }
 
+interface Subscriber {
+  id: string;
+  email: string;
+  full_name: string | null;
+}
+
+// Replace placeholders with actual subscriber data
+function replacePlaceholders(text: string, subscriber: Subscriber, baseUrl: string): string {
+  const fullName = subscriber.full_name || subscriber.email.split('@')[0];
+  const firstName = fullName.split(' ')[0];
+
+  return text
+    .replace(/\{\{name\}\}/g, fullName)
+    .replace(/\{\{first_name\}\}/g, firstName)
+    .replace(/\{\{email\}\}/g, subscriber.email)
+    .replace(/\{\{unsubscribe_link\}\}/g, `${baseUrl}/settings`);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -179,9 +197,14 @@ Deno.serve(async (req: Request) => {
     if (resendApiKey) {
       // Send emails via Resend
       const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "newsletter@habdawas.at";
+      const baseUrl = Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "") || "https://habdawas.at";
 
       for (const subscriber of subscribers) {
         try {
+          // Replace placeholders with subscriber-specific data
+          const personalizedSubject = replacePlaceholders(subject, subscriber, baseUrl);
+          const personalizedBody = replacePlaceholders(body, subscriber, baseUrl);
+
           const response = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
@@ -191,17 +214,17 @@ Deno.serve(async (req: Request) => {
             body: JSON.stringify({
               from: `HabDaWas <${fromEmail}>`,
               to: [subscriber.email],
-              subject: subject,
+              subject: personalizedSubject,
               html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #1976d2;">${subject}</h2>
+                  <h2 style="color: #1976d2;">${personalizedSubject}</h2>
                   <div style="line-height: 1.6;">
-                    ${body.replace(/\n/g, '<br>')}
+                    ${personalizedBody.replace(/\n/g, '<br>')}
                   </div>
                   <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
                   <p style="font-size: 12px; color: #666;">
                     Du erhältst diese E-Mail, weil du den Newsletter von HabDaWas abonniert hast.<br>
-                    <a href="${Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "")}/settings" style="color: #1976d2;">Newsletter-Einstellungen ändern</a>
+                    <a href="${baseUrl}/settings" style="color: #1976d2;">Newsletter-Einstellungen ändern</a>
                   </p>
                 </div>
               `,

@@ -1,0 +1,224 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+};
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
+    // Verify user is admin
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.is_admin) {
+      return new Response(
+        JSON.stringify({ error: "Admin access required" }),
+        {
+          status: 403,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Check if Google Gemini API key is configured
+    const geminiApiKey = Deno.env.get("GOOGLE_GEMINI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+    if (!geminiApiKey) {
+      return new Response(
+        JSON.stringify({
+          error: "AI generation not configured. Please add GOOGLE_GEMINI_API_KEY to your Edge Function secrets."
+        }),
+        {
+          status: 503,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Fetch CHANGELOG.md from the repository
+    const changelogUrl = "https://raw.githubusercontent.com/mmollay/bazar-bolt/main/CHANGELOG.md";
+    let changelogContent = "";
+
+    try {
+      const changelogResponse = await fetch(changelogUrl);
+      if (changelogResponse.ok) {
+        changelogContent = await changelogResponse.text();
+      } else {
+        console.warn("Could not fetch CHANGELOG.md, will generate without it");
+        changelogContent = "Keine Changelog-Informationen verfügbar.";
+      }
+    } catch (error) {
+      console.error("Error fetching CHANGELOG:", error);
+      changelogContent = "Keine Changelog-Informationen verfügbar.";
+    }
+
+    // Get last 10 sent newsletters to avoid repetition
+    const { data: previousNewsletters, error: newslettersError } = await supabaseClient
+      .from("newsletters")
+      .select("subject, body")
+      .eq("status", "sent")
+      .order("sent_at", { ascending: false })
+      .limit(10);
+
+    if (newslettersError) {
+      console.error("Error fetching previous newsletters:", newslettersError);
+    }
+
+    // Build context for AI
+    const previousContent = previousNewsletters && previousNewsletters.length > 0
+      ? previousNewsletters.map(n => `Betreff: ${n.subject}\n${n.body.substring(0, 200)}...`).join("\n\n---\n\n")
+      : "Keine bisherigen Newsletter vorhanden.";
+
+    // Call Google Gemini API to generate newsletter
+    const prompt = `Du bist ein freundlicher Newsletter-Autor für die Plattform "HabDaWas" - einen Online-Flohmarkt und Community-Marktplatz.
+
+Deine Aufgabe ist es, einen ansprechenden Newsletter zu erstellen, der die neuesten Features und Verbesserungen der Plattform vorstellt.
+
+CHANGELOG (neueste Änderungen):
+${changelogContent}
+
+BISHERIGE NEWSLETTER (um Wiederholungen zu vermeiden):
+${previousContent}
+
+ANFORDERUNGEN:
+1. Erstelle einen NEUEN Newsletter, der sich von den bisherigen unterscheidet
+2. Konzentriere dich auf die neuesten Features aus dem CHANGELOG
+3. Schreibe in einem freundlichen, persönlichen Ton
+4. Verwende Du-Form und sprich die Community direkt an
+5. Hebe die Vorteile für die Nutzer hervor
+6. Halte es prägnant (max. 300 Wörter)
+7. Verwende Platzhalter wie {{name}} oder {{first_name}} für Personalisierung
+8. Füge einen Call-to-Action am Ende hinzu
+
+AUSGABEFORMAT - Antworte NUR mit einem gültigen JSON-Objekt ohne zusätzlichen Text:
+{
+  "subject": "Betreffzeile (max. 60 Zeichen, ansprechend)",
+  "body": "Newsletter-Text mit Platzhaltern"
+}
+
+Generiere jetzt einen neuen, einzigartigen Newsletter:`;
+
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2000,
+          }
+        }),
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error("Gemini API error:", errorText);
+      throw new Error("Failed to generate newsletter with AI");
+    }
+
+    const geminiData = await geminiResponse.json();
+    const generatedText = geminiData.candidates[0].content.parts[0].text;
+
+    // Extract JSON from response (Gemini might wrap it in markdown code blocks)
+    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("Could not parse AI response as JSON");
+    }
+
+    const generated = JSON.parse(jsonMatch[0]);
+
+    return new Response(
+      JSON.stringify({
+        subject: generated.subject,
+        body: generated.body,
+        source: "ai-generated",
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error generating newsletter:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Failed to generate newsletter",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
+});

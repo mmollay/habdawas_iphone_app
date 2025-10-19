@@ -4,6 +4,131 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.14.0] - 2025-10-19
+
+### Added
+- 🏷️ **Platzhalter-System für personalisierte Newsletter**
+  - `{{name}}` - Vollständiger Name des Empfängers
+  - `{{first_name}}` - Vorname des Empfängers
+  - `{{email}}` - E-Mail-Adresse
+  - `{{unsubscribe_link}}` - Link zum Abmelden
+  - Expandable Platzhalter-Liste mit Beschreibungen
+  - Click-to-insert Funktionalität
+  - Live-Vorschau mit ersetzten Beispieldaten
+
+- 🤖 **KI-Newsletter-Generierung mit Google Gemini**
+  - "Mit KI generieren" Button mit Gradient-Styling
+  - Liest automatisch CHANGELOG.md von GitHub
+  - Prüft letzte 10 versendete Newsletter
+  - Vermeidet Wiederholungen durch Context-Analyse
+  - Generiert einzigartige, benutzerfreundliche Inhalte
+  - Nutzt Google Gemini 1.5 Pro für intelligente Texterstellung
+  - Generiert Betreff und Body automatisch mit Platzhaltern
+
+- 📁 **Newsletter-Vorlagen-System**
+  - "Als Vorlage speichern" Button für wiederverwendbare Newsletter-Templates
+  - Vorlagen-Dropdown zum schnellen Laden gespeicherter Templates
+  - Neue Datenbanktabelle `newsletter_templates` mit RLS Policies
+  - Automatisches Laden von Betreff und Body beim Template-Auswahl
+  - Templates pro Admin-User verwaltbar
+
+### Changed
+- 📧 **Newsletter-Versand mit Personalisierung**
+  - Platzhalter werden pro Empfänger individuell ersetzt
+  - Fallback auf E-Mail-Username wenn full_name fehlt
+  - Dynamische Betreff- und Body-Personalisierung
+  - Bessere unsubscribe_link Integration
+
+### Technical Details
+- **Neue Dateien**:
+  - **Neu**: `supabase/functions/generate-newsletter/index.ts` - AI-Generierungs-Edge-Function
+  - **Neu**: `supabase/migrations/20251019000003_create_newsletter_templates_table.sql` - Template-Datenbanktabelle
+- **Geänderte Dateien**:
+  - **Erweitert**: `src/components/Admin/NewsletterManagement.tsx` (433 → 687 Zeilen)
+    - Neuer State: `placeholdersExpanded`, `generating`, `templates`, `selectedTemplate`, `saveTemplateOpen`, `templateName`
+    - Neue Funktionen:
+      - `handleGenerateWithAI()` - KI-Generierung
+      - `insertPlaceholder()` - Platzhalter einfügen
+      - `replacePlaceholdersForPreview()` - Preview mit Beispieldaten
+      - `fetchTemplates()` - Vorlagen laden
+      - `handleSaveTemplate()` - Vorlage speichern
+      - `handleLoadTemplate()` - Vorlage laden
+    - Neue UI:
+      - Platzhalter-Card mit Collapse
+      - KI-Button mit Gradient-Styling
+      - Template-Dropdown mit FormControl
+      - "Als Vorlage speichern" Button
+      - Save Template Dialog
+    - Erweitert: Preview Dialog zeigt Beispieldaten
+  - **Erweitert**: `supabase/functions/send-newsletter/index.ts` (279 → 300 Zeilen)
+    - Neues Interface: `Subscriber` mit full_name field (Zeilen 16-20)
+    - Neue Funktion: `replacePlaceholders()` (Zeilen 23-32)
+    - Personalisierung: Betreff + Body pro Empfänger (Zeilen 204-206)
+    - HTML Template nutzt personalisierte Werte (Zeilen 220-222)
+  - **Version**: `package.json` (1.13.0 → 1.14.0) in beiden Projekten
+
+- **Edge Function: generate-newsletter**
+  - Admin-Authentifizierung required
+  - Fetched CHANGELOG.md von GitHub (raw.githubusercontent.com)
+  - Lädt letzte 10 sent newsletters aus DB
+  - Ruft Google Gemini API auf (gemini-1.5-pro)
+  - Prompt mit Context: CHANGELOG + bisherige Newsletter
+  - Vermeidet Wiederholungen durch explizite Anweisung
+  - Generiert JSON mit subject und body
+  - Parst AI-Response und extrahiert JSON
+  - Benötigt GOOGLE_GEMINI_API_KEY oder GEMINI_API_KEY in Edge Function Secrets
+
+- **Platzhalter-Ersetzung**:
+  - `{{name}}` → `subscriber.full_name` oder Email-Username als Fallback
+  - `{{first_name}}` → Erster Teil von full_name (split by space)
+  - `{{email}}` → `subscriber.email`
+  - `{{unsubscribe_link}}` → `${baseUrl}/settings`
+  - Ersetzung erfolgt individuell pro Empfänger vor E-Mail-Versand
+
+## [1.13.0] - 2025-10-19
+
+### Added
+- ✉️ **Newsletter-Verwaltung im Admin-Bereich**
+  - Neue Datenbanktabelle `newsletters` für Newsletter-Tracking
+  - Admin-Komponente zur Erstellung und Verwaltung von Newslettern
+  - Zwei-Tab-Interface: "Erstellen" und "Verlauf"
+  - Live-Anzeige der Abonnenten-Anzahl
+  - Vorschau-Dialog für Newsletter vor dem Versand
+  - Verlaufstabelle mit Status-Chips (draft, sending, sent, failed)
+  - Edge Function für Newsletter-Versand via Resend API
+  - Unterstützung für Simulation bei fehlenden Resend-Credentials
+  - Tracking von Empfänger-Anzahl, erfolgreich versendeten und fehlgeschlagenen E-Mails
+  - Automatische HTML-Formatierung der Newsletter-Inhalte
+  - Unsubscribe-Link in jedem Newsletter
+
+### Technical Details
+- **Neue Dateien**:
+  - **Neu**: `src/components/Admin/NewsletterManagement.tsx` - Admin UI für Newsletter-Verwaltung
+  - **Neu**: `supabase/functions/send-newsletter/index.ts` - Edge Function für E-Mail-Versand
+  - **Migration**: `20251019000002_create_newsletters_table.sql` - Datenbank-Schema mit RLS Policies
+- **Geänderte Dateien**:
+  - **Geändert**: `src/components/Admin/AdminPage.tsx`
+    - Neue Route: `'newsletter'` in AdminSection Type (Zeile 26)
+    - Neuer Case in `renderContent()` für NewsletterManagement Komponente (Zeile 94-95)
+    - Neuer Titel: "Newsletter-Verwaltung" in `getSectionTitle()` (Zeile 115-116)
+  - **Geändert**: `src/components/Admin/AdminSidebar.tsx`
+    - Neues Icon: `Mail` für Newsletter-Verwaltung (Zeile 2)
+    - Neue Navigation: "Newsletter" nach "Produktverwaltung" (Zeile 20)
+  - **Version**: `package.json` (1.12.0 → 1.13.0) in beiden Projekten
+- **Datenbank-Schema**: `newsletters` Tabelle
+  - Felder: id, subject, body, status, recipients_count, sent_count, failed_count
+  - Felder: created_by, created_at, sent_at, updated_at
+  - Status-Typen: 'draft', 'sending', 'sent', 'failed'
+  - Indexes auf status und created_at für Performance
+  - RLS: Admin-Only Access für alle Operationen
+- **Edge Function**: send-newsletter
+  - Admin-Authentifizierung erforderlich
+  - Lädt alle Nutzer mit `newsletter_subscribed = true`
+  - Versendet E-Mails via Resend API (https://api.resend.com/emails)
+  - Fallback auf Simulation wenn RESEND_API_KEY nicht konfiguriert
+  - Tracking von sent_count und failed_count
+  - Aktualisiert Newsletter-Status nach Versand
+
 ## [1.12.0] - 2025-10-19
 
 ### Added
