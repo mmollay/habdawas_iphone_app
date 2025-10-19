@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { Edit, Save, X, Zap, Heart, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useSystemSettings } from '../../hooks/useSystemSettings';
 
 interface CreditPackage {
   id: string;
@@ -41,6 +42,7 @@ interface CreditPackage {
 }
 
 export const ProductManagement = () => {
+  const { settings, loading: settingsLoading } = useSystemSettings();
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +138,8 @@ export const ProductManagement = () => {
   };
 
   const renderPackageCard = (pkg: CreditPackage) => {
-    const calculateInserate = (price: number) => Math.floor(price * 5);
+    const powerUserPrice = settings?.powerUserCreditPrice || 0.20;
+    const calculateInserate = (price: number) => Math.floor(price / powerUserPrice);
     const inserate = calculateInserate(pkg.price);
     const bonus = Math.floor(inserate * pkg.bonus_percent);
     const totalInserate = inserate + bonus;
@@ -274,7 +277,7 @@ export const ProductManagement = () => {
         </Alert>
       )}
 
-      {loading ? (
+      {(loading || settingsLoading) ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
