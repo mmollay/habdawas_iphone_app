@@ -570,7 +570,7 @@ export const TransactionsList = ({
                 const hasDetails = metadata?.package_id || hasGeminiTokens;
 
                 return (
-                  <Box component="tbody" key={transaction.id} sx={{ display: 'contents' }}>
+                  <Box key={transaction.id} sx={{ display: 'contents' }}>
                     <Box
                       component="tr"
                       onClick={() => onTransactionClick?.(transaction)}

@@ -1,7 +1,7 @@
 import { Box, Paper, List, ListItemButton, ListItemIcon, ListItemText, IconButton, Tooltip, Divider } from '@mui/material';
-import { Users, Shield, ListTodo, Coins, ChevronLeft, ChevronRight, Brain, ShoppingBag, Mail } from 'lucide-react';
+import { Users, Shield, ListTodo, Coins, ChevronLeft, ChevronRight, Brain, Mail, FileText } from 'lucide-react';
 
-type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'products' | 'newsletter';
+type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'newsletter' | 'email-templates';
 
 interface AdminSidebarProps {
   currentSection: AdminSection;
@@ -15,9 +15,9 @@ export const AdminSidebar = ({ currentSection, onSectionChange, collapsed, onTog
   const adminSections = [
     { id: 'users' as AdminSection, label: 'Benutzerverwaltung', icon: <Users size={20} /> },
     { id: 'roles' as AdminSection, label: 'Rollen & Rechte', icon: <Shield size={20} /> },
-    { id: 'credits' as AdminSection, label: 'Credit-System', icon: <Coins size={20} /> },
-    { id: 'products' as AdminSection, label: 'Produktverwaltung', icon: <ShoppingBag size={20} /> },
+    { id: 'credits' as AdminSection, label: 'Inserate-System', icon: <Coins size={20} /> },
     { id: 'newsletter' as AdminSection, label: 'Newsletter', icon: <Mail size={20} /> },
+    { id: 'email-templates' as AdminSection, label: 'Email-Templates', icon: <FileText size={20} /> },
     { id: 'ai' as AdminSection, label: 'KI-Einstellungen', icon: <Brain size={20} /> },
     { id: 'tasks' as AdminSection, label: 'Aufgaben', icon: <ListTodo size={20} /> },
   ];

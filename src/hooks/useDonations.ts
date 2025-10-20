@@ -23,7 +23,7 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
         .from('donations')
         .select(`
           *,
-          user:profiles!user_id(
+          user:profiles!donations_user_id_fkey(
             id,
             full_name,
             email

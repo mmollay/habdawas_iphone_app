@@ -230,17 +230,19 @@ export const ProductManagement = () => {
         <Divider sx={{ my: 2 }} />
 
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
-          Stripe Checkout Name
+          Stripe Checkout Name (dynamisch)
         </Typography>
-        <Typography variant="body2" sx={{ mb: 2, fontFamily: 'monospace', bgcolor: '#f5f5f5', p: 1, borderRadius: 1 }}>
-          {pkg.stripe_product_name}
+        <Typography variant="body2" sx={{ mb: 2, fontFamily: 'monospace', bgcolor: '#e3f2fd', p: 1, borderRadius: 1, color: '#1976d2' }}>
+          {pkg.package_type === 'personal' ? `${totalInserate} Inserate` : `${pkg.price.toFixed(2)}€ Community-Spende`}
         </Typography>
 
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
-          Stripe Checkout Beschreibung
+          Stripe Checkout Beschreibung (dynamisch)
         </Typography>
-        <Typography variant="body2" sx={{ fontFamily: 'monospace', bgcolor: '#f5f5f5', p: 1, borderRadius: 1 }}>
-          {pkg.stripe_product_description}
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', bgcolor: '#e3f2fd', p: 1, borderRadius: 1, color: '#1976d2' }}>
+          {pkg.package_type === 'personal'
+            ? `${totalInserate} Inserate für persönliche Nutzung (${inserate} + ${bonus} Bonus)`
+            : `${pkg.price.toFixed(2)}€ Spende für den Community-Topf`}
         </Typography>
       </Card>
     );

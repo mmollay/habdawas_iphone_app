@@ -16,22 +16,39 @@ import {
   Tabs,
   Tab,
   IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Card,
+  CardContent,
 } from '@mui/material';
-import { Save, Info, Users, DollarSign, Gift, List, Settings, RefreshCw, Package } from 'lucide-react';
+import {
+  Save,
+  Info,
+  Users,
+  DollarSign,
+  Gift,
+  List,
+  Settings,
+  RefreshCw,
+  Package,
+  ChevronDown,
+  TrendingUp,
+  Coins,
+  Heart,
+} from 'lucide-react';
 import { useSystemSettings } from '../../hooks/useSystemSettings';
 import { ManualCreditGrant } from './ManualCreditGrant';
 import { TransactionsList } from '../Shared/TransactionsList';
 import { ProductManagement } from './ProductManagement';
-import { formatNumber } from '../../utils/formatNumber';
+import { formatNumber, formatCurrency } from '../../utils/formatNumber';
 
 export const CreditSystemSettings = () => {
   const [currentSubTab, setCurrentSubTab] = useState(() => {
-    // Restore last visited sub-tab from localStorage
     const savedSubTab = localStorage.getItem('creditSystemSubTab');
     return savedSubTab ? parseInt(savedSubTab) : 0;
   });
 
-  // Save current sub-tab to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('creditSystemSubTab', currentSubTab.toString());
   }, [currentSubTab]);
@@ -52,7 +69,6 @@ export const CreditSystemSettings = () => {
         </IconButton>
       </Box>
 
-      {/* Sub-Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs
           value={currentSubTab}
@@ -63,7 +79,7 @@ export const CreditSystemSettings = () => {
         >
           <Tab
             icon={<Settings size={18} />}
-            label="Einstellungen"
+            label="Preise & Einstellungen"
             iconPosition="start"
             sx={{ textTransform: 'none', minHeight: 48 }}
           />
@@ -88,7 +104,6 @@ export const CreditSystemSettings = () => {
         </Tabs>
       </Paper>
 
-      {/* Tab Content */}
       {currentSubTab === 0 && <CreditSystemSettingsTab />}
       {currentSubTab === 1 && (
         <TransactionsList
@@ -106,7 +121,6 @@ export const CreditSystemSettings = () => {
   );
 };
 
-// Separate component for settings tab
 const CreditSystemSettingsTab = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -114,25 +128,31 @@ const CreditSystemSettingsTab = () => {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // Local form state
+  // Local form state with new donation price field
   const [formData, setFormData] = useState({
-    dailyFreeListings: settings?.dailyFreeListings || 5,
+    // Basis-Kosten
     costPerListing: settings?.costPerListing || 0.20,
-    powerUserCreditPrice: settings?.powerUserCreditPrice || 0.20,
+
+    // Personal-Inserate (Power-User)
+    personalInseratePrice: settings?.powerUserCreditPrice || 0.25,
+    personalMinPurchase: settings?.powerUserMinPurchase || 10.00,
+
+    // Community-Spenden
+    donationInseratePrice: settings?.donationInseratePrice || 0.20,
     minDonationAmount: settings?.minDonationAmount || 5.00,
-    powerUserMinPurchase: settings?.powerUserMinPurchase || 10.00,
+
+    // Community-Topf
     lowPotWarningThreshold: settings?.lowPotWarningThreshold || 100,
   });
 
-  // Update form when settings load
   useEffect(() => {
     if (settings) {
       setFormData({
-        dailyFreeListings: settings.dailyFreeListings,
         costPerListing: settings.costPerListing,
-        powerUserCreditPrice: settings.powerUserCreditPrice,
+        personalInseratePrice: settings.powerUserCreditPrice,
+        personalMinPurchase: settings.powerUserMinPurchase,
+        donationInseratePrice: settings.donationInseratePrice || settings.costPerListing,
         minDonationAmount: settings.minDonationAmount,
-        powerUserMinPurchase: settings.powerUserMinPurchase,
         lowPotWarningThreshold: settings.lowPotWarningThreshold,
       });
     }
@@ -143,17 +163,16 @@ const CreditSystemSettingsTab = () => {
       setSaving(true);
       setSaveMessage(null);
 
-      // Update all settings
       await Promise.all([
-        updateSetting({ setting_key: 'daily_free_listings', setting_value: formData.dailyFreeListings }),
         updateSetting({ setting_key: 'cost_per_listing', setting_value: formData.costPerListing }),
-        updateSetting({ setting_key: 'power_user_credit_price', setting_value: formData.powerUserCreditPrice }),
+        updateSetting({ setting_key: 'power_user_credit_price', setting_value: formData.personalInseratePrice }),
+        updateSetting({ setting_key: 'power_user_min_purchase', setting_value: formData.personalMinPurchase }),
+        updateSetting({ setting_key: 'donation_inserate_price', setting_value: formData.donationInseratePrice }),
         updateSetting({ setting_key: 'min_donation_amount', setting_value: formData.minDonationAmount }),
-        updateSetting({ setting_key: 'power_user_min_purchase', setting_value: formData.powerUserMinPurchase }),
         updateSetting({ setting_key: 'low_pot_warning_threshold', setting_value: formData.lowPotWarningThreshold }),
       ]);
 
-      setSaveMessage({ type: 'success', text: 'Einstellungen erfolgreich gespeichert!' });
+      setSaveMessage({ type: 'success', text: '✅ Einstellungen erfolgreich gespeichert!' });
     } catch (err) {
       setSaveMessage({ type: 'error', text: 'Fehler beim Speichern der Einstellungen.' });
       console.error('Error saving settings:', err);
@@ -161,6 +180,19 @@ const CreditSystemSettingsTab = () => {
       setSaving(false);
     }
   };
+
+  // Calculate package prices dynamically
+  const calculatePersonalPackages = () => [
+    { euros: 5, inserate: Math.floor(5 / formData.personalInseratePrice), bonus: 0 },
+    { euros: 10, inserate: Math.floor(10 / formData.personalInseratePrice), bonus: Math.floor(Math.floor(10 / formData.personalInseratePrice) * 0.1) },
+    { euros: 20, inserate: Math.floor(20 / formData.personalInseratePrice), bonus: Math.floor(Math.floor(20 / formData.personalInseratePrice) * 0.15) },
+  ];
+
+  const calculateDonationPackages = () => [
+    { euros: 5, inserate: Math.floor(5 / formData.donationInseratePrice) },
+    { euros: 10, inserate: Math.floor(10 / formData.donationInseratePrice) },
+    { euros: 25, inserate: Math.floor(25 / formData.donationInseratePrice) },
+  ];
 
   if (loading) {
     return (
@@ -171,64 +203,79 @@ const CreditSystemSettingsTab = () => {
   }
 
   if (error) {
-    return (
-      <Alert severity="error" sx={{ mb: 3 }}>
-        {error}
-      </Alert>
-    );
+    return <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>;
   }
 
-  const ContentWrapper = isMobile ? Box : Paper;
-  const wrapperProps = isMobile ? {} : { sx: { p: 3 } };
+  const personalPackages = calculatePersonalPackages();
+  const donationPackages = calculateDonationPackages();
 
   return (
     <Box>
-      {/* Info Alert */}
-      <Alert severity="info" icon={<Info size={20} />} sx={{ mb: 3 }}>
-        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-          Wie funktioniert das System?
-        </Typography>
-        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-          <strong>Community-Topf</strong>: Alle User spenden in einen gemeinsamen Topf<br/>
-          <strong>Gratis-User</strong>: Bekommen täglich X kostenlose Inserate (solange Topf nicht leer)<br/>
-          <strong>Power-User</strong>: Kaufen eigene Inserate für unbegrenzte Nutzung
-        </Typography>
-      </Alert>
+      {/* Quick Stats Overview */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Users size={24} color="white" />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                    Community-Topf
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    {formatNumber(settings?.communityPotBalance || 0)} Inserate
+                  </Typography>
+                </Box>
+                <Chip
+                  icon={<TrendingUp size={14} />}
+                  label={(settings?.communityPotBalance || 0) > formData.lowPotWarningThreshold ? 'Gesund' : 'Niedrig'}
+                  color={(settings?.communityPotBalance || 0) > formData.lowPotWarningThreshold ? 'success' : 'warning'}
+                  size="small"
+                />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {/* Current Community Pot Status */}
-      <Paper
-        elevation={1}
-        sx={{
-          p: { xs: 2, md: 3 },
-          mb: 3,
-          bgcolor: 'primary.50',
-          borderLeft: '4px solid',
-          borderColor: 'primary.main'
-        }}
-      >
-        <Box sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-          textAlign: { xs: 'center', sm: 'left' }
-        }}>
-          <Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-              Aktueller Community-Topf
-            </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              {formatNumber(settings?.communityPotBalance)} Inserate
-            </Typography>
-          </Box>
-          <Chip
-            icon={<Users size={16} />}
-            label={settings?.communityPotBalance! > settings?.lowPotWarningThreshold! ? 'Gesund' : 'Niedrig'}
-            color={settings?.communityPotBalance! > settings?.lowPotWarningThreshold! ? 'success' : 'warning'}
-          />
-        </Box>
-      </Paper>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: 'success.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <DollarSign size={24} color="white" />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                    Durchschnittspreis
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                    {formatCurrency((formData.personalInseratePrice + formData.donationInseratePrice) / 2)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    pro Inserat
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {saveMessage && (
         <Alert severity={saveMessage.type} sx={{ mb: 3 }} onClose={() => setSaveMessage(null)}>
@@ -236,147 +283,337 @@ const CreditSystemSettingsTab = () => {
         </Alert>
       )}
 
-      {/* Settings Form */}
-      <ContentWrapper {...wrapperProps}>
-        {/* Gratis-Inserate Section */}
-        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
-          Gratis-Inserate Einstellungen
-        </Typography>
+      {/* Compact Accordion Sections */}
+      <Box sx={{ mb: 3 }}>
+        {/* 1. Basis-Kosten */}
+        <Accordion defaultExpanded>
+          <AccordionSummary expandIcon={<ChevronDown size={20} />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <DollarSign size={20} color={theme.palette.primary.main} />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Basis-Kosten
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Tatsächliche Kosten pro Inserat (API + Server)
+                </Typography>
+              </Box>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Kosten pro Inserat"
+                  type="number"
+                  inputProps={{ step: 0.01, min: 0 }}
+                  value={formData.costPerListing}
+                  onChange={(e) => setFormData({ ...formData, costPerListing: parseFloat(e.target.value) || 0 })}
+                  helperText="Gemini API + Serverkosten"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">€</InputAdornment>
+                  }}
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box sx={{
+                  p: 2,
+                  bgcolor: 'grey.100',
+                  borderRadius: 1,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
+                    Kosten pro 100 Inserate:
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    {formatCurrency(formData.costPerListing * 100)}
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
 
-        <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mb: 3 }}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Kostenlose Inserate pro Tag"
-              type="number"
-              value={formData.dailyFreeListings}
-              onChange={(e) => setFormData({ ...formData, dailyFreeListings: parseInt(e.target.value) })}
-              helperText="Anzahl der kostenlosen Inserate die jeder User pro Tag erstellen kann"
-              InputProps={{
-                endAdornment: <InputAdornment position="end">Inserate/Tag</InputAdornment>
-              }}
-            />
-          </Grid>
+        {/* 2. Personal-Inserate (Power-User) */}
+        <Accordion defaultExpanded>
+          <AccordionSummary expandIcon={<ChevronDown size={20} />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Coins size={20} color={theme.palette.success.main} />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Personal-Inserate (Power-User)
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Verkaufspreise für persönliche Inserate
+                </Typography>
+              </Box>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Preis pro Inserat"
+                  type="number"
+                  inputProps={{ step: 0.01, min: 0 }}
+                  value={formData.personalInseratePrice}
+                  onChange={(e) => setFormData({ ...formData, personalInseratePrice: parseFloat(e.target.value) || 0 })}
+                  helperText="Verkaufspreis an Power-User"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">€</InputAdornment>
+                  }}
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Minimaler Kauf"
+                  type="number"
+                  inputProps={{ step: 0.50, min: 0 }}
+                  value={formData.personalMinPurchase}
+                  onChange={(e) => setFormData({ ...formData, personalMinPurchase: parseFloat(e.target.value) || 0 })}
+                  helperText="Mindestbetrag"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">€</InputAdornment>
+                  }}
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{
+                  p: 2,
+                  bgcolor: 'success.50',
+                  borderRadius: 1,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
+                    Gewinn pro Inserat:
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
+                    {formatCurrency(formData.personalInseratePrice - formData.costPerListing)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    ({((((formData.personalInseratePrice - formData.costPerListing) / formData.costPerListing) * 100) || 0).toFixed(0)}% Marge)
+                  </Typography>
+                </Box>
+              </Grid>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Warnschwelle Community-Topf"
-              type="number"
-              value={formData.lowPotWarningThreshold}
-              onChange={(e) => setFormData({ ...formData, lowPotWarningThreshold: parseInt(e.target.value) })}
-              helperText="Bei wie vielen verbleibenden Inseraten soll gewarnt werden?"
-              InputProps={{
-                endAdornment: <InputAdornment position="end">Inserate</InputAdornment>
-              }}
-            />
-          </Grid>
-        </Grid>
+              {/* Preview Cards for Personal Packages */}
+              <Grid size={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+                  📦 Paket-Vorschau (Personal)
+                </Typography>
+                <Grid container spacing={2}>
+                  {personalPackages.map((pkg, idx) => {
+                    const total = pkg.inserate + pkg.bonus;
+                    const pricePerInserat = pkg.euros / total;
+                    return (
+                      <Grid size={{ xs: 12, sm: 4 }} key={idx}>
+                        <Card variant="outlined" sx={{
+                          bgcolor: idx === 1 ? 'primary.50' : 'background.paper',
+                          borderColor: idx === 1 ? 'primary.main' : 'divider',
+                        }}>
+                          <CardContent sx={{ p: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                              {formatCurrency(pkg.euros)}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              {total} Inserate
+                              {pkg.bonus > 0 && <Chip label={`+${pkg.bonus} Bonus`} size="small" sx={{ ml: 1, height: 20 }} />}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatCurrency(pricePerInserat)}/Inserat
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
 
-        <Divider sx={{ my: 3 }} />
+        {/* 3. Community-Spenden */}
+        <Accordion defaultExpanded>
+          <AccordionSummary expandIcon={<ChevronDown size={20} />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Heart size={20} color={theme.palette.error.main} />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Community-Spenden
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Umwandlung von Spenden in kostenlose Inserate
+                </Typography>
+              </Box>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Preis pro Inserat"
+                  type="number"
+                  inputProps={{ step: 0.01, min: 0 }}
+                  value={formData.donationInseratePrice}
+                  onChange={(e) => setFormData({ ...formData, donationInseratePrice: parseFloat(e.target.value) || 0 })}
+                  helperText="1 EUR Spende = X Inserate"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">€</InputAdornment>
+                  }}
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Minimale Spende"
+                  type="number"
+                  inputProps={{ step: 0.50, min: 0 }}
+                  value={formData.minDonationAmount}
+                  onChange={(e) => setFormData({ ...formData, minDonationAmount: parseFloat(e.target.value) || 0 })}
+                  helperText="Mindestbetrag"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">€</InputAdornment>
+                  }}
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{
+                  p: 2,
+                  bgcolor: 'error.50',
+                  borderRadius: 1,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
+                    1 EUR generiert:
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: 'error.main' }}>
+                    {formatNumber(Math.floor(1 / formData.donationInseratePrice))} Inserate
+                  </Typography>
+                </Box>
+              </Grid>
 
-        {/* Kosten & Preise Section */}
-        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
-          Kosten & Preise
-        </Typography>
+              {/* Preview Cards for Donation Packages */}
+              <Grid size={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+                  💝 Spendenpaket-Vorschau
+                </Typography>
+                <Grid container spacing={2}>
+                  {donationPackages.map((pkg, idx) => (
+                    <Grid size={{ xs: 12, sm: 4 }} key={idx}>
+                      <Card variant="outlined" sx={{
+                        bgcolor: idx === 1 ? 'error.50' : 'background.paper',
+                        borderColor: idx === 1 ? 'error.main' : 'divider',
+                      }}>
+                        <CardContent sx={{ p: 2 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                            {formatCurrency(pkg.euros)} Spende
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            = {pkg.inserate} kostenlose Inserate
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            für die Community
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
 
-        <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mb: 3 }}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Kosten pro Inserat"
-              type="number"
-              inputProps={{ step: 0.01 }}
-              value={formData.costPerListing}
-              onChange={(e) => setFormData({ ...formData, costPerListing: parseFloat(e.target.value) })}
-              helperText="Tatsächliche Kosten (Gemini API + Server) pro Inserat"
-              InputProps={{
-                endAdornment: <InputAdornment position="end">EUR</InputAdornment>
-              }}
-            />
-          </Grid>
+        {/* 4. Community-Topf Warnung */}
+        <Accordion>
+          <AccordionSummary expandIcon={<ChevronDown size={20} />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Info size={20} color={theme.palette.warning.main} />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Warnungen & Schwellwerte
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Benachrichtigungen bei niedrigem Community-Topf
+                </Typography>
+              </Box>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Warnschwelle Community-Topf"
+                  type="number"
+                  inputProps={{ step: 10, min: 0 }}
+                  value={formData.lowPotWarningThreshold}
+                  onChange={(e) => setFormData({ ...formData, lowPotWarningThreshold: parseInt(e.target.value) || 0 })}
+                  helperText="Warnung wenn weniger Inserate verfügbar"
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">Inserate</InputAdornment>
+                  }}
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Alert severity={(settings?.communityPotBalance || 0) > formData.lowPotWarningThreshold ? 'success' : 'warning'}>
+                  Aktuell: <strong>{formatNumber(settings?.communityPotBalance || 0)} Inserate</strong> im Topf
+                  <br />
+                  {(settings?.communityPotBalance || 0) > formData.lowPotWarningThreshold
+                    ? '✅ Status: Gesund'
+                    : '⚠️ Status: Warnung - Topf auffüllen!'}
+                </Alert>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
+      </Box>
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Preis pro Inserat (Power-User)"
-              type="number"
-              inputProps={{ step: 0.01 }}
-              value={formData.powerUserCreditPrice}
-              onChange={(e) => setFormData({ ...formData, powerUserCreditPrice: parseFloat(e.target.value) })}
-              helperText="Preis pro Inserat für Power-User"
-              InputProps={{
-                endAdornment: <InputAdornment position="end">EUR/Inserat</InputAdornment>
-              }}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Minimale Spende"
-              type="number"
-              inputProps={{ step: 0.01 }}
-              value={formData.minDonationAmount}
-              onChange={(e) => setFormData({ ...formData, minDonationAmount: parseFloat(e.target.value) })}
-              helperText="Mindestbetrag für Community-Topf Spenden"
-              InputProps={{
-                endAdornment: <InputAdornment position="end">EUR</InputAdornment>
-              }}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Minimaler Power-User Kauf"
-              type="number"
-              inputProps={{ step: 0.01 }}
-              value={formData.powerUserMinPurchase}
-              onChange={(e) => setFormData({ ...formData, powerUserMinPurchase: parseFloat(e.target.value) })}
-              helperText="Mindestbetrag für Power-User Inserate-Kauf"
-              InputProps={{
-                endAdornment: <InputAdornment position="end">EUR</InputAdornment>
-              }}
-            />
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ my: 3 }} />
-
-        {/* Berechnungen Section */}
-        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
-          Aktuelle Berechnungen
-        </Typography>
-
-        <Box sx={{ bgcolor: 'grey.100', p: { xs: 2, md: 3 }, borderRadius: 1, mb: 3 }}>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            1 EUR Spende = <strong>{formatNumber(Math.floor(1 / formData.costPerListing))} Inserate</strong> für Community-Topf
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            1 EUR Power-User = <strong>{formatNumber(Math.floor(1 / formData.powerUserCreditPrice))} Inserate</strong> persönlich
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Min. Spende {formData.minDonationAmount} EUR = <strong>{formatNumber(Math.floor(formData.minDonationAmount / formData.costPerListing))} Inserate</strong>
-          </Typography>
-          <Typography variant="body2">
-            Min. Power-User {formData.powerUserMinPurchase} EUR = <strong>{formatNumber(Math.floor(formData.powerUserMinPurchase / formData.powerUserCreditPrice))} Inserate</strong>
-          </Typography>
-        </Box>
-
-        {/* Save Button */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+      {/* Save Button */}
+      <Paper sx={{ p: 3, bgcolor: 'grey.50' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+              Änderungen speichern?
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Alle Preise werden sofort für neue Käufe übernommen
+            </Typography>
+          </Box>
           <Button
             variant="contained"
+            size="large"
             startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Save size={20} />}
             onClick={handleSave}
             disabled={saving}
-            size="large"
+            sx={{ minWidth: 200 }}
           >
-            {saving ? 'Speichern...' : 'Einstellungen speichern'}
+            {saving ? 'Wird gespeichert...' : 'Einstellungen speichern'}
           </Button>
         </Box>
-      </ContentWrapper>
+      </Paper>
     </Box>
   );
 };

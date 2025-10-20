@@ -18,12 +18,13 @@ import RoleManagementTab from './RoleManagementTab';
 import TaskManagementTab from './TaskManagementTab';
 import { CreditSystemSettings } from './CreditSystemSettings';
 import { AISettings } from './AISettings';
-import { ProductManagement } from './ProductManagement';
 import { NewsletterManagement } from './NewsletterManagement';
+import { EmailHeaderFooterManager } from './EmailHeaderFooterManager';
+import { EmailTemplateManager } from './EmailTemplateManager';
 import { Header } from '../Layout/Header';
 import { Footer } from '../Layout/Footer';
 
-type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'products' | 'newsletter';
+type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'newsletter' | 'email-templates';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -89,10 +90,17 @@ const AdminPage = () => {
         return <CreditSystemSettings />;
       case 'ai':
         return <AISettings />;
-      case 'products':
-        return <ProductManagement />;
       case 'newsletter':
         return <NewsletterManagement />;
+      case 'email-templates':
+        return (
+          <Box>
+            <EmailTemplateManager />
+            <Box sx={{ mt: 4 }}>
+              <EmailHeaderFooterManager />
+            </Box>
+          </Box>
+        );
       default:
         return <UserManagementTab />;
     }
@@ -107,13 +115,13 @@ const AdminPage = () => {
       case 'tasks':
         return 'Aufgaben';
       case 'credits':
-        return 'Credit-System';
+        return 'Inserate-System';
       case 'ai':
         return 'KI-Einstellungen';
-      case 'products':
-        return 'Produktverwaltung';
       case 'newsletter':
         return 'Newsletter-Verwaltung';
+      case 'email-templates':
+        return 'Email-Templates';
       default:
         return 'Admin-Bereich';
     }

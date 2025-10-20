@@ -22,20 +22,35 @@ import {
   Paper,
   Tabs,
   Tab,
-  Collapse,
-  List,
-  ListItem,
-  ListItemText,
+  Tooltip,
   MenuItem,
   Select,
   FormControl,
   InputLabel,
 } from '@mui/material';
-import { Send, X, Mail, Users, History, Eye, RefreshCw, Sparkles, ChevronDown, ChevronUp, Save, FileText, Trash2 } from 'lucide-react';
+import { Send, X, Mail, Users, History, Eye, RefreshCw, Sparkles, Save, FileText, Trash2 } from 'lucide-react';
 import { Box as MuiBox } from '@mui/material';
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import {
+  ClassicEditor,
+  Bold,
+  Essentials,
+  Italic,
+  Paragraph,
+  Undo,
+  Heading,
+  Link,
+  List as CKList,
+  ListProperties,
+  Alignment,
+  Font,
+  SourceEditing,
+} from 'ckeditor5';
+import 'ckeditor5/ckeditor5.css';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { EmailHeader, EmailFooter } from '../../types/email-templates';
 
 interface Newsletter {
   id: string;
@@ -73,14 +88,19 @@ export const NewsletterManagement = () => {
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
   const [selectedTab, setSelectedTab] = useState(0);
-  const [placeholdersExpanded, setPlaceholdersExpanded] = useState(false);
   const [generating, setGenerating] = useState(false);
+
+  // Email Headers & Footers
+  const [emailHeaders, setEmailHeaders] = useState<EmailHeader[]>([]);
+  const [emailFooters, setEmailFooters] = useState<EmailFooter[]>([]);
 
   // Form state
   const [subject, setSubject] = useState('');
   const [header, setHeader] = useState('');
   const [body, setBody] = useState('');
   const [footer, setFooter] = useState('');
+  const [selectedHeaderId, setSelectedHeaderId] = useState<string>('');
+  const [selectedFooterId, setSelectedFooterId] = useState<string>('');
   const [sending, setSending] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -104,7 +124,49 @@ export const NewsletterManagement = () => {
     fetchSubscribersCount();
     fetchNewsletters();
     fetchTemplates();
+    fetchEmailHeaders();
+    fetchEmailFooters();
   }, []);
+
+  const fetchEmailHeaders = async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('email_headers')
+        .select('*')
+        .order('is_default', { ascending: false });
+
+      if (fetchError) throw fetchError;
+      setEmailHeaders(data || []);
+
+      // Auto-select default header
+      const defaultHeader = data?.find(h => h.is_default);
+      if (defaultHeader) {
+        setSelectedHeaderId(defaultHeader.id);
+      }
+    } catch (err) {
+      console.error('Error fetching email headers:', err);
+    }
+  };
+
+  const fetchEmailFooters = async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('email_footers')
+        .select('*')
+        .order('is_default', { ascending: false });
+
+      if (fetchError) throw fetchError;
+      setEmailFooters(data || []);
+
+      // Auto-select default footer
+      const defaultFooter = data?.find(f => f.is_default);
+      if (defaultFooter) {
+        setSelectedFooterId(defaultFooter.id);
+      }
+    } catch (err) {
+      console.error('Error fetching email footers:', err);
+    }
+  };
 
   const fetchSubscribersCount = async () => {
     try {
@@ -183,6 +245,8 @@ export const NewsletterManagement = () => {
             header,
             body,
             footer,
+            header_id: selectedHeaderId || null,
+            footer_id: selectedFooterId || null,
             created_by: user.id,
           });
 
@@ -197,6 +261,8 @@ export const NewsletterManagement = () => {
             header,
             body,
             footer,
+            header_id: selectedHeaderId || null,
+            footer_id: selectedFooterId || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', templateToOverwrite);
@@ -224,6 +290,8 @@ export const NewsletterManagement = () => {
       setHeader(template.header || '');
       setBody(template.body);
       setFooter(template.footer || '');
+      setSelectedHeaderId(template.header_id || '');
+      setSelectedFooterId(template.footer_id || '');
       setSuccess(`Vorlage "${template.name}" geladen`);
     }
   };
@@ -326,6 +394,10 @@ export const NewsletterManagement = () => {
         return;
       }
 
+      // Get header and footer HTML from selected templates
+      const selectedHeader = emailHeaders.find(h => h.id === selectedHeaderId);
+      const selectedFooter = emailFooters.find(f => f.id === selectedFooterId);
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-newsletter`,
         {
@@ -336,9 +408,9 @@ export const NewsletterManagement = () => {
           },
           body: JSON.stringify({
             subject,
-            header,
+            header: selectedHeader?.html_content || header,
             body,
-            footer,
+            footer: selectedFooter?.html_content || footer,
           }),
         }
       );
@@ -509,7 +581,7 @@ export const NewsletterManagement = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <FormControl sx={{ minWidth: 240 }} size="small">
-                <InputLabel>Vorlage laden</InputLabel>
+                <InputLabel shrink>Vorlage laden</InputLabel>
                 <Select
                   value={selectedTemplate}
                   onChange={(e) => {
@@ -518,9 +590,25 @@ export const NewsletterManagement = () => {
                   }}
                   label="Vorlage laden"
                   disabled={generating || sending}
-                  startAdornment={
-                    <FileText size={16} style={{ marginLeft: 8, marginRight: 4, color: '#666' }} />
-                  }
+                  displayEmpty
+                  notched
+                  renderValue={(value) => {
+                    if (!value) {
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+                          <FileText size={16} />
+                          <span>Vorlage wählen</span>
+                        </Box>
+                      );
+                    }
+                    const template = templates.find(t => t.id === value);
+                    return (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <FileText size={16} />
+                        <span>{template?.name}</span>
+                      </Box>
+                    );
+                  }}
                 >
                   <MenuItem value="">
                     <em>Keine Vorlage auswählen</em>
@@ -566,119 +654,189 @@ export const NewsletterManagement = () => {
 
         <TextField
           fullWidth
+          size="small"
           label="Betreff"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="z.B. Neue Features bei HabDaWas"
-          sx={{ mb: 2 }}
+          sx={{ mb: 3 }}
           disabled={sending || generating}
           inputRef={subjectRef}
           onFocus={() => setLastFocusedField('subject')}
         />
 
-        <TextField
-          fullWidth
-          multiline
-          rows={3}
-          label="Header (optional)"
-          value={header}
-          onChange={(e) => setHeader(e.target.value)}
-          placeholder="z.B. HabDaWas - Deine Community-Plattform"
-          helperText="Erscheint ganz oben im Newsletter (z.B. Logo-Text, Begrüßung)"
-          sx={{ mb: 2 }}
-          disabled={sending || generating}
-          inputRef={headerRef}
-          onFocus={() => setLastFocusedField('header')}
-        />
+        {/* Header Selection */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+            Email-Header
+          </Typography>
+          <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+            <InputLabel>Wiederverwendbaren Header wählen</InputLabel>
+            <Select
+              value={selectedHeaderId}
+              onChange={(e) => setSelectedHeaderId(e.target.value)}
+              label="Wiederverwendbaren Header wählen"
+              disabled={sending || generating}
+            >
+              <MenuItem value="">
+                <em>Kein Header</em>
+              </MenuItem>
+              {emailHeaders.map((h) => (
+                <MenuItem key={h.id} value={h.id}>
+                  {h.name} {h.is_default && '(Standard)'}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Typography variant="caption" color="text.secondary">
+            Wähle einen wiederverwendbaren Header oder verwalte Header in "Email-Templates"
+          </Typography>
+        </Box>
 
-        <TextField
-          fullWidth
-          multiline
-          rows={10}
-          label="Nachricht"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Schreibe hier deine Newsletter-Nachricht oder nutze die KI-Generierung..."
-          helperText="Hauptinhalt des Newsletters. Du kannst Platzhalter verwenden (siehe unten)."
-          sx={{ mb: 2 }}
-          disabled={sending || generating}
-          inputRef={bodyRef}
-          onFocus={() => setLastFocusedField('body')}
-        />
-
-        <TextField
-          fullWidth
-          multiline
-          rows={4}
-          label="Footer (optional - empfohlen für DSGVO-Konformität)"
-          value={footer}
-          onChange={(e) => setFooter(e.target.value)}
-          placeholder={`z.B.:\n\nDu erhältst diese E-Mail, weil du den HabDaWas-Newsletter abonniert hast.\nZum Abmelden: {{unsubscribe_link}}\n\nHabDaWas GmbH | Musterstraße 1 | 1010 Wien\nImpressum: https://habdawas.at/impressum`}
-          helperText="Footer mit Abmelde-Link, Impressum, etc. (wichtig für gesetzliche Anforderungen)"
-          sx={{ mb: 2 }}
-          disabled={sending || generating}
-          inputRef={footerRef}
-          onFocus={() => setLastFocusedField('footer')}
-        />
-
-        {/* Placeholders Section */}
-        <Card sx={{ mb: 2, bgcolor: 'action.hover' }}>
-          <Box
-            sx={{
-              p: 1.5,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-            }}
-            onClick={() => setPlaceholdersExpanded(!placeholdersExpanded)}
-          >
-            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
-              Verfügbare Platzhalter
-            </Typography>
-            {placeholdersExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        {/* Body with CKEditor */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+            Newsletter-Inhalt *
+          </Typography>
+          <Box sx={{
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+            '& .ck-editor__editable': {
+              minHeight: '250px !important',
+            },
+            '& .ck-powered-by, & .ck.ck-powered-by, & .ck-balloon-panel .ck-powered-by': {
+              display: 'none !important',
+              visibility: 'hidden !important',
+              opacity: '0 !important',
+              height: '0 !important',
+              overflow: 'hidden !important',
+            },
+            '& .ck-source-editing-area': {
+              fontSize: '11px !important',
+              lineHeight: '1.4 !important',
+              fontFamily: '"Courier New", Courier, monospace !important',
+            }
+          }}>
+            <CKEditor
+              editor={ClassicEditor}
+              config={{
+                licenseKey: 'GPL',
+                plugins: [
+                  Essentials,
+                  Bold,
+                  Italic,
+                  Paragraph,
+                  Undo,
+                  Heading,
+                  Link,
+                  CKList,
+                  ListProperties,
+                  Alignment,
+                  Font,
+                  SourceEditing,
+                ],
+                toolbar: [
+                  'sourceEditing',
+                  '|',
+                  'undo',
+                  'redo',
+                  '|',
+                  'heading',
+                  '|',
+                  'bold',
+                  'italic',
+                  '|',
+                  'link',
+                  '|',
+                  'bulletedList',
+                  'numberedList',
+                  '|',
+                  'alignment',
+                  '|',
+                  'fontSize',
+                  'fontColor',
+                  'fontBackgroundColor',
+                ],
+              }}
+              data={body}
+              onChange={(_, editor) => {
+                setBody(editor.getData());
+              }}
+              disabled={sending || generating}
+              onReady={(editor) => {
+                // Editor is ready - add custom styling if needed
+                const editorElement = editor.ui.view.editable.element;
+                if (editorElement) {
+                  editorElement.style.minHeight = '250px';
+                }
+              }}
+            />
           </Box>
-          <Collapse in={placeholdersExpanded}>
-            <Box sx={{ px: 1.5, pb: 1.5 }}>
-              <List dense sx={{ py: 0 }}>
-                {AVAILABLE_PLACEHOLDERS.map((placeholder) => (
-                  <ListItem
-                    key={placeholder.key}
-                    sx={{
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      mb: 0.5,
-                      py: 0.5,
-                      '&:hover': { bgcolor: 'action.selected', cursor: 'pointer' }
-                    }}
-                    onClick={() => insertPlaceholder(placeholder.key)}
-                  >
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Chip
-                            label={placeholder.key}
-                            size="small"
-                            sx={{ fontFamily: 'monospace', fontSize: '0.7rem', height: 20 }}
-                          />
-                          <Typography variant="caption" sx={{ fontSize: '0.8rem' }}>
-                            {placeholder.description}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-              <Alert severity="info" sx={{ mt: 1.5, py: 0.5 }}>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
-                  Klicke auf einen Platzhalter, um ihn einzufügen.
-                </Typography>
-              </Alert>
-            </Box>
-          </Collapse>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            Hauptinhalt des Newsletters. Du kannst Platzhalter wie {'{{user_name}}'} verwenden.
+          </Typography>
+        </Box>
+
+        {/* Placeholders Section - Compact inline chips with tooltips */}
+        <Card sx={{ mb: 3, bgcolor: 'action.hover', p: 1.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.85rem', display: 'block', mb: 1 }}>
+            Verfügbare Platzhalter
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {AVAILABLE_PLACEHOLDERS.map((placeholder) => (
+              <Tooltip
+                key={placeholder.key}
+                title={placeholder.description}
+                arrow
+                placement="top"
+              >
+                <Chip
+                  label={placeholder.key}
+                  size="small"
+                  onClick={() => insertPlaceholder(placeholder.key)}
+                  sx={{
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      bgcolor: 'primary.main',
+                      color: 'primary.contrastText',
+                    }
+                  }}
+                />
+              </Tooltip>
+            ))}
+          </Box>
         </Card>
+
+        {/* Footer Selection */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+            Email-Footer
+          </Typography>
+          <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+            <InputLabel>Wiederverwendbaren Footer wählen</InputLabel>
+            <Select
+              value={selectedFooterId}
+              onChange={(e) => setSelectedFooterId(e.target.value)}
+              label="Wiederverwendbaren Footer wählen"
+              disabled={sending || generating}
+            >
+              <MenuItem value="">
+                <em>Kein Footer</em>
+              </MenuItem>
+              {emailFooters.map((f) => (
+                <MenuItem key={f.id} value={f.id}>
+                  {f.name} {f.is_default && '(Standard)'}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Typography variant="caption" color="text.secondary">
+            Wähle einen wiederverwendbaren Footer mit Abmelde-Link und Impressum
+          </Typography>
+        </Box>
 
         {error && (
           <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
@@ -736,60 +894,52 @@ export const NewsletterManagement = () => {
           <Alert severity="info" sx={{ mb: 3 }}>
             Diese Vorschau zeigt Beispieldaten für Platzhalter. Beim Versand werden die echten Empfängerdaten eingesetzt.
           </Alert>
-          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 3 }}>
+          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
             {/* Header */}
-            {header && (
-              <Box sx={{ mb: 3, pb: 2, borderBottom: '2px solid', borderColor: 'primary.main' }}>
-                <Typography
-                  sx={{
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: 1.4,
-                    fontSize: '0.9rem',
-                    color: 'text.secondary',
-                  }}
-                >
-                  {replacePlaceholdersForPreview(header)}
-                </Typography>
-              </Box>
-            )}
+            {selectedHeaderId && (() => {
+              const selectedHeader = emailHeaders.find(h => h.id === selectedHeaderId);
+              if (selectedHeader) {
+                return (
+                  <Box
+                    dangerouslySetInnerHTML={{
+                      __html: replacePlaceholdersForPreview(selectedHeader.html_content),
+                    }}
+                  />
+                );
+              }
+              return null;
+            })()}
 
-            {/* Subject */}
-            <Typography variant="h5" sx={{ mb: 3, color: 'primary.main', fontWeight: 700 }}>
-              {replacePlaceholdersForPreview(subject)}
-            </Typography>
+            {/* Content Area */}
+            <Box sx={{ p: 3 }}>
+              {/* Subject */}
+              <Typography variant="h5" sx={{ mb: 3, color: 'primary.main', fontWeight: 700 }}>
+                {replacePlaceholdersForPreview(subject)}
+              </Typography>
 
-            {/* Body */}
-            <Typography
-              sx={{
-                whiteSpace: 'pre-wrap',
-                lineHeight: 1.6,
-                color: 'text.primary',
-                mb: 3,
-              }}
-            >
-              {replacePlaceholdersForPreview(body)}
-            </Typography>
+              {/* Body */}
+              <Box
+                sx={{ mb: 3 }}
+                dangerouslySetInnerHTML={{
+                  __html: replacePlaceholdersForPreview(body),
+                }}
+              />
+            </Box>
 
             {/* Footer */}
-            <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
-              {footer ? (
-                <Typography
-                  sx={{
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: 1.4,
-                    fontSize: '0.85rem',
-                    color: 'text.secondary',
-                  }}
-                >
-                  {replacePlaceholdersForPreview(footer)}
-                </Typography>
-              ) : (
-                <Typography variant="caption" color="text.secondary">
-                  Du erhältst diese E-Mail, weil du den Newsletter von HabDaWas abonniert hast.<br />
-                  <a href="#" style={{ color: '#1976d2' }}>Newsletter-Einstellungen ändern</a>
-                </Typography>
-              )}
-            </Box>
+            {selectedFooterId && (() => {
+              const selectedFooter = emailFooters.find(f => f.id === selectedFooterId);
+              if (selectedFooter) {
+                return (
+                  <Box
+                    dangerouslySetInnerHTML={{
+                      __html: replacePlaceholdersForPreview(selectedFooter.html_content),
+                    }}
+                  />
+                );
+              }
+              return null;
+            })()}
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>

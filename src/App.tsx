@@ -158,7 +158,6 @@ const MainContent = () => {
     canCreate: boolean;
     source?: string;
     message: string;
-    remainingDailyListings?: number;
     personalCredits?: number;
     communityPotBalance?: number;
   } | null>(null);
@@ -973,30 +972,11 @@ const MainContent = () => {
                       flexWrap: 'wrap',
                     }}
                   >
-                    {/* Listing Credits Display */}
-                    {creditInfo.remainingDailyListings !== undefined && creditInfo.remainingDailyListings > 0 && (
-                      <Chip
-                        icon={<Calendar size={14} />}
-                        label={`${creditInfo.remainingDailyListings} gratis`}
-                        size="small"
-                        sx={{
-                          height: 24,
-                          bgcolor: 'rgba(76, 175, 80, 0.08)',
-                          color: 'success.main',
-                          fontWeight: 600,
-                          fontSize: '0.75rem',
-                          '& .MuiChip-icon': {
-                            color: 'success.main',
-                            fontSize: 14,
-                          },
-                        }}
-                      />
-                    )}
-
+                    {/* Personal Inserate Display */}
                     {creditInfo.personalCredits !== undefined && creditInfo.personalCredits > 0 && (
                       <Chip
                         icon={<Coins size={14} />}
-                        label={`${creditInfo.personalCredits} Credits`}
+                        label={`${creditInfo.personalCredits} Inserate`}
                         size="small"
                         sx={{
                           height: 24,
@@ -1039,8 +1019,7 @@ const MainContent = () => {
                       />
                     )}
 
-                    {(!creditInfo.remainingDailyListings || creditInfo.remainingDailyListings === 0) &&
-                     (!creditInfo.personalCredits || creditInfo.personalCredits === 0) && (
+                    {(!creditInfo.personalCredits || creditInfo.personalCredits === 0) && (
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', ml: 1 }}>
                         Keine Inserate verfügbar
                       </Typography>

@@ -4,6 +4,95 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.9] - 2025-10-20
+
+### Added
+- ✨ **Email-Template-System: Vollständiges Verwaltungssystem**
+  - Header-Manager für E-Mail-Header mit Logo-Upload und dynamischer Vorschau
+  - Footer-Manager für E-Mail-Footer mit rechtlichen Informationen
+  - Template-Manager für Newsletter-Vorlagen mit CKEditor 5 Integration
+  - Platzhalter-System: {{user_name}}, {{first_name}}, {{unsubscribe_link}}
+  - Neue Datenbank-Tabellen: `email_headers`, `email_footers`, `email_templates`
+  - Live-Vorschau mit WYSIWYG-Editor
+
+### Improved
+- 🎨 **Newsletter-Verwaltung: Kompakte Platzhalter-Ansicht**
+  - Platzhalter jetzt als inline Chips mit Tooltips
+  - Hover zeigt Beschreibung in Tooltip
+  - Clickable - direktes Einfügen in den Editor
+  - Repositioniert direkt unter Newsletter-Inhalt für besseren Kontext
+  - Kompakte, moderne Darstellung
+
+- 🤖 **KI Newsletter-Generierung: Strikte CHANGELOG-Verwendung**
+  - AI-Prompt verstärkt: NUR echte Features aus CHANGELOG verwenden
+  - Temperature von 0.7 auf 0.4 reduziert (faktischer, weniger kreativ)
+  - Explizite Regel: "VERWENDE NUR ECHTE INFORMATIONEN AUS DEM CHANGELOG! ERFINDE KEINE FEATURES!"
+  - Bessere Integration von {{user_name}} und {{first_name}} Platzhaltern in generierten Texten
+  - Moderne HTML-Formatierung mit Feature-Boxen
+
+### Fixed
+- 🐛 **CKEditor Branding entfernt**
+  - Globale CSS-Regeln in index.css hinzugefügt
+  - "POWERED BY CKEditor" wird jetzt vollständig ausgeblendet
+  - Mehrfache Selektoren für umfassende Abdeckung
+  - Browser-Refresh erforderlich um Änderungen zu sehen
+
+- 🐛 **React DOM Nesting Warnings behoben**
+  - TransactionsList.tsx: `<tbody>` in `<tbody>` Warnung behoben
+  - EmailTemplateManager.tsx: `<div>` in `<p>` Warnung behoben
+  - Cleanere DOM-Struktur
+
+### Technical Details
+- **Neue Dateien**:
+  - `src/components/Admin/EmailHeaderFooterManager.tsx` - Header/Footer Verwaltung
+  - `src/components/Admin/EmailTemplateManager.tsx` - Template Verwaltung
+  - `src/types/email-templates.ts` - TypeScript Definitionen
+  - `supabase/migrations/20251020000001_create_email_template_system.sql`
+  - `supabase/migrations/20251020000002_update_email_templates_design.sql`
+  - `supabase/migrations/20251020072512_add_donation_inserate_price.sql`
+
+- **Geänderte Dateien**:
+  - `src/components/Admin/NewsletterManagement.tsx` - Kompakte Platzhalter mit Tooltips
+  - `src/index.css` - CKEditor Branding CSS (Lines 21-34)
+  - `supabase/functions/generate-newsletter/index.ts` - Strikte CHANGELOG-Verwendung, Temperature 0.4
+  - `src/components/Shared/TransactionsList.tsx` - DOM Nesting Fix
+  - `src/components/Admin/CreditSystemSettings.tsx` - Umbenennung zu "Inserate"
+  - `src/components/Admin/ManualCreditGrant.tsx` - Umbenennung zu "Inserate"
+  - `src/components/Admin/EmailTemplateManager.tsx` - DOM Nesting Fix
+
+### Migration Notes
+- CKEditor 5 GPL-Version wird verwendet (Open Source)
+- Synced from bazar_bold v1.15.9
+
+## [1.15.8] - 2025-10-19
+
+### Fixed
+- 🐛 **Header-Menü: "Credits verfügbar" → "Inserate verfügbar"**
+  - Benutzer-Menü zeigt jetzt korrekt "Inserate verfügbar" statt "Credits verfügbar"
+  - Konsistente Terminologie nach der Credits→Inserate Migration
+  - Geändert in Header.tsx
+
+## [1.15.7] - 2025-10-19
+
+### Fixed
+- 🐛 **Supabase Foreign Key Fehler behoben**
+  - useDonations: Explizite Foreign Key Syntax für profiles
+  - useCommunityPotTransactions: Explizite Foreign Key Syntax für profiles und items
+  - Fehler "Could not find a relationship" wurde behoben
+
+### Improved
+- 🔧 **Produktverwaltung: Dynamische Inserate-Berechnung**
+  - Inserate-Pakete passen sich jetzt automatisch an powerUserCreditPrice an
+  - Statt hardcodiertem `price * 5` jetzt `Math.floor(price / powerUserCreditPrice)`
+  - ProductManagement nutzt useSystemSettings Hook für Live-Updates
+
+## [1.15.6] - 2025-10-19
+
+### Changed
+- 🎨 **Credits → Inserate Migration**
+  - Vollständige Umbenennung von "Credits" zu "Inserate" in der gesamten App
+  - UI-Konsistenz und bessere Verständlichkeit für Benutzer
+
 ## [1.15.5] - 2025-10-19
 
 ### Added
