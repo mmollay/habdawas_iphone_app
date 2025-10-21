@@ -184,6 +184,9 @@ export interface TemplateVariable {
 export const COMMON_TEMPLATE_VARIABLES: TemplateVariable[] = [
   { key: '{{user_name}}', description: 'Vollständiger Name des Benutzers', example: 'Max Mustermann' },
   { key: '{{first_name}}', description: 'Vorname des Benutzers', example: 'Max' },
+  { key: '{{last_name}}', description: 'Nachname des Benutzers', example: 'Mustermann' },
+  { key: '{{salutation}}', description: 'Persönliche Anrede (basierend auf Profil-Einstellung)', example: 'Lieber Max / Sehr geehrter Herr Mustermann' },
+  { key: '{{title}}', description: 'Akademischer Titel (wenn vorhanden)', example: 'Dr.' },
   { key: '{{email}}', description: 'E-Mail-Adresse', example: 'max@example.com' },
   { key: '{{unsubscribe_link}}', description: 'Link zum Abmelden', example: 'https://habdawas.at/settings' },
   { key: '{{verification_link}}', description: 'E-Mail-Verifizierungslink', example: 'https://habdawas.at/verify?token=...' },

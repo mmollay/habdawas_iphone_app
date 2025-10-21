@@ -157,35 +157,76 @@ Deno.serve(async (req: Request) => {
 
     // Call Google Gemini API to generate newsletter
     console.log("[8] Building prompt for Gemini");
-    const prompt = `Du bist ein freundlicher Newsletter-Autor für die Plattform "HabDaWas" - einen Online-Flohmarkt und Community-Marktplatz.
+    const prompt = `Du bist ein professioneller Newsletter-Autor für die Plattform "HabDaWas" - einen Online-Flohmarkt und Community-Marktplatz.
 
-Deine Aufgabe ist es, einen ansprechenden Newsletter zu erstellen, der die neuesten Features und Verbesserungen der Plattform vorstellt.
-
-CHANGELOG (neueste Änderungen):
+=== CHANGELOG MIT ECHTEN FEATURES ===
 ${changelogContent}
 
-BISHERIGE NEWSLETTER (um Wiederholungen zu vermeiden):
+=== BISHERIGE NEWSLETTER (NICHT WIEDERHOLEN) ===
 ${previousContent}
 
-ANFORDERUNGEN:
-1. Erstelle einen NEUEN Newsletter, der sich von den bisherigen unterscheidet
-2. Konzentriere dich auf die neuesten Features aus dem CHANGELOG
-3. Schreibe in einem freundlichen, persönlichen Ton
-4. Verwende Du-Form und sprich die Community direkt an
-5. Hebe die Vorteile für die Nutzer hervor
-6. Halte es prägnant (max. 300 Wörter)
-7. Verwende Platzhalter wie {{name}} oder {{first_name}} für Personalisierung
-8. Füge einen Call-to-Action am Ende hinzu
+=== KRITISCHE ANWEISUNGEN ===
+⚠️ DU DARFST NUR FEATURES ERWÄHNEN, DIE IM CHANGELOG STEHEN!
+⚠️ ERFINDE KEINE FEATURES! KEINE SPEKULATIONEN!
+⚠️ LIES DEN CHANGELOG GENAU UND EXTRAHIERE NUR ECHTE FEATURES!
+⚠️ Wenn im CHANGELOG steht "Email-Template-System: Vollständiges Verwaltungssystem", dann schreibe genau DAS!
+⚠️ Wenn im CHANGELOG steht "iOS Safe Area Support", dann schreibe genau DAS!
+⚠️ KOPIERE DIE FEATURE-NAMEN AUS DEM CHANGELOG!
 
-AUSGABEFORMAT - Antworte NUR mit einem gültigen JSON-Objekt ohne zusätzlichen Text:
+=== ANFORDERUNGEN ===
+1. **PFLICHT**: Lese den CHANGELOG Zeile für Zeile
+2. **PFLICHT**: Nimm NUR Features aus dem CHANGELOG - keine eigenen Ideen!
+3. Wähle die 3-5 wichtigsten Features aus dem CHANGELOG
+4. Schreibe in Du-Form, freundlich und persönlich
+5. Verwende {{first_name}} in der Anrede (z.B. "Hallo {{first_name}}")
+6. Max. 300 Wörter
+7. Call-to-Action am Ende
+
+=== HTML-FORMATIERUNG ===
+Verwende diese HTML-Struktur für den body:
+
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <p style="font-size: 16px; line-height: 1.6;">Hallo {{first_name}},</p>
+
+  <p style="font-size: 16px; line-height: 1.6; margin-top: 20px;">
+    [Einleitungstext - freundlich, persönlich]
+  </p>
+
+  <h2 style="color: #667eea; font-size: 20px; margin-top: 30px; margin-bottom: 15px;">🎉 Das ist neu bei HabDaWas</h2>
+
+  <div style="background: #f7f7f7; border-left: 4px solid #667eea; padding: 15px; margin: 15px 0; border-radius: 4px;">
+    <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #667eea;">✨ [Feature-Name aus CHANGELOG]</h3>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5;">[Kurze Beschreibung - max 2 Sätze]</p>
+  </div>
+
+  [Weitere Feature-Boxen für 2-4 weitere Features aus dem CHANGELOG]
+
+  <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">
+    [Call-to-Action Text]
+  </p>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="https://habdawas.at" style="display: inline-block; background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: 600;">
+      Jetzt ausprobieren →
+    </a>
+  </div>
+
+  <p style="font-size: 14px; color: #666; line-height: 1.6; margin-top: 30px;">
+    Viele Grüße,<br>
+    Dein HabDaWas Team
+  </p>
+</div>
+
+=== AUSGABEFORMAT ===
+Antworte NUR mit diesem JSON (keine zusätzlichen Texte):
 {
-  "subject": "Betreffzeile (max. 60 Zeichen, ansprechend)",
-  "header": "Optional: Kurzer Header-Text (z.B. 'HabDaWas - Deine Community-Plattform' oder 'Hallo {{first_name}}!')",
-  "body": "Newsletter-Text mit Platzhaltern",
-  "footer": "Footer mit rechtlichen Informationen: Abmelde-Link {{unsubscribe_link}}, Impressum-Link, Firmenadresse (DSGVO-konform)"
+  "subject": "[Kurze, prägnante Betreffzeile mit echten Features aus CHANGELOG - max 60 Zeichen]",
+  "header": "",
+  "body": "[Vollständiger HTML-Code wie oben beschrieben - MIT ECHTEN FEATURES AUS DEM CHANGELOG!]",
+  "footer": ""
 }
 
-Generiere jetzt einen neuen, einzigartigen Newsletter:`;
+STARTE JETZT: Lies den CHANGELOG, extrahiere die echten Features und erstelle den Newsletter!`;
 
     console.log("[9] Calling Gemini API with model:", aiModel);
     const geminiResponse = await fetch(
@@ -202,8 +243,8 @@ Generiere jetzt einen neuen, einzigartigen Newsletter:`;
             }]
           }],
           generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2000,
+            temperature: 0.2,
+            maxOutputTokens: 4000,
           }
         }),
       }

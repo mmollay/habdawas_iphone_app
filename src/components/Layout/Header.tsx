@@ -139,7 +139,7 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
   };
 
   return (
-    <AppBar position="sticky" elevation={0} sx={{ top: 0, bgcolor: '#f7f7f7', color: 'text.primary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', paddingTop: 'env(safe-area-inset-top)' }}>
+    <AppBar position="sticky" elevation={0} sx={{ top: 0, bgcolor: '#f7f7f7', color: 'text.primary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
       <Toolbar sx={{ gap: { xs: 1, sm: 2 }, minHeight: { xs: 64, sm: 72 }, px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 1.5 } }}>
         <Box
           component="img"

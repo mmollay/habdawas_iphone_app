@@ -976,17 +976,24 @@ const MainContent = () => {
                     {creditInfo.personalCredits !== undefined && creditInfo.personalCredits > 0 && (
                       <Chip
                         icon={<Coins size={14} />}
-                        label={`${creditInfo.personalCredits} Inserate`}
+                        label={`${creditInfo.personalCredits} Guthaben`}
                         size="small"
+                        onClick={() => navigate('/settings?section=tokens')}
                         sx={{
                           height: 24,
-                          bgcolor: 'rgba(255, 152, 0, 0.08)',
-                          color: 'warning.main',
+                          bgcolor: 'rgba(102, 126, 234, 0.08)',
+                          color: '#667eea',
                           fontWeight: 600,
                           fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
                           '& .MuiChip-icon': {
-                            color: 'warning.main',
+                            color: '#667eea',
                             fontSize: 14,
+                          },
+                          '&:hover': {
+                            bgcolor: 'rgba(102, 126, 234, 0.16)',
+                            transform: 'scale(1.02)',
                           },
                         }}
                       />
@@ -1021,7 +1028,7 @@ const MainContent = () => {
 
                     {(!creditInfo.personalCredits || creditInfo.personalCredits === 0) && (
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', ml: 1 }}>
-                        Keine Inserate verfügbar
+                        Kein Guthaben verfügbar
                       </Typography>
                     )}
                   </Box>
@@ -1712,7 +1719,13 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}>
           <AuthProvider>
             <FavoritesProvider>
               <HandPreferenceProvider>

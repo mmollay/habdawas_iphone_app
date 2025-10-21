@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import {
   Box,
   Typography,
@@ -570,7 +570,7 @@ export const TransactionsList = ({
                 const hasDetails = metadata?.package_id || hasGeminiTokens;
 
                 return (
-                  <Box key={transaction.id} sx={{ display: 'contents' }}>
+                  <Fragment key={transaction.id}>
                     <Box
                       component="tr"
                       onClick={() => onTransactionClick?.(transaction)}
@@ -802,7 +802,7 @@ export const TransactionsList = ({
                         </Box>
                       </Box>
                     )}
-                  </Box>
+                  </Fragment>
                 );
               })}
             </Box>

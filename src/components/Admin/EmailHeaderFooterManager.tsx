@@ -20,6 +20,7 @@ import {
   ListItemSecondaryAction,
   Chip,
   Divider,
+  Grid,
 } from '@mui/material';
 import { Plus, Edit, Trash2, Eye, X, Star, StarOff } from 'lucide-react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
@@ -42,6 +43,7 @@ import {
   ImageStyle,
   ImageResize,
   LinkImage,
+  SourceEditing,
 } from 'ckeditor5';
 import 'ckeditor5/ckeditor5.css';
 
@@ -427,7 +429,12 @@ export const EmailHeaderFooterManager = () => {
       <Card>
         <Tabs
           value={currentTab}
-          onChange={(_, newValue) => setCurrentTab(newValue)}
+          onChange={(_, newValue) => {
+            setCurrentTab(newValue);
+            // Clear selected items when switching tabs
+            setSelectedHeader(null);
+            setSelectedFooter(null);
+          }}
           sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
         >
           <Tab label={`Header (${headers.length})`} value="headers" />
@@ -453,32 +460,55 @@ export const EmailHeaderFooterManager = () => {
           </Box>
         </DialogTitle>
         <DialogContent>
-          <TextField
-            fullWidth
-            label="Name"
-            value={formName}
-            onChange={(e) => setFormName(e.target.value)}
-            placeholder={currentTab === 'headers' ? 'z.B. Standard Header' : 'z.B. Standard Footer'}
-            sx={{ mb: 2, mt: 1 }}
-          />
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder={currentTab === 'headers' ? 'z.B. Standard Header' : 'z.B. Standard Footer'}
+                size="small"
+              />
+            </Grid>
 
-          <TextField
-            fullWidth
-            label="Beschreibung (optional)"
-            value={formDescription}
-            onChange={(e) => setFormDescription(e.target.value)}
-            placeholder="Kurze Beschreibung des Templates"
-            sx={{ mb: 2 }}
-          />
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Beschreibung (optional)"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="Kurze Beschreibung des Templates"
+                size="small"
+              />
+            </Grid>
 
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-            HTML-Inhalt
-          </Typography>
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                HTML-Inhalt
+              </Typography>
 
-          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+              <Box sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                '& .ck-editor__editable': {
+                  minHeight: '250px !important',
+                  fontSize: '13px !important',
+                },
+                '& .ck-powered-by': {
+                  display: 'none !important',
+                },
+                '& .ck-source-editing-area': {
+                  fontSize: '11px !important',
+                  lineHeight: '1.4 !important',
+                  fontFamily: '"Courier New", Courier, monospace !important',
+                }
+              }}>
             <CKEditor
               editor={ClassicEditor}
               config={{
+                licenseKey: 'GPL',
                 plugins: [
                   Essentials,
                   Bold,
@@ -491,8 +521,11 @@ export const EmailHeaderFooterManager = () => {
                   ListProperties,
                   Alignment,
                   Font,
+                  SourceEditing,
                 ],
                 toolbar: [
+                  'sourceEditing',
+                  '|',
                   'undo',
                   'redo',
                   '|',
@@ -517,14 +550,24 @@ export const EmailHeaderFooterManager = () => {
               onChange={(_, editor) => {
                 setFormHtmlContent(editor.getData());
               }}
+              onReady={(editor) => {
+                const editorElement = editor.ui.view.editable.element;
+                if (editorElement) {
+                  editorElement.style.minHeight = '250px';
+                }
+              }}
             />
-          </Box>
+              </Box>
+            </Grid>
 
-          <Alert severity="info" sx={{ mt: 2 }}>
-            <Typography variant="caption">
-              Du kannst Platzhalter wie <code>{'{{unsubscribe_link}}'}</code> verwenden, die beim Versand ersetzt werden.
-            </Typography>
-          </Alert>
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="info">
+                <Typography variant="caption">
+                  Du kannst Platzhalter wie <code>{'{{unsubscribe_link}}'}</code> verwenden, die beim Versand ersetzt werden.
+                </Typography>
+              </Alert>
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setEditorOpen(false)}>Abbrechen</Button>
@@ -550,7 +593,9 @@ export const EmailHeaderFooterManager = () => {
           <Box
             sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}
             dangerouslySetInnerHTML={{
-              __html: (selectedHeader || selectedFooter)?.html_content || '',
+              __html: currentTab === 'headers'
+                ? (selectedHeader?.html_content || '')
+                : (selectedFooter?.html_content || ''),
             }}
           />
         </DialogContent>

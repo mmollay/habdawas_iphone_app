@@ -9,10 +9,9 @@ const corsHeaders = {
 
 interface SendNewsletterRequest {
   subject: string;
-  header?: string;
   body: string;
-  footer?: string;
   newsletterId?: string; // Optional: If updating existing newsletter
+  useTemplate?: boolean; // Optional: Use database template instead of custom HTML
 }
 
 interface Subscriber {
@@ -100,7 +99,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { subject, header, body, footer, newsletterId }: SendNewsletterRequest = await req.json();
+    const { subject, body, newsletterId, useTemplate = true }: SendNewsletterRequest = await req.json();
 
     if (!subject || !body) {
       return new Response(
@@ -113,6 +112,31 @@ Deno.serve(async (req: Request) => {
           },
         }
       );
+    }
+
+    // Fetch newsletter template from database if useTemplate is true
+    let templateHeader = '';
+    let templateFooter = '';
+
+    if (useTemplate) {
+      const { data: template, error: templateError } = await supabaseClient
+        .from('email_templates')
+        .select(`
+          *,
+          header:email_headers!email_templates_header_id_fkey(html_content),
+          footer:email_footers!email_templates_footer_id_fkey(html_content)
+        `)
+        .eq('type', 'newsletter')
+        .eq('is_active', true)
+        .single();
+
+      if (template && !templateError) {
+        templateHeader = template.header?.html_content || '';
+        templateFooter = template.footer?.html_content || '';
+        console.log("Using newsletter template from database");
+      } else {
+        console.log("Newsletter template not found, using default layout");
+      }
     }
 
     // Get all subscribed users
@@ -205,52 +229,38 @@ Deno.serve(async (req: Request) => {
         try {
           // Replace placeholders with subscriber-specific data
           const personalizedSubject = replacePlaceholders(subject, subscriber, baseUrl);
-          const personalizedHeader = header ? replacePlaceholders(header, subscriber, baseUrl) : '';
-          const personalizedBody = replacePlaceholders(body, subscriber, baseUrl);
-          const personalizedFooter = footer ? replacePlaceholders(footer, subscriber, baseUrl) : '';
+          let personalizedHeader = templateHeader ? replacePlaceholders(templateHeader, subscriber, baseUrl) : '';
+          let personalizedBody = replacePlaceholders(body, subscriber, baseUrl);
+          let personalizedFooter = templateFooter ? replacePlaceholders(templateFooter, subscriber, baseUrl) : '';
 
-          // Build HTML with optional header and footer
-          let html = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
-
-          // Header section (if provided)
-          if (personalizedHeader) {
-            html += `
-              <div style="padding: 20px; border-bottom: 2px solid #1976d2; margin-bottom: 30px; color: #666; font-size: 14px;">
-                ${personalizedHeader.replace(/\n/g, '<br>')}
-              </div>
-            `;
-          }
-
-          // Subject as title
-          html += `<h2 style="color: #1976d2; margin-top: ${personalizedHeader ? '0' : '20px'};">${personalizedSubject}</h2>`;
-
-          // Body
-          html += `
-            <div style="line-height: 1.6; margin: 20px 0;">
-              ${personalizedBody.replace(/\n/g, '<br>')}
-            </div>
+          // Build full HTML email using template system (similar to auth emails)
+          const html = `
+            <!DOCTYPE html>
+            <html lang="de">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>${personalizedSubject}</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+                <tr>
+                  <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" style="background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                      ${personalizedHeader ? `<tr><td>${personalizedHeader}</td></tr>` : ''}
+                      <tr>
+                        <td style="padding: 20px;">
+                          ${personalizedBody}
+                        </td>
+                      </tr>
+                      ${personalizedFooter ? `<tr><td>${personalizedFooter}</td></tr>` : ''}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+            </html>
           `;
-
-          // Footer section
-          html += '<hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">';
-
-          if (personalizedFooter) {
-            html += `
-              <div style="font-size: 12px; color: #666; line-height: 1.4;">
-                ${personalizedFooter.replace(/\n/g, '<br>')}
-              </div>
-            `;
-          } else {
-            // Default footer if none provided
-            html += `
-              <p style="font-size: 12px; color: #666;">
-                Du erhältst diese E-Mail, weil du den Newsletter von HabDaWas abonniert hast.<br>
-                <a href="${baseUrl}/settings" style="color: #1976d2;">Newsletter-Einstellungen ändern</a>
-              </p>
-            `;
-          }
-
-          html += '</div>';
 
           const response = await fetch("https://api.resend.com/emails", {
             method: "POST",

@@ -69,37 +69,37 @@ export const CreditSystemSettings = () => {
         </IconButton>
       </Box>
 
-      <Paper sx={{ mb: 3 }}>
+      <Paper sx={{ mb: 2 }}>
         <Tabs
           value={currentSubTab}
           onChange={(_, newValue) => setCurrentSubTab(newValue)}
           variant="scrollable"
           scrollButtons="auto"
-          sx={{ borderBottom: 1, borderColor: 'divider' }}
+          sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 42 }}
         >
           <Tab
-            icon={<Settings size={18} />}
+            icon={<Settings size={16} />}
             label="Preise & Einstellungen"
             iconPosition="start"
-            sx={{ textTransform: 'none', minHeight: 48 }}
+            sx={{ textTransform: 'none', minHeight: 42, py: 1 }}
           />
           <Tab
-            icon={<List size={18} />}
+            icon={<List size={16} />}
             label="Transaktionen & Spenden"
             iconPosition="start"
-            sx={{ textTransform: 'none', minHeight: 48 }}
+            sx={{ textTransform: 'none', minHeight: 42, py: 1 }}
           />
           <Tab
-            icon={<Gift size={18} />}
+            icon={<Gift size={16} />}
             label="Inserate vergeben"
             iconPosition="start"
-            sx={{ textTransform: 'none', minHeight: 48 }}
+            sx={{ textTransform: 'none', minHeight: 42, py: 1 }}
           />
           <Tab
-            icon={<Package size={18} />}
+            icon={<Package size={16} />}
             label="Inserate-Pakete"
             iconPosition="start"
-            sx={{ textTransform: 'none', minHeight: 48 }}
+            sx={{ textTransform: 'none', minHeight: 42, py: 1 }}
           />
         </Tabs>
       </Paper>
@@ -284,17 +284,17 @@ const CreditSystemSettingsTab = () => {
       )}
 
       {/* Compact Accordion Sections */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 2 }}>
         {/* 1. Basis-Kosten */}
         <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ChevronDown size={20} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <DollarSign size={20} color={theme.palette.primary.main} />
+          <AccordionSummary expandIcon={<ChevronDown size={18} />} sx={{ py: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DollarSign size={18} color={theme.palette.primary.main} />
               <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Basis-Kosten
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                   Tatsächliche Kosten pro Inserat (API + Server)
                 </Typography>
               </Box>
@@ -341,14 +341,14 @@ const CreditSystemSettingsTab = () => {
 
         {/* 2. Personal-Inserate (Power-User) */}
         <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ChevronDown size={20} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Coins size={20} color={theme.palette.success.main} />
+          <AccordionSummary expandIcon={<ChevronDown size={18} />} sx={{ py: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Coins size={18} color={theme.palette.success.main} />
               <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Personal-Inserate (Power-User)
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                   Verkaufspreise für persönliche Inserate
                 </Typography>
               </Box>
@@ -448,14 +448,14 @@ const CreditSystemSettingsTab = () => {
 
         {/* 3. Community-Spenden */}
         <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ChevronDown size={20} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Heart size={20} color={theme.palette.error.main} />
+          <AccordionSummary expandIcon={<ChevronDown size={18} />} sx={{ py: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Heart size={18} color={theme.palette.error.main} />
               <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Community-Spenden
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                   Umwandlung von Spenden in kostenlose Inserate
                 </Typography>
               </Box>
@@ -547,14 +547,14 @@ const CreditSystemSettingsTab = () => {
 
         {/* 4. Community-Topf Warnung */}
         <Accordion>
-          <AccordionSummary expandIcon={<ChevronDown size={20} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Info size={20} color={theme.palette.warning.main} />
+          <AccordionSummary expandIcon={<ChevronDown size={18} />} sx={{ py: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Info size={18} color={theme.palette.warning.main} />
               <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Warnungen & Schwellwerte
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                   Benachrichtigungen bei niedrigem Community-Topf
                 </Typography>
               </Box>

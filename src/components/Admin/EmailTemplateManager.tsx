@@ -26,7 +26,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
-import { Edit, Eye, X, RefreshCw, Code } from 'lucide-react';
+import { Edit, Eye, X, RefreshCw, Code, Mail, Check } from 'lucide-react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import {
   ClassicEditor,
@@ -51,6 +51,7 @@ import {
   EmailFooter,
   COMMON_TEMPLATE_VARIABLES,
 } from '../../types/email-templates';
+import { useNewsletterSettingsAutoSave } from '../../hooks/useNewsletterSettingsAutoSave';
 
 export const EmailTemplateManager = () => {
   const [loading, setLoading] = useState(false);
@@ -74,10 +75,16 @@ export const EmailTemplateManager = () => {
   const [formFooterId, setFormFooterId] = useState<string>('');
   const [formIsActive, setFormIsActive] = useState(true);
 
+  // System Email Settings State
+  const [systemFromName, setSystemFromName] = useState('HabDaWas');
+  const [systemFromEmail, setSystemFromEmail] = useState('auth@habdawas.at');
+  const { status: autoSaveStatus, lastSaved, saveSetting } = useNewsletterSettingsAutoSave({ enabled: true, debounceMs: 1000 });
+
   useEffect(() => {
     fetchTemplates();
     fetchHeaders();
     fetchFooters();
+    fetchSystemEmailSettings();
   }, []);
 
   const fetchTemplates = async () => {
@@ -128,6 +135,40 @@ export const EmailTemplateManager = () => {
     } catch (err) {
       console.error('Error fetching footers:', err);
     }
+  };
+
+  const fetchSystemEmailSettings = async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('newsletter_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['system_email_from_name', 'system_email_from_email']);
+
+      if (fetchError) throw fetchError;
+
+      data?.forEach(setting => {
+        // setting_value is JSONB, so it's already parsed by Supabase client
+        const value = setting.setting_value;
+
+        if (setting.setting_key === 'system_email_from_name') {
+          setSystemFromName(value);
+        } else if (setting.setting_key === 'system_email_from_email') {
+          setSystemFromEmail(value);
+        }
+      });
+    } catch (err) {
+      console.error('Error fetching system email settings:', err);
+    }
+  };
+
+  const getRelativeTime = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 10) return 'gerade eben';
+    if (seconds < 60) return `vor ${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `vor ${minutes}min`;
+    const hours = Math.floor(minutes / 60);
+    return `vor ${hours}h`;
   };
 
   const handleEdit = (template: EmailTemplate) => {
@@ -338,6 +379,104 @@ export const EmailTemplateManager = () => {
         )}
       </Card>
 
+      {/* System Email Sender Settings */}
+      <Card sx={{ mt: 3, position: 'relative' }}>
+        {/* Auto-Save Status Indicator */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            zIndex: 10,
+          }}
+        >
+          {autoSaveStatus === 'saving' && (
+            <Chip
+              icon={<CircularProgress size={14} color="inherit" />}
+              label="Speichert..."
+              size="small"
+              sx={{ height: 28 }}
+            />
+          )}
+          {autoSaveStatus === 'saved' && lastSaved && (
+            <Chip
+              icon={<Check size={14} />}
+              label={`Gespeichert ${getRelativeTime(lastSaved)}`}
+              size="small"
+              color="success"
+              sx={{ height: 28 }}
+            />
+          )}
+        </Box>
+
+        <Box sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: 'primary.light',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Mail size={20} style={{ color: '#1565c0' }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Absender-Einstellungen für System-Emails
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Name und E-Mail-Adresse für Passwort-Reset, Verifizierung, etc.
+              </Typography>
+            </Box>
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Absender-Name"
+                value={systemFromName}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSystemFromName(value);
+                  saveSetting('system_email_from_name', value);
+                }}
+                helperText="Name, der in System-Emails als Absender angezeigt wird"
+                size="small"
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Absender-E-Mail"
+                value={systemFromEmail}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSystemFromEmail(value);
+                  saveSetting('system_email_from_email', value);
+                }}
+                helperText="E-Mail-Adresse für System-Emails (muss in Resend verifiziert sein)"
+                size="small"
+                inputProps={{ inputMode: 'email' }}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="info" sx={{ mt: 1 }}>
+                <Typography variant="body2" component="div">
+                  <strong>Wichtig:</strong> Die E-Mail-Adresse muss in deinem Resend-Account verifiziert sein.
+                  Standardmäßig verwendet Supabase Auth diese Einstellungen für alle System-Emails.
+                </Typography>
+              </Alert>
+            </Grid>
+          </Grid>
+        </Box>
+      </Card>
+
       {/* Editor Dialog */}
       <Dialog open={editorOpen} onClose={() => setEditorOpen(false)} maxWidth="lg" fullWidth>
         <DialogTitle>
@@ -352,18 +491,21 @@ export const EmailTemplateManager = () => {
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12}>
+            {/* Row 1: Betreff (full width) */}
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Betreff"
                 value={formSubject}
                 onChange={(e) => setFormSubject(e.target.value)}
                 placeholder="E-Mail-Betreff"
+                size="small"
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
+            {/* Row 2: Header + Footer + Template aktiv Toggle */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <FormControl fullWidth size="small">
                 <InputLabel>Header</InputLabel>
                 <Select
                   value={formHeaderId}
@@ -382,8 +524,8 @@ export const EmailTemplateManager = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <FormControl fullWidth size="small">
                 <InputLabel>Footer</InputLabel>
                 <Select
                   value={formFooterId}
@@ -402,27 +544,63 @@ export const EmailTemplateManager = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formIsActive}
-                    onChange={(e) => setFormIsActive(e.target.checked)}
-                  />
-                }
-                label="Template aktiv"
-              />
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                height: '100%',
+                justifyContent: { xs: 'flex-start', md: 'flex-end' }
+              }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formIsActive}
+                      onChange={(e) => setFormIsActive(e.target.checked)}
+                    />
+                  }
+                  label="Template aktiv"
+                />
+              </Box>
             </Grid>
 
-            <Grid item xs={12}>
+            {/* Row 3: Verfügbare Variablen Info */}
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                <Typography variant="caption" component="span">
+                  Verfügbare Variablen: {selectedTemplate?.variables && Array.isArray(selectedTemplate.variables)
+                    ? selectedTemplate.variables.map(v => `{{${v}}}`).join(', ')
+                    : 'Keine'}
+                </Typography>
+              </Alert>
+            </Grid>
+
+            {/* Row 4: E-Mail-Inhalt Editor */}
+            <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                 E-Mail-Inhalt (HTML)
               </Typography>
 
-              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+              <Box sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                '& .ck-editor__editable': {
+                  minHeight: '250px !important',
+                  fontSize: '13px !important',
+                },
+                '& .ck-powered-by': {
+                  display: 'none !important',
+                },
+                '& .ck-source-editing-area': {
+                  fontSize: '11px !important',
+                  lineHeight: '1.4 !important',
+                  fontFamily: '"Courier New", Courier, monospace !important',
+                }
+              }}>
                 <CKEditor
                   editor={ClassicEditor}
                   config={{
+                    licenseKey: 'GPL',
                     plugins: [
                       Essentials,
                       Bold,
@@ -461,18 +639,14 @@ export const EmailTemplateManager = () => {
                   onChange={(_, editor) => {
                     setFormHtmlContent(editor.getData());
                   }}
+                  onReady={(editor) => {
+                    const editorElement = editor.ui.view.editable.element;
+                    if (editorElement) {
+                      editorElement.style.minHeight = '250px';
+                    }
+                  }}
                 />
               </Box>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Alert severity="info">
-                <Typography variant="caption" component="span">
-                  Verfügbare Variablen: {selectedTemplate?.variables && Array.isArray(selectedTemplate.variables)
-                    ? selectedTemplate.variables.map(v => `{{${v}}}`).join(', ')
-                    : 'Keine'}
-                </Typography>
-              </Alert>
             </Grid>
           </Grid>
         </DialogContent>

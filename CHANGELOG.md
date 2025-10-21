@@ -4,6 +4,79 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.11] - 2025-10-21
+
+### Added
+- ✨ **Sternzeichen-Anzeige in Geburtsdaten**
+  - Automatische Berechnung des Sternzeichens basierend auf Geburtsdatum
+  - Schöne grafische Darstellung mit Symbol (♈♉♊♋♌♍♎♏♐♑♒♓)
+  - Anzeige von Name, Beschreibung und Element (Feuer, Erde, Luft, Wasser)
+  - Live-Vorschau im Birth Data Modal während Eingabe
+  - Farbcodierte Element-Chips für bessere Übersicht
+  - Neue Utility-Datei: `src/utils/zodiac.ts` mit vollständiger Zodiac-Logik
+  - Unterstützt alle 12 Sternzeichen mit deutschen Namen
+  - Zeigt Sternzeichen in ProfileSection an wenn Geburtsdaten vorhanden
+
+- 🌍 **Zeitzone-Unterstützung für Geburtsdaten**
+  - Neue Datenbankspalte `birth_timezone` in profiles-Tabelle
+  - Migration: `20251021000006_add_birth_timezone.sql`
+  - Zeitzone-Dropdown mit 14 gängigen Zeitzonen (Europa, Amerika, Asien, Australien)
+  - Standard: Europe/Vienna
+  - Wichtig für präzise astrologische Berechnungen (Aszendent)
+
+### Improved
+- 🎨 **Birth Data Modal: Optimiertes Grid-Layout**
+  - Geburtsdatum und Geburtszeit jetzt nebeneinander auf Tablets/Desktop (Grid `sm={6}`)
+  - Zeitzone und Geburtsort nebeneinander (Grid `sm={6}`)
+  - Bessere Ausrichtung und professionellere Optik
+  - Responsive: Auf Mobile weiterhin untereinander (`xs={12}`)
+  - Sternzeichen-Anzeige prominent zwischen Datum/Zeit und Zeitzone/Ort
+
+- 📊 **ProfileSection: Erweiterte Geburtsdaten-Anzeige**
+  - Zeigt Sternzeichen in eigenem Card-Bereich
+  - Grafisches Symbol mit Name und Beschreibung
+  - Element-Chip mit Farbe passend zum Element
+  - Kompakte, aber informative Darstellung
+
+### Fixed
+- 🐛 **Foreign Key Fehler in Supabase-Queries behoben**
+  - `useDonations.ts`: Explizite Foreign-Key-Namen durch implizite Referenzen ersetzt
+  - `useCommunityPotTransactions.ts`: Foreign-Key-Syntax korrigiert
+  - Geändert von `profiles!donations_user_id_fkey` zu `profiles!user_id`
+  - Geändert von `profiles!community_pot_transactions_user_id_fkey` zu `profiles!user_id`
+  - Geändert von `items!community_pot_transactions_item_id_fkey` zu `items!item_id`
+  - Donations und Community-Pot-Transaktionen laden jetzt korrekt mit User-Profilen
+
+- ✅ **Birth Timezone Migration auf iPhone-App angewendet**
+  - Migration erfolgreich auf Supabase-Datenbank ausgeführt
+  - Birth Data Modal speichert jetzt korrekt alle Felder inklusive Zeitzone
+  - Kein "birth_timezone column not found" Fehler mehr
+
+### Technical
+- Neue Dateien:
+  - `src/utils/zodiac.ts` - Zodiac Sign Calculator mit allen 12 Sternzeichen
+  - `supabase/migrations/20251021000006_add_birth_timezone.sql` - Timezone-Spalte
+- Geänderte Dateien:
+  - `src/components/Settings/BirthDataModal.tsx` - Grid-Layout + Zodiac Display
+  - `src/components/Settings/sections/ProfileSection.tsx` - Zodiac Display
+  - `src/components/Settings/SettingsPage.tsx` - birth_timezone State Management
+  - `src/hooks/useDonations.ts` - Foreign Key Fix
+  - `src/hooks/useCommunityPotTransactions.ts` - Foreign Key Fix
+
+## [1.15.10] - 2025-10-20
+
+### Fixed
+- 📱 **iOS Safe Area Support**
+  - Header wird nicht mehr von Dynamic Island und Statusleiste überdeckt
+  - Korrekte Safe-Area-Insets für iPhone-Modelle mit Notch
+  - Content hat nun korrekten Abstand zum System-UI
+  - `paddingTop: env(safe-area-inset-top)` und `paddingBottom: env(safe-area-inset-bottom)` hinzugefügt
+  - Geänderte Dateien:
+    - `src/App.tsx`: Safe-Area-Insets zur Root-Box hinzugefügt
+    - `src/components/Layout/Header.tsx`: Doppeltes Padding entfernt
+  - Funktioniert auf allen iOS-Geräten (iPhone mit Notch, Dynamic Island, oder normaler Statusleiste)
+  - Auch Web-Version erhält Safe-Area-Support für Mobile Safari
+
 ## [1.15.9] - 2025-10-20
 
 ### Added

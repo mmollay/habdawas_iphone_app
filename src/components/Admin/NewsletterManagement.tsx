@@ -27,9 +27,20 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Stack,
+  Divider,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
-import { Send, X, Mail, Users, History, Eye, RefreshCw, Sparkles, Save, FileText, Trash2 } from 'lucide-react';
+import { Send, X, Mail, Users, History, Eye, RefreshCw, Sparkles, Save, FileText, Trash2, Clock, TestTube, Settings, BarChart, TrendingUp, CheckCircle, XCircle, AlertCircle, Check } from 'lucide-react';
+import { useNewsletters } from '../../hooks/useNewsletters';
+import { useNewsletterSettings } from '../../hooks/useNewsletterSettings';
+import { useNewsletterSettingsAutoSave } from '../../hooks/useNewsletterSettingsAutoSave';
+import { useNewsletterLogs } from '../../hooks/useNewsletterLogs';
 import { Box as MuiBox } from '@mui/material';
+import { NewsletterList } from './NewsletterList';
+import { AutoSaveTextField } from '../Common/AutoSaveTextField';
+import Grid from '@mui/material/Grid';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import {
   ClassicEditor,
@@ -51,18 +62,7 @@ import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { EmailHeader, EmailFooter } from '../../types/email-templates';
-
-interface Newsletter {
-  id: string;
-  subject: string;
-  body: string;
-  status: 'draft' | 'sending' | 'sent' | 'failed';
-  recipients_count: number;
-  sent_count: number;
-  failed_count: number;
-  created_at: string;
-  sent_at?: string;
-}
+import { Newsletter } from './NewsletterList';
 
 interface NewsletterTemplate {
   id: string;
@@ -82,11 +82,19 @@ const AVAILABLE_PLACEHOLDERS = [
 ];
 
 export const NewsletterManagement = () => {
-  const [loading, setLoading] = useState(false);
+  // Use hooks
+  const { newsletters, loading: newslettersLoading, error: newslettersError, refresh: refreshNewsletters, createDraft, scheduleNewsletter, sendNewsletter: sendNewsletterHook, sendTestEmail, updateNewsletter, deleteNewsletter } = useNewsletters();
+  const { settings, loading: settingsLoading, updateSetting } = useNewsletterSettings();
+  const { logs, loading: logsLoading, stats, refresh: refreshLogs } = useNewsletterLogs({ limit: 1000 });
+  const { status: autoSaveStatus, lastSaved, saveSetting } = useNewsletterSettingsAutoSave({ enabled: true, debounceMs: 1000 });
+
+  // Theme and responsive hooks
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [subscribersCount, setSubscribersCount] = useState(0);
-  const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
   const [selectedTab, setSelectedTab] = useState(0);
   const [generating, setGenerating] = useState(false);
 
@@ -103,6 +111,16 @@ export const NewsletterManagement = () => {
   const [selectedFooterId, setSelectedFooterId] = useState<string>('');
   const [sending, setSending] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [currentNewsletterId, setCurrentNewsletterId] = useState<string | null>(null);
+
+  // New features state
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [testEmailDialogOpen, setTestEmailDialogOpen] = useState(false);
+  const [testEmailAddresses, setTestEmailAddresses] = useState<string[]>([]);
+  const [testEmailInput, setTestEmailInput] = useState('');
+  const [sendingTest, setSendingTest] = useState(false);
 
   // Refs for text fields to track cursor position
   const subjectRef = useRef<HTMLInputElement | null>(null);
@@ -120,13 +138,29 @@ export const NewsletterManagement = () => {
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<string>('');
 
+  // Local settings state for immediate UI updates
+  const [localSettings, setLocalSettings] = useState(settings);
+
   useEffect(() => {
     fetchSubscribersCount();
-    fetchNewsletters();
     fetchTemplates();
     fetchEmailHeaders();
     fetchEmailFooters();
   }, []);
+
+  // Sync local settings with DB settings
+  useEffect(() => {
+    if (settings) {
+      setLocalSettings(settings);
+    }
+  }, [settings]);
+
+  // Load test email addresses from settings
+  useEffect(() => {
+    if (settings) {
+      setTestEmailAddresses(settings.testEmailAddresses || []);
+    }
+  }, [settings]);
 
   const fetchEmailHeaders = async () => {
     try {
@@ -182,24 +216,6 @@ export const NewsletterManagement = () => {
     }
   };
 
-  const fetchNewsletters = async () => {
-    try {
-      setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('newsletters')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (fetchError) throw fetchError;
-      setNewsletters(data || []);
-    } catch (err) {
-      console.error('Error fetching newsletters:', err);
-      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Newsletter');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchTemplates = async () => {
     try {
@@ -370,7 +386,78 @@ export const NewsletterManagement = () => {
     }
   };
 
-  const handleSendNewsletter = async () => {
+  const handleSaveDraft = async () => {
+    if (!subject.trim() || !body.trim()) {
+      setError('Betreff und Nachricht dürfen nicht leer sein');
+      return;
+    }
+
+    try {
+      setSending(true);
+      setError(null);
+
+      if (currentNewsletterId) {
+        // Update existing draft
+        await updateNewsletter(currentNewsletterId, {
+          subject,
+          body,
+          status: 'draft',
+        });
+        setSuccess('✅ Entwurf erfolgreich aktualisiert!');
+      } else {
+        // Create new draft
+        const result = await createDraft(subject, body);
+        setCurrentNewsletterId(result?.newsletterId || null);
+        setSuccess('✅ Entwurf erfolgreich gespeichert!');
+      }
+    } catch (err) {
+      console.error('Error saving draft:', err);
+      setError(err instanceof Error ? err.message : 'Fehler beim Speichern des Entwurfs');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSchedule = async () => {
+    if (!scheduledDate || !scheduledTime) {
+      setError('Bitte wähle Datum und Uhrzeit für den geplanten Versand');
+      return;
+    }
+
+    const scheduledAt = `${scheduledDate}T${scheduledTime}:00`;
+
+    try {
+      setSending(true);
+      setError(null);
+
+      if (currentNewsletterId) {
+        await scheduleNewsletter(currentNewsletterId, scheduledAt);
+      } else {
+        // Create draft first, then schedule
+        const result = await createDraft(subject, body);
+        if (result?.newsletterId) {
+          await scheduleNewsletter(result.newsletterId, scheduledAt);
+        }
+      }
+
+      setSuccess(`📅 Newsletter erfolgreich für ${scheduledDate} um ${scheduledTime} Uhr geplant!`);
+      setScheduleDialogOpen(false);
+
+      // Clear form
+      setSubject('');
+      setBody('');
+      setCurrentNewsletterId(null);
+      setScheduledDate('');
+      setScheduledTime('');
+    } catch (err) {
+      console.error('Error scheduling newsletter:', err);
+      setError(err instanceof Error ? err.message : 'Fehler beim Planen des Newsletters');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSendNow = async () => {
     if (!subject.trim() || !body.trim()) {
       setError('Betreff und Nachricht dürfen nicht leer sein');
       return;
@@ -384,68 +471,83 @@ export const NewsletterManagement = () => {
     try {
       setSending(true);
       setError(null);
-      setSuccess(null);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        setError('Nicht authentifiziert');
-        return;
-      }
-
-      // Get header and footer HTML from selected templates
-      const selectedHeader = emailHeaders.find(h => h.id === selectedHeaderId);
-      const selectedFooter = emailFooters.find(f => f.id === selectedFooterId);
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-newsletter`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            subject,
-            header: selectedHeader?.html_content || header,
-            body,
-            footer: selectedFooter?.html_content || footer,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Fehler beim Versenden des Newsletters');
-      }
-
-      if (result.isSimulated) {
-        setSuccess(
-          `⚠️ Newsletter wurde simuliert (Resend nicht konfiguriert). ` +
-          `Würde an ${result.recipientsCount} Abonnenten gesendet werden.`
-        );
+      if (currentNewsletterId) {
+        await sendNewsletterHook(currentNewsletterId);
       } else {
-        setSuccess(
-          `Newsletter erfolgreich an ${result.sentCount} von ${result.recipientsCount} Abonnenten gesendet!`
-        );
+        // Create draft first, then send
+        const result = await createDraft(subject, body);
+        if (result?.newsletterId) {
+          await sendNewsletterHook(result.newsletterId);
+        }
       }
+
+      setSuccess(`✅ Newsletter wird an ${subscribersCount} Abonnenten gesendet!`);
 
       // Clear form
       setSubject('');
-      setHeader('');
       setBody('');
-      setFooter('');
-
-      // Refresh newsletters list
-      fetchNewsletters();
+      setCurrentNewsletterId(null);
     } catch (err) {
       console.error('Error sending newsletter:', err);
       setError(err instanceof Error ? err.message : 'Fehler beim Versenden');
     } finally {
       setSending(false);
     }
+  };
+
+  const handleSendTest = async () => {
+    if (!testEmailAddresses.length) {
+      setError('Bitte füge mindestens eine Test-E-Mail-Adresse hinzu');
+      return;
+    }
+
+    try {
+      setSendingTest(true);
+      setError(null);
+
+      // Save as draft first if not already saved
+      let newsletterId = currentNewsletterId;
+      if (!newsletterId) {
+        const result = await createDraft(subject, body);
+        newsletterId = result?.newsletterId;
+        setCurrentNewsletterId(newsletterId);
+      }
+
+      if (newsletterId) {
+        await sendTestEmail(newsletterId, testEmailAddresses);
+        setSuccess(`✅ Test-E-Mail erfolgreich an ${testEmailAddresses.length} Adresse(n) gesendet!`);
+        setTestEmailDialogOpen(false);
+      }
+    } catch (err) {
+      console.error('Error sending test email:', err);
+      setError(err instanceof Error ? err.message : 'Fehler beim Versenden der Test-E-Mail');
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const addTestEmail = () => {
+    const email = testEmailInput.trim();
+    if (!email) return;
+
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Bitte gib eine gültige E-Mail-Adresse ein');
+      return;
+    }
+
+    if (testEmailAddresses.includes(email)) {
+      setError('Diese E-Mail-Adresse wurde bereits hinzugefügt');
+      return;
+    }
+
+    setTestEmailAddresses([...testEmailAddresses, email]);
+    setTestEmailInput('');
+  };
+
+  const removeTestEmail = (email: string) => {
+    setTestEmailAddresses(testEmailAddresses.filter(e => e !== email));
   };
 
   const insertPlaceholder = (placeholder: string) => {
@@ -527,58 +629,56 @@ export const NewsletterManagement = () => {
       .replace(/\{\{unsubscribe_link\}\}/g, 'https://habdawas.at/settings');
   };
 
-  const getStatusChip = (status: Newsletter['status']) => {
-    const statusConfig = {
-      draft: { label: 'Entwurf', color: 'default' as const },
-      sending: { label: 'Wird gesendet', color: 'info' as const },
-      sent: { label: 'Gesendet', color: 'success' as const },
-      failed: { label: 'Fehlgeschlagen', color: 'error' as const },
-    };
 
-    const config = statusConfig[status];
-    return <Chip label={config.label} color={config.color} size="small" />;
-  };
+  const renderComposeTab = () => {
+    const ContentWrapper = isMobile ? Box : Paper;
+    const wrapperProps = isMobile ? {} : { sx: { p: 3 } };
 
-  const renderComposeTab = () => (
-    <Box>
-      <Card sx={{ p: 2, mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: subscribersCount === 0 ? 2 : 0 }}>
-          <Box
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: 2,
-              bgcolor: 'primary.light',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Users size={18} style={{ color: '#1565c0' }} />
+    return (
+      <Box>
+        <Typography variant="h5" fontWeight={700} gutterBottom sx={{ mb: 1, display: { xs: 'none', md: 'block' } }}>
+          Newsletter erstellen
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: { xs: 2, md: 3 }, display: { xs: 'none', md: 'block' } }}>
+          Erstelle und versende personalisierte Newsletter an deine Abonnenten
+        </Typography>
+
+        {/* Subscriber Count Card */}
+        <Card sx={{ p: 2, mb: 3, bgcolor: 'action.hover' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                bgcolor: 'primary.light',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Users size={20} style={{ color: '#1565c0' }} />
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {subscribersCount} Abonnenten
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Empfänger für diesen Newsletter
+              </Typography>
+            </Box>
           </Box>
-          <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '1rem' }}>
-              {subscribersCount} Abonnenten
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-              Empfänger für diesen Newsletter
-            </Typography>
-          </Box>
-        </Box>
 
-        {subscribersCount === 0 && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            Aktuell gibt es keine Newsletter-Abonnenten. User können sich in ihren Einstellungen für den Newsletter anmelden.
-          </Alert>
-        )}
-      </Card>
+          {subscribersCount === 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Aktuell gibt es keine Newsletter-Abonnenten. User können sich in ihren Einstellungen für den Newsletter anmelden.
+            </Alert>
+          )}
+        </Card>
 
-      <Card sx={{ p: 2.5 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-            Newsletter erstellen
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+        <ContentWrapper {...wrapperProps}>
+          {/* Toolbar */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <FormControl sx={{ minWidth: 240 }} size="small">
                 <InputLabel shrink>Vorlage laden</InputLabel>
@@ -650,54 +750,57 @@ export const NewsletterManagement = () => {
               {generating ? 'Generiere...' : 'Mit KI generieren'}
             </Button>
           </Box>
-        </Box>
 
-        <TextField
-          fullWidth
-          size="small"
-          label="Betreff"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          placeholder="z.B. Neue Features bei HabDaWas"
-          sx={{ mb: 3 }}
-          disabled={sending || generating}
-          inputRef={subjectRef}
-          onFocus={() => setLastFocusedField('subject')}
-        />
-
-        {/* Header Selection */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-            Email-Header
-          </Typography>
-          <FormControl fullWidth size="small" sx={{ mb: 1 }}>
-            <InputLabel>Wiederverwendbaren Header wählen</InputLabel>
-            <Select
-              value={selectedHeaderId}
-              onChange={(e) => setSelectedHeaderId(e.target.value)}
-              label="Wiederverwendbaren Header wählen"
+          {/* Form Fields */}
+          <Grid container spacing={{ xs: 2, md: 3 }}>
+          <Grid size={{ xs: 12 }}>
+            <AutoSaveTextField
+              fieldName="subject"
+              fullWidth
+              label="Betreff"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="z.B. Neue Features bei HabDaWas"
               disabled={sending || generating}
-            >
-              <MenuItem value="">
-                <em>Kein Header</em>
-              </MenuItem>
-              {emailHeaders.map((h) => (
-                <MenuItem key={h.id} value={h.id}>
-                  {h.name} {h.is_default && '(Standard)'}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Typography variant="caption" color="text.secondary">
-            Wähle einen wiederverwendbaren Header oder verwalte Header in "Email-Templates"
-          </Typography>
-        </Box>
+              inputRef={subjectRef}
+              onFocus={() => setLastFocusedField('subject')}
+              helperText="Der Betreff wird in der E-Mail-Vorschau angezeigt"
+            />
+          </Grid>
 
-        {/* Body with CKEditor */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-            Newsletter-Inhalt *
-          </Typography>
+          {/* Header Selection */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+              Email-Header
+            </Typography>
+            <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+              <InputLabel>Wiederverwendbaren Header wählen</InputLabel>
+              <Select
+                value={selectedHeaderId}
+                onChange={(e) => setSelectedHeaderId(e.target.value)}
+                label="Wiederverwendbaren Header wählen"
+                disabled={sending || generating}
+              >
+                <MenuItem value="">
+                  <em>Kein Header</em>
+                </MenuItem>
+                {emailHeaders.map((h) => (
+                  <MenuItem key={h.id} value={h.id}>
+                    {h.name} {h.is_default && '(Standard)'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Typography variant="caption" color="text.secondary">
+              Wähle einen wiederverwendbaren Header
+            </Typography>
+          </Grid>
+
+          {/* Body with CKEditor */}
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+              Newsletter-Inhalt *
+            </Typography>
           <Box sx={{
             border: '1px solid',
             borderColor: 'divider',
@@ -773,110 +876,148 @@ export const NewsletterManagement = () => {
               }}
             />
           </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            Hauptinhalt des Newsletters. Du kannst Platzhalter wie {'{{user_name}}'} verwenden.
-          </Typography>
-        </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Hauptinhalt des Newsletters. Du kannst Platzhalter wie {'{{user_name}}'} verwenden.
+            </Typography>
+          </Grid>
 
-        {/* Placeholders Section - Compact inline chips with tooltips */}
-        <Card sx={{ mb: 3, bgcolor: 'action.hover', p: 1.5 }}>
-          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.85rem', display: 'block', mb: 1 }}>
-            Verfügbare Platzhalter
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {AVAILABLE_PLACEHOLDERS.map((placeholder) => (
-              <Tooltip
-                key={placeholder.key}
-                title={placeholder.description}
-                arrow
-                placement="top"
+          {/* Footer Selection */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+              Email-Footer
+            </Typography>
+            <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+              <InputLabel>Wiederverwendbaren Footer wählen</InputLabel>
+              <Select
+                value={selectedFooterId}
+                onChange={(e) => setSelectedFooterId(e.target.value)}
+                label="Wiederverwendbaren Footer wählen"
+                disabled={sending || generating}
               >
-                <Chip
-                  label={placeholder.key}
-                  size="small"
-                  onClick={() => insertPlaceholder(placeholder.key)}
-                  sx={{
-                    fontFamily: 'monospace',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: 'primary.main',
-                      color: 'primary.contrastText',
-                    }
-                  }}
-                />
-              </Tooltip>
-            ))}
-          </Box>
-        </Card>
-
-        {/* Footer Selection */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-            Email-Footer
-          </Typography>
-          <FormControl fullWidth size="small" sx={{ mb: 1 }}>
-            <InputLabel>Wiederverwendbaren Footer wählen</InputLabel>
-            <Select
-              value={selectedFooterId}
-              onChange={(e) => setSelectedFooterId(e.target.value)}
-              label="Wiederverwendbaren Footer wählen"
-              disabled={sending || generating}
-            >
-              <MenuItem value="">
-                <em>Kein Footer</em>
-              </MenuItem>
-              {emailFooters.map((f) => (
-                <MenuItem key={f.id} value={f.id}>
-                  {f.name} {f.is_default && '(Standard)'}
+                <MenuItem value="">
+                  <em>Kein Footer</em>
                 </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Typography variant="caption" color="text.secondary">
-            Wähle einen wiederverwendbaren Footer mit Abmelde-Link und Impressum
-          </Typography>
-        </Box>
+                {emailFooters.map((f) => (
+                  <MenuItem key={f.id} value={f.id}>
+                    {f.name} {f.is_default && '(Standard)'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Typography variant="caption" color="text.secondary">
+              Wähle einen wiederverwendbaren Footer
+            </Typography>
+          </Grid>
 
-        {error && (
-          <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+          {/* Placeholders Section */}
+          <Grid size={{ xs: 12 }}>
+            <Card sx={{ bgcolor: 'action.hover', p: 1.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.85rem', display: 'block', mb: 1 }}>
+                Verfügbare Platzhalter
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {AVAILABLE_PLACEHOLDERS.map((placeholder) => (
+                  <Tooltip
+                    key={placeholder.key}
+                    title={placeholder.description}
+                    arrow
+                    placement="top"
+                  >
+                    <Chip
+                      label={placeholder.key}
+                      size="small"
+                      onClick={() => insertPlaceholder(placeholder.key)}
+                      sx={{
+                        fontFamily: 'monospace',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: 'primary.main',
+                          color: 'primary.contrastText',
+                        }
+                      }}
+                    />
+                  </Tooltip>
+                ))}
+              </Box>
+            </Card>
+          </Grid>
+          </Grid>
 
-        {success && (
-          <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>
-            {success}
-          </Alert>
-        )}
+          {/* Error/Success Messages */}
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)} sx={{ mt: 3 }}>
+              {error}
+            </Alert>
+          )}
 
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <Button
-            variant="outlined"
-            startIcon={<Eye size={18} />}
-            onClick={() => setPreviewOpen(true)}
-            disabled={!subject || !body || sending || generating}
-          >
-            Vorschau
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<Save size={18} />}
-            onClick={() => setSaveTemplateOpen(true)}
-            disabled={!subject || !body || sending || generating}
-          >
-            Als Vorlage speichern
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={sending ? <CircularProgress size={18} color="inherit" /> : <Send size={18} />}
-            onClick={handleSendNewsletter}
-            disabled={!subject || !body || sending || subscribersCount === 0 || generating}
-          >
-            {sending ? 'Wird gesendet...' : `An ${subscribersCount} Abonnenten senden`}
-          </Button>
-        </Box>
-      </Card>
+          {success && (
+            <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mt: 3 }}>
+              {success}
+            </Alert>
+          )}
+
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center', mt: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Eye size={16} />}
+                onClick={() => setPreviewOpen(true)}
+                disabled={!subject || !body || sending || generating}
+              >
+                Vorschau
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<FileText size={16} />}
+                onClick={() => setSaveTemplateOpen(true)}
+                disabled={!subject || !body || sending || generating}
+              >
+                Als Vorlage
+              </Button>
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                startIcon={<Save size={18} />}
+                onClick={handleSaveDraft}
+                disabled={!subject || !body || sending || generating}
+              >
+                {currentNewsletterId ? 'Entwurf aktualisieren' : 'Als Entwurf speichern'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="info"
+                startIcon={<TestTube size={18} />}
+                onClick={() => setTestEmailDialogOpen(true)}
+                disabled={!subject || !body || sending || generating}
+              >
+                Test senden
+              </Button>
+              <Button
+                variant="outlined"
+                color="warning"
+                startIcon={<Clock size={18} />}
+                onClick={() => setScheduleDialogOpen(true)}
+                disabled={!subject || !body || sending || generating}
+              >
+                Planen
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={sending ? <CircularProgress size={18} color="inherit" /> : <Send size={18} />}
+                onClick={handleSendNow}
+                disabled={!subject || !body || sending || subscribersCount === 0 || generating}
+              >
+                {sending ? 'Wird gesendet...' : 'Jetzt senden'}
+              </Button>
+            </Box>
+          </Box>
+        </ContentWrapper>
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="md" fullWidth>
@@ -1067,92 +1208,823 @@ export const NewsletterManagement = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
-  );
 
-  const renderHistoryTab = () => (
+      {/* Schedule Dialog */}
+      <Dialog open={scheduleDialogOpen} onClose={() => setScheduleDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Clock size={20} />
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Newsletter planen
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => setScheduleDialogOpen(false)}>
+              <X size={20} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Lege fest, wann der Newsletter automatisch versendet werden soll. Der Versand erfolgt im Hintergrund zur geplanten Zeit.
+          </Alert>
+
+          <Stack spacing={3}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Datum"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ min: new Date().toISOString().split('T')[0] }}
+            />
+            <TextField
+              fullWidth
+              type="time"
+              label="Uhrzeit"
+              value={scheduledTime}
+              onChange={(e) => setScheduledTime(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setScheduleDialogOpen(false)}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<Clock size={18} />}
+            onClick={handleSchedule}
+            disabled={!scheduledDate || !scheduledTime || sending}
+          >
+            {sending ? 'Wird geplant...' : 'Newsletter planen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Test Email Dialog */}
+      <Dialog open={testEmailDialogOpen} onClose={() => setTestEmailDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TestTube size={20} />
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Test-E-Mail senden
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => setTestEmailDialogOpen(false)}>
+              <X size={20} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Sende eine Test-E-Mail an die unten aufgeführten Adressen, um das Layout und den Inhalt zu überprüfen.
+          </Alert>
+
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="E-Mail-Adresse"
+                value={testEmailInput}
+                onChange={(e) => setTestEmailInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTestEmail();
+                  }
+                }}
+                placeholder="test@example.com"
+              />
+              <Button
+                variant="outlined"
+                onClick={addTestEmail}
+                disabled={!testEmailInput.trim()}
+              >
+                Hinzufügen
+              </Button>
+            </Box>
+
+            {testEmailAddresses.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                  Test-Empfänger ({testEmailAddresses.length}):
+                </Typography>
+                <Stack spacing={1}>
+                  {testEmailAddresses.map((email) => (
+                    <Box
+                      key={email}
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        p: 1,
+                        bgcolor: 'action.hover',
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography variant="body2">{email}</Typography>
+                      <IconButton size="small" onClick={() => removeTestEmail(email)}>
+                        <X size={16} />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+          </Box>
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setTestEmailDialogOpen(false)}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            color="info"
+            startIcon={sendingTest ? <CircularProgress size={18} color="inherit" /> : <TestTube size={18} />}
+            onClick={handleSendTest}
+            disabled={testEmailAddresses.length === 0 || sendingTest}
+          >
+            {sendingTest ? 'Wird gesendet...' : `Test an ${testEmailAddresses.length} senden`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      </Box>
+    );
+  };
+
+  const getRelativeTime = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 10) return 'gerade eben';
+    if (seconds < 60) return `vor ${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `vor ${minutes}min`;
+    const hours = Math.floor(minutes / 60);
+    return `vor ${hours}h`;
+  };
+
+  const renderSettingsTab = () => {
+    const ContentWrapper = isMobile ? Box : Paper;
+    const wrapperProps = isMobile ? {} : { sx: { p: 2.5 } };
+
+    return (
+      <Box sx={{ position: 'relative' }}>
+        {/* Auto-Save Status Indicator - Fixed position top right */}
+        <Box
+          sx={{
+            position: 'fixed',
+            top: { xs: 16, md: 80 },
+            right: { xs: 16, md: 24 },
+            zIndex: 1000,
+          }}
+        >
+          {autoSaveStatus === 'saving' && (
+            <Chip
+              icon={<CircularProgress size={14} color="inherit" />}
+              label="Speichert..."
+              size="small"
+              sx={{ height: 28 }}
+            />
+          )}
+          {autoSaveStatus === 'saved' && lastSaved && (
+            <Chip
+              icon={<Check size={14} />}
+              label={`Gespeichert ${getRelativeTime(lastSaved)}`}
+              size="small"
+              color="success"
+              sx={{ height: 28 }}
+            />
+          )}
+        </Box>
+
+        <Typography variant="h5" fontWeight={700} gutterBottom sx={{ mb: 1, display: { xs: 'none', md: 'block' } }}>
+          Newsletter-Einstellungen
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: { xs: 2, md: 3 }, display: { xs: 'none', md: 'block' } }}>
+          Konfiguriere die Einstellungen für den Newsletter-Versand
+        </Typography>
+
+        {settingsLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : !settings ? (
+          <Alert severity="error">
+            Fehler beim Laden der Einstellungen
+          </Alert>
+        ) : (
+          <ContentWrapper {...wrapperProps}>
+            <Grid container spacing={{ xs: 1.5, md: 2 }}>
+              {/* Versand-Einstellungen */}
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+                  Versand-Einstellungen
+                </Typography>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Batch-Größe"
+                  value={localSettings?.batchSize ?? ''}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setLocalSettings(prev => prev ? { ...prev, batchSize: value } : prev);
+                    saveSetting('batch_size', value);
+                  }}
+                  helperText="Anzahl Emails pro Batch"
+                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Batch-Verzögerung (ms)"
+                  value={localSettings?.batchDelayMs ?? ''}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setLocalSettings(prev => prev ? { ...prev, batchDelayMs: value } : prev);
+                    saveSetting('batch_delay_ms', value);
+                  }}
+                  helperText="Wartezeit zwischen Batches"
+                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Max. Wiederholungen"
+                  value={localSettings?.maxRetries ?? ''}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setLocalSettings(prev => prev ? { ...prev, maxRetries: value } : prev);
+                    saveSetting('max_retries', value);
+                  }}
+                  helperText="Anzahl Retry-Versuche"
+                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                />
+              </Grid>
+
+              {/* Absender-Einstellungen */}
+              <Grid size={{ xs: 12 }}>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+                  Absender-Einstellungen
+                </Typography>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Absender-Name"
+                  value={localSettings?.fromName ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setLocalSettings(prev => prev ? { ...prev, fromName: value } : prev);
+                    saveSetting('from_name', value);
+                  }}
+                  helperText="Name, der als Absender angezeigt wird"
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Absender-E-Mail"
+                  value={localSettings?.fromEmail ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setLocalSettings(prev => prev ? { ...prev, fromEmail: value } : prev);
+                    saveSetting('from_email', value);
+                  }}
+                  helperText="E-Mail-Adresse des Absenders"
+                  inputProps={{ inputMode: 'email' }}
+                />
+              </Grid>
+
+              {/* Tracking-Einstellungen */}
+              <Grid size={{ xs: 12 }}>
+                <Divider sx={{ my: 1.5 }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      E-Mail-Tracking
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Erfasse Öffnungen und Klicks in versendeten Newslettern
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant={localSettings?.enableTracking ? 'contained' : 'outlined'}
+                    color={localSettings?.enableTracking ? 'success' : 'inherit'}
+                    onClick={() => {
+                      const newValue = !localSettings?.enableTracking;
+                      setLocalSettings(prev => prev ? { ...prev, enableTracking: newValue } : prev);
+                      saveSetting('enable_tracking', newValue);
+                    }}
+                  >
+                    {localSettings?.enableTracking ? 'Aktiviert' : 'Deaktiviert'}
+                  </Button>
+                </Box>
+              </Grid>
+
+              {/* Test-E-Mail-Adressen */}
+              <Grid size={{ xs: 12 }}>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  Test-E-Mail-Adressen
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Standardadressen für Test-E-Mails
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+                  <TextField
+                    fullWidth
+                    label="E-Mail-Adresse hinzufügen"
+                    value={testEmailInput}
+                    onChange={(e) => setTestEmailInput(e.target.value)}
+                    onKeyPress={async (e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const email = testEmailInput.trim();
+                        if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                          try {
+                            const newAddresses = [...(localSettings?.testEmailAddresses || []), email];
+                            setLocalSettings(prev => prev ? { ...prev, testEmailAddresses: newAddresses } : prev);
+                            await saveSetting('test_email_addresses', newAddresses);
+                            setTestEmailInput('');
+                            setSuccess('Test-E-Mail-Adresse hinzugefügt');
+                          } catch (err) {
+                            setError('Fehler beim Hinzufügen der E-Mail-Adresse');
+                          }
+                        } else {
+                          setError('Bitte gib eine gültige E-Mail-Adresse ein');
+                        }
+                      }
+                    }}
+                    placeholder="test@example.com"
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={async () => {
+                      const email = testEmailInput.trim();
+                      if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        try {
+                          const newAddresses = [...(localSettings?.testEmailAddresses || []), email];
+                          setLocalSettings(prev => prev ? { ...prev, testEmailAddresses: newAddresses } : prev);
+                          await saveSetting('test_email_addresses', newAddresses);
+                          setTestEmailInput('');
+                          setSuccess('Test-E-Mail-Adresse hinzugefügt');
+                        } catch (err) {
+                          setError('Fehler beim Hinzufügen der E-Mail-Adresse');
+                        }
+                      } else {
+                        setError('Bitte gib eine gültige E-Mail-Adresse ein');
+                      }
+                    }}
+                    disabled={!testEmailInput.trim()}
+                  >
+                    Hinzufügen
+                  </Button>
+                </Box>
+
+                {localSettings?.testEmailAddresses && localSettings.testEmailAddresses.length > 0 && (
+                  <Stack spacing={1}>
+                    {localSettings.testEmailAddresses.map((email, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          p: 1.5,
+                          bgcolor: 'action.hover',
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Typography variant="body2">{email}</Typography>
+                        <IconButton
+                          size="small"
+                          onClick={async () => {
+                            try {
+                              const newAddresses = localSettings.testEmailAddresses.filter((_, i) => i !== index);
+                              setLocalSettings(prev => prev ? { ...prev, testEmailAddresses: newAddresses } : prev);
+                              await saveSetting('test_email_addresses', newAddresses);
+                              setSuccess('Test-E-Mail-Adresse entfernt');
+                            } catch (err) {
+                              setError('Fehler beim Entfernen der E-Mail-Adresse');
+                            }
+                          }}
+                        >
+                          <X size={16} />
+                        </IconButton>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Grid>
+
+              {/* Messages */}
+              {success && (
+                <Grid size={{ xs: 12 }}>
+                  <Alert severity="success" onClose={() => setSuccess(null)}>
+                    {success}
+                  </Alert>
+                </Grid>
+              )}
+
+              {error && (
+                <Grid size={{ xs: 12 }}>
+                  <Alert severity="error" onClose={() => setError(null)}>
+                    {error}
+                  </Alert>
+                </Grid>
+              )}
+            </Grid>
+          </ContentWrapper>
+        )}
+      </Box>
+    );
+  };
+
+  const renderAnalyticsTab = () => (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Versandte Newsletter ({newsletters.length})
+          Newsletter-Analytics
         </Typography>
-        <IconButton onClick={fetchNewsletters} disabled={loading}>
+        <IconButton onClick={refreshLogs} disabled={logsLoading}>
           <RefreshCw size={20} />
         </IconButton>
       </Box>
 
-      {loading ? (
+      {logsLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Stack spacing={3}>
+          {/* Statistik-Karten */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+            {/* Gesamt versendet */}
+            <Card sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    bgcolor: 'primary.light',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Send size={20} style={{ color: '#1565c0' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {stats.sent}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Versendet
+                  </Typography>
+                </Box>
+              </Box>
+            </Card>
+
+            {/* Zugestellt */}
+            <Card sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    bgcolor: 'success.light',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <CheckCircle size={20} style={{ color: '#2e7d32' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {stats.delivered}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Zugestellt
+                  </Typography>
+                </Box>
+              </Box>
+            </Card>
+
+            {/* Geöffnet */}
+            <Card sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    bgcolor: 'info.light',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Eye size={20} style={{ color: '#0277bd' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {stats.opened}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Geöffnet ({stats.openRate}%)
+                  </Typography>
+                </Box>
+              </Box>
+            </Card>
+
+            {/* Geklickt */}
+            <Card sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    bgcolor: 'warning.light',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <TrendingUp size={20} style={{ color: '#ed6c02' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {stats.clicked}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Geklickt ({stats.clickRate}%)
+                  </Typography>
+                </Box>
+              </Box>
+            </Card>
+          </Box>
+
+          {/* Weitere Statistiken */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
+            {/* Fehlgeschlagen & Bounces */}
+            <Card sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    bgcolor: 'error.light',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <XCircle size={20} style={{ color: '#d32f2f' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {stats.failed + stats.bounced}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Fehler & Bounces
+                  </Typography>
+                </Box>
+              </Box>
+              <Divider sx={{ my: 1.5 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Fehlgeschlagen:
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {stats.failed}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Bounces:
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {stats.bounced}
+                </Typography>
+              </Box>
+            </Card>
+
+            {/* Performance-Metriken */}
+            <Card sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    bgcolor: 'secondary.light',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <BarChart size={20} style={{ color: '#7b1fa2' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Performance
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Gesamt: {stats.total} E-Mails
+                  </Typography>
+                </Box>
+              </Box>
+              <Divider sx={{ my: 1.5 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Öffnungsrate:
+                </Typography>
+                <Chip
+                  label={`${stats.openRate}%`}
+                  size="small"
+                  color={Number(stats.openRate) > 20 ? 'success' : 'default'}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Klickrate:
+                </Typography>
+                <Chip
+                  label={`${stats.clickRate}%`}
+                  size="small"
+                  color={Number(stats.clickRate) > 5 ? 'success' : 'default'}
+                />
+              </Box>
+            </Card>
+          </Box>
+
+          {/* Letzte Newsletter-Logs */}
+          {logs.length > 0 && (
+            <Card sx={{ p: 3 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
+                Letzte E-Mail-Aktivitäten
+              </Typography>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>Empfänger</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Versendet</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Geöffnet</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Geklickt</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {logs.slice(0, 10).map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {log.recipient_name || log.recipient_email}
+                          </Typography>
+                          {log.recipient_name && (
+                            <Typography variant="caption" color="text.secondary">
+                              {log.recipient_email}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={log.status}
+                            size="small"
+                            color={
+                              log.status === 'delivered' ? 'success' :
+                              log.status === 'bounced' || log.status === 'failed' ? 'error' :
+                              'default'
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {log.sent_at ? (
+                            <Typography variant="body2">
+                              {format(new Date(log.sent_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+                            </Typography>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {log.opened_at ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <CheckCircle size={14} style={{ color: '#2e7d32' }} />
+                              <Typography variant="body2">
+                                {format(new Date(log.opened_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+                              </Typography>
+                            </Box>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {log.clicked_at ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <TrendingUp size={14} style={{ color: '#ed6c02' }} />
+                              <Typography variant="body2">
+                                {format(new Date(log.clicked_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+                              </Typography>
+                            </Box>
+                          ) : '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Card>
+          )}
+
+          {logs.length === 0 && (
+            <Alert severity="info">
+              Noch keine E-Mail-Aktivitäten vorhanden. Newsletter-Logs werden hier angezeigt, sobald Newsletter versendet wurden.
+            </Alert>
+          )}
+        </Stack>
+      )}
+    </Box>
+  );
+
+  const handleEditNewsletter = (newsletter: Newsletter) => {
+    // Load newsletter into editor
+    setSubject(newsletter.subject);
+    setBody(newsletter.body);
+    setCurrentNewsletterId(newsletter.id);
+    setSelectedTab(0); // Switch to compose tab
+  };
+
+  const handleDeleteNewsletter = async (newsletterId: string) => {
+    try {
+      await deleteNewsletter(newsletterId);
+      setSuccess('Newsletter erfolgreich gelöscht');
+      refreshNewsletters();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Löschen');
+    }
+  };
+
+  const handleSendNewsletter = async (newsletterId: string) => {
+    try {
+      await sendNewsletterHook(newsletterId);
+      setSuccess('Newsletter wird versendet');
+      refreshNewsletters();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Versenden');
+    }
+  };
+
+  const renderHistoryTab = () => (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          Newsletter-Übersicht
+        </Typography>
+        <IconButton onClick={refreshNewsletters} disabled={newslettersLoading}>
+          <RefreshCw size={20} />
+        </IconButton>
+      </Box>
+
+      {newslettersLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
       ) : newsletters.length === 0 ? (
         <Alert severity="info">
-          Noch keine Newsletter versendet. Erstelle deinen ersten Newsletter im "Erstellen"-Tab.
+          Noch keine Newsletter erstellt. Erstelle deinen ersten Newsletter im "Erstellen"-Tab.
         </Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>Betreff</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Empfänger</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Versendet</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Datum</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {newsletters.map((newsletter) => (
-                <TableRow key={newsletter.id}>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {newsletter.subject}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: 'block',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: 300,
-                      }}
-                    >
-                      {newsletter.body}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{getStatusChip(newsletter.status)}</TableCell>
-                  <TableCell>{newsletter.recipients_count}</TableCell>
-                  <TableCell>
-                    {newsletter.sent_count > 0 ? (
-                      <Box>
-                        <Typography variant="body2" sx={{ color: 'success.main' }}>
-                          {newsletter.sent_count} ✓
-                        </Typography>
-                        {newsletter.failed_count > 0 && (
-                          <Typography variant="caption" sx={{ color: 'error.main' }}>
-                            {newsletter.failed_count} ✗
-                          </Typography>
-                        )}
-                      </Box>
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {format(new Date(newsletter.sent_at || newsletter.created_at), 'dd.MM.yyyy', { locale: de })}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {format(new Date(newsletter.sent_at || newsletter.created_at), 'HH:mm', { locale: de })} Uhr
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <NewsletterList
+          newsletters={newsletters}
+          onEdit={handleEditNewsletter}
+          onDelete={handleDeleteNewsletter}
+          onSend={handleSendNewsletter}
+          loading={newslettersLoading}
+        />
       )}
     </Box>
   );
@@ -1165,10 +2037,10 @@ export const NewsletterManagement = () => {
             Newsletter-Verwaltung
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Versende personalisierte Newsletter an alle Abonnenten
+            Erstelle, plane und versende personalisierte Newsletter
           </Typography>
         </Box>
-        <IconButton onClick={() => { fetchNewsletters(); fetchSubscribersCount(); }} disabled={loading}>
+        <IconButton onClick={() => { refreshNewsletters(); fetchSubscribersCount(); }} disabled={newslettersLoading}>
           <RefreshCw size={20} />
         </IconButton>
       </Box>
@@ -1190,10 +2062,28 @@ export const NewsletterManagement = () => {
             </Box>
           }
         />
+        <Tab
+          label={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <BarChart size={16} />
+              Analytics
+            </Box>
+          }
+        />
+        <Tab
+          label={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Settings size={16} />
+              Einstellungen
+            </Box>
+          }
+        />
       </Tabs>
 
       {selectedTab === 0 && renderComposeTab()}
       {selectedTab === 1 && renderHistoryTab()}
+      {selectedTab === 2 && renderAnalyticsTab()}
+      {selectedTab === 3 && renderSettingsTab()}
     </Box>
   );
 };
