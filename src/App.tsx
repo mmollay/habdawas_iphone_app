@@ -29,7 +29,7 @@ import {
   Tabs,
   Badge,
 } from '@mui/material';
-import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, Calendar, Coins, Share2 } from 'lucide-react';
+import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { HandPreferenceProvider, useHandPreference } from './contexts/HandPreferenceContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
@@ -474,7 +474,29 @@ const MainContent = () => {
     return () => clearTimeout(timer);
   }, [activeSearchQuery, selectedCategories, priceRange, sortBy, statusFilter, showMyItems, showFavorites, filterBySeller]); // Removed 'user' to prevent double loading
 
+  // Define all available categories (always show all categories in dropdown)
+  const ALL_CATEGORIES = ['Fahrzeuge', 'Haushalt', 'Kleidung', 'Lebensmittel', 'Möbel', 'Spielzeug', 'Sport'];
+
   const allCategories = [...new Set(items.map(item => item.category).filter(Boolean))] as string[];
+
+  // Count items per category based on current view (all/my/favorites)
+  const getCategoryCount = (category: string) => {
+    return filteredItems.filter(item => item.category === category).length;
+  };
+
+  // Get icon for category
+  const getCategoryIcon = (category: string) => {
+    const iconMap: Record<string, JSX.Element> = {
+      'Fahrzeuge': <Car size={16} />,
+      'Haushalt': <Home size={16} />,
+      'Kleidung': <Shirt size={16} />,
+      'Lebensmittel': <Apple size={16} />,
+      'Möbel': <Sofa size={16} />,
+      'Spielzeug': <Baby size={16} />,
+      'Sport': <Dumbbell size={16} />,
+    };
+    return iconMap[category] || <Globe size={16} />;
+  };
 
   const updateURL = (params: Record<string, string | null>) => {
     const newSearchParams = new URLSearchParams(location.search);
@@ -846,19 +868,131 @@ const MainContent = () => {
                     }}
                   >
                   <Tab
-                    icon={isMobile ? undefined : <Globe size={16} />}
+                    icon={isMobile ? undefined : (selectedCategories.length === 1 ? getCategoryIcon(selectedCategories[0]) : <Globe size={16} />)}
                     iconPosition="start"
                     label={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                         {isMobile ? (
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Globe size={16} />
-                            <span>Alle</span>
+                            {selectedCategories.length === 1 ? getCategoryIcon(selectedCategories[0]) : <Globe size={16} />}
+                            <Select
+                              value={selectedCategories.length === 1 ? selectedCategories[0] : 'all'}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                const value = e.target.value;
+                                if (value === 'all') {
+                                  setSelectedCategories([]);
+                                } else {
+                                  setSelectedCategories([value]);
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              size="small"
+                              variant="standard"
+                              MenuProps={{
+                                PaperProps: {
+                                  style: {
+                                    maxHeight: 400,
+                                  },
+                                },
+                              }}
+                              sx={{
+                                fontSize: '0.8125rem',
+                                fontWeight: 600,
+                                color: 'inherit',
+                                '&:before': { display: 'none' },
+                                '&:after': { display: 'none' },
+                                '& .MuiSelect-select': {
+                                  padding: 0,
+                                  paddingRight: '20px !important',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                },
+                                '& .MuiSelect-icon': {
+                                  right: -2,
+                                },
+                              }}
+                              renderValue={(value) => value === 'all' ? 'Alle' : value}
+                            >
+                              <MenuItem value="all">
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Globe size={16} />
+                                  <span>Alle</span>
+                                </Box>
+                              </MenuItem>
+                              {ALL_CATEGORIES.map(category => (
+                                <MenuItem key={category} value={category}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      {getCategoryIcon(category)}
+                                      <span>{category}</span>
+                                    </Box>
+                                    <span style={{ opacity: 0.6 }}>{getCategoryCount(category)}</span>
+                                  </Box>
+                                </MenuItem>
+                              ))}
+                            </Select>
                           </Box>
                         ) : (
-                          <span>Alle</span>
+                          <Select
+                            value={selectedCategories.length === 1 ? selectedCategories[0] : 'all'}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              const value = e.target.value;
+                              if (value === 'all') {
+                                setSelectedCategories([]);
+                              } else {
+                                setSelectedCategories([value]);
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            size="small"
+                            variant="standard"
+                            MenuProps={{
+                              PaperProps: {
+                                style: {
+                                  maxHeight: 400,
+                                },
+                              },
+                            }}
+                            sx={{
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              color: 'inherit',
+                              '&:before': { display: 'none' },
+                              '&:after': { display: 'none' },
+                              '& .MuiSelect-select': {
+                                padding: 0,
+                                paddingRight: '20px !important',
+                                display: 'flex',
+                                alignItems: 'center',
+                              },
+                              '& .MuiSelect-icon': {
+                                right: -2,
+                              },
+                            }}
+                            renderValue={(value) => value === 'all' ? 'Alle' : value}
+                          >
+                            <MenuItem value="all">
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Globe size={16} />
+                                <span>Alle</span>
+                              </Box>
+                            </MenuItem>
+                            {ALL_CATEGORIES.map(category => (
+                              <MenuItem key={category} value={category}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {getCategoryIcon(category)}
+                                    <span>{category}</span>
+                                  </Box>
+                                  <span style={{ opacity: 0.6 }}>{getCategoryCount(category)}</span>
+                                </Box>
+                              </MenuItem>
+                            ))}
+                          </Select>
                         )}
-                        {!isMobile && allItemsCount > 0 && (
+                        {!isMobile && selectedCategories.length === 0 && (
                           <Box
                             sx={{
                               bgcolor: 'primary.main',

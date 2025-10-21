@@ -332,12 +332,12 @@ export const EmailTemplateManager = () => {
                       </Box>
                     }
                     secondary={
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
+                      <Box component="span">
+                        <Typography variant="caption" color="text.secondary" component="span">
                           Betreff: {template.subject}
                         </Typography>
                         <br />
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" component="span">
                           Variablen: {Array.isArray(template.variables) ? template.variables.join(', ') : 'Keine'}
                         </Typography>
                       </Box>

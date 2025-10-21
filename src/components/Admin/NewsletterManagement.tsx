@@ -75,6 +75,7 @@ interface NewsletterTemplate {
 }
 
 const AVAILABLE_PLACEHOLDERS = [
+  { key: '{{greeting}}', description: 'Personalisierte Anrede (z.B. "Sehr geehrter Herr Müller" oder "Hallo")' },
   { key: '{{name}}', description: 'Vollständiger Name des Empfängers' },
   { key: '{{first_name}}', description: 'Vorname des Empfängers' },
   { key: '{{email}}', description: 'E-Mail-Adresse' },

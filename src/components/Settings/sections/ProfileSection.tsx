@@ -5,7 +5,7 @@ import { Camera, Shield, CheckCircle, Image as ImageIcon, MoreVertical, Calendar
 import { Profile, supabase } from '../../../lib/supabase';
 import { CameraCapture } from '../../Common/CameraCapture';
 import { BirthDataModal } from '../BirthDataModal';
-import { calculateZodiacSign } from '../../../utils/zodiac';
+import { calculateZodiacSign, calculateAscendant } from '../../../utils/zodiac';
 
 interface ProfileSectionProps {
   profile: Profile | null;
@@ -44,6 +44,14 @@ export const ProfileSection = ({ profile, formData, onFormChange, userId, onProf
 
   // Calculate zodiac sign
   const zodiacSign = calculateZodiacSign(formData.birth_date);
+
+  // Calculate ascendant
+  const ascendant = calculateAscendant(
+    formData.birth_date,
+    formData.birth_time,
+    formData.birth_timezone,
+    formData.birth_place
+  );
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -593,6 +601,46 @@ export const ProfileSection = ({ profile, formData, onFormChange, userId, onProf
                         sx={{
                           bgcolor: zodiacSign.color + '20',
                           color: zodiacSign.color,
+                          fontWeight: 600,
+                        }}
+                      />
+                    </Box>
+                  )}
+
+                  {ascendant && (
+                    <Box
+                      sx={{
+                        mt: 1,
+                        p: 1.5,
+                        bgcolor: 'action.hover',
+                        borderRadius: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          fontSize: '2rem',
+                          lineHeight: 1,
+                        }}
+                      >
+                        {ascendant.symbol}
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          Aszendent: {ascendant.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {ascendant.description}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={ascendant.element === 'fire' ? 'Feuer' : ascendant.element === 'earth' ? 'Erde' : ascendant.element === 'air' ? 'Luft' : 'Wasser'}
+                        size="small"
+                        sx={{
+                          bgcolor: ascendant.color + '20',
+                          color: ascendant.color,
                           fontWeight: 600,
                         }}
                       />

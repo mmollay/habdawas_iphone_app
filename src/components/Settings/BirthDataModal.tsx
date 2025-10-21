@@ -10,12 +10,12 @@ import {
   Typography,
   Alert,
   MenuItem,
-  Grid,
   Chip,
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import { Calendar, Clock, Globe, MapPin, Save, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { calculateZodiacSign } from '../../utils/zodiac';
+import { calculateZodiacSign, calculateAscendant } from '../../utils/zodiac';
 
 interface BirthDataModalProps {
   open: boolean;
@@ -61,6 +61,14 @@ export const BirthDataModal = ({ open, onClose, userId, currentData, onSave }: B
 
   // Calculate zodiac sign whenever birth date changes
   const zodiacSign = calculateZodiacSign(formData.birth_date);
+
+  // Calculate ascendant whenever birth date, time, timezone, or place changes
+  const ascendant = calculateAscendant(
+    formData.birth_date,
+    formData.birth_time,
+    formData.birth_timezone,
+    formData.birth_place
+  );
 
   useEffect(() => {
     if (open) {
@@ -196,8 +204,8 @@ export const BirthDataModal = ({ open, onClose, userId, currentData, onSave }: B
             </Alert>
           )}
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+          <Grid container spacing={{ xs: 2, md: 3 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="Geburtsdatum"
@@ -213,7 +221,7 @@ export const BirthDataModal = ({ open, onClose, userId, currentData, onSave }: B
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="Geburtszeit"
@@ -230,7 +238,7 @@ export const BirthDataModal = ({ open, onClose, userId, currentData, onSave }: B
             </Grid>
 
             {zodiacSign && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Box
                   sx={{
                     p: 2,
@@ -272,7 +280,50 @@ export const BirthDataModal = ({ open, onClose, userId, currentData, onSave }: B
               </Grid>
             )}
 
-            <Grid item xs={12} sm={6}>
+            {ascendant && (
+              <Grid size={{ xs: 12 }}>
+                <Box
+                  sx={{
+                    p: 2,
+                    bgcolor: 'action.hover',
+                    borderRadius: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      fontSize: '3rem',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {ascendant.symbol}
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      Aszendent: {ascendant.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {ascendant.description}
+                    </Typography>
+                    <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
+                      <Chip
+                        label={ascendant.element === 'fire' ? 'Feuer' : ascendant.element === 'earth' ? 'Erde' : ascendant.element === 'air' ? 'Luft' : 'Wasser'}
+                        size="small"
+                        sx={{
+                          bgcolor: ascendant.color + '20',
+                          color: ascendant.color,
+                          fontWeight: 600,
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </Box>
+              </Grid>
+            )}
+
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 select
@@ -293,7 +344,7 @@ export const BirthDataModal = ({ open, onClose, userId, currentData, onSave }: B
               </TextField>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="Geburtsort (optional)"

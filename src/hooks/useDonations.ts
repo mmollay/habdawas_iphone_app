@@ -21,14 +21,7 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
 
       let query = supabase
         .from('donations')
-        .select(`
-          *,
-          user:profiles!user_id(
-            id,
-            full_name,
-            email
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(limit);
 

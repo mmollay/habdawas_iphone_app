@@ -21,18 +21,7 @@ export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}
 
       let query = supabase
         .from('community_pot_transactions')
-        .select(`
-          *,
-          user:profiles!user_id(
-            id,
-            full_name,
-            email
-          ),
-          item:items!item_id(
-            id,
-            title
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(limit);
 

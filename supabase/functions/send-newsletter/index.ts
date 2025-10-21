@@ -12,20 +12,35 @@ interface SendNewsletterRequest {
   body: string;
   newsletterId?: string; // Optional: If updating existing newsletter
   useTemplate?: boolean; // Optional: Use database template instead of custom HTML
+  action?: 'draft' | 'schedule' | 'send'; // Action to perform
+  scheduledAt?: string; // ISO timestamp for scheduled send
 }
 
 interface Subscriber {
   id: string;
   email: string;
   full_name: string | null;
+  salutation: string | null;
 }
 
 // Replace placeholders with actual subscriber data
 function replacePlaceholders(text: string, subscriber: Subscriber, baseUrl: string): string {
   const fullName = subscriber.full_name || subscriber.email.split('@')[0];
   const firstName = fullName.split(' ')[0];
+  const lastName = fullName.split(' ').slice(1).join(' ') || '';
+
+  // Generate personalized greeting based on salutation
+  let greeting = 'Hallo';
+  if (subscriber.salutation === 'Herr' && lastName) {
+    greeting = `Sehr geehrter Herr ${lastName}`;
+  } else if (subscriber.salutation === 'Frau' && lastName) {
+    greeting = `Sehr geehrte Frau ${lastName}`;
+  } else if (firstName) {
+    greeting = `Hallo ${firstName}`;
+  }
 
   return text
+    .replace(/\{\{greeting\}\}/g, greeting)
     .replace(/\{\{name\}\}/g, fullName)
     .replace(/\{\{first_name\}\}/g, firstName)
     .replace(/\{\{email\}\}/g, subscriber.email)
@@ -99,11 +114,25 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { subject, body, newsletterId, useTemplate = true }: SendNewsletterRequest = await req.json();
+    const { subject, body, newsletterId, useTemplate = true, action = 'send', scheduledAt }: SendNewsletterRequest = await req.json();
 
     if (!subject || !body) {
       return new Response(
         JSON.stringify({ error: "Subject and body are required" }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Validate scheduledAt for schedule action
+    if (action === 'schedule' && !scheduledAt) {
+      return new Response(
+        JSON.stringify({ error: "scheduledAt is required for scheduling" }),
         {
           status: 400,
           headers: {
@@ -139,34 +168,123 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Get all subscribed users
-    const { data: subscribers, error: subscribersError } = await supabaseClient
-      .from("profiles")
-      .select("id, email, full_name")
-      .eq("newsletter_subscribed", true);
+    // Get all subscribed users (only needed for sending)
+    let recipientsCount = 0;
+    let subscribers: Subscriber[] = [];
 
-    if (subscribersError) {
-      console.error("Error fetching subscribers:", subscribersError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch subscribers" }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    if (action === 'send') {
+      const { data: subs, error: subscribersError } = await supabaseClient
+        .from("profiles")
+        .select("id, email, full_name, salutation")
+        .eq("newsletter_subscribed", true);
+
+      if (subscribersError) {
+        console.error("Error fetching subscribers:", subscribersError);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch subscribers" }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      subscribers = subs || [];
+      recipientsCount = subscribers.length;
+
+      if (recipientsCount === 0) {
+        return new Response(
+          JSON.stringify({
+            error: "No subscribers found",
+            recipientsCount: 0,
+          }),
+          {
+            status: 400,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
     }
 
-    const recipientsCount = subscribers?.length || 0;
+    // Create or update newsletter record based on action
+    let newsletterRecord;
+    const now = new Date().toISOString();
 
-    if (recipientsCount === 0) {
+    if (newsletterId) {
+      // Update existing newsletter
+      const updateData: any = {
+        subject,
+        body,
+        updated_at: now,
+      };
+
+      if (action === 'draft') {
+        updateData.status = 'draft';
+      } else if (action === 'schedule') {
+        updateData.status = 'scheduled';
+        updateData.scheduled_at = scheduledAt;
+      } else if (action === 'send') {
+        updateData.status = 'sending';
+        updateData.recipients_count = recipientsCount;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("newsletters")
+        .update(updateData)
+        .eq("id", newsletterId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error updating newsletter:", error);
+        throw error;
+      }
+      newsletterRecord = data;
+    } else {
+      // Create new newsletter
+      const insertData: any = {
+        subject,
+        body,
+        created_by: user.id,
+      };
+
+      if (action === 'draft') {
+        insertData.status = 'draft';
+      } else if (action === 'schedule') {
+        insertData.status = 'scheduled';
+        insertData.scheduled_at = scheduledAt;
+      } else if (action === 'send') {
+        insertData.status = 'sending';
+        insertData.recipients_count = recipientsCount;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("newsletters")
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating newsletter:", error);
+        throw error;
+      }
+      newsletterRecord = data;
+    }
+
+    // If draft or schedule, return early
+    if (action === 'draft') {
       return new Response(
         JSON.stringify({
-          message: "No subscribers found",
-          recipientsCount: 0,
-          sentCount: 0
+          success: true,
+          message: "Newsletter saved as draft",
+          newsletterId: newsletterRecord.id,
+          status: 'draft',
         }),
         {
           headers: {
@@ -177,41 +295,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create or update newsletter record
-    let newsletterRecord;
-    if (newsletterId) {
-      const { data, error } = await supabaseClient
-        .from("newsletters")
-        .update({
-          status: "sending",
-          recipients_count: recipientsCount,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", newsletterId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error updating newsletter:", error);
-      }
-      newsletterRecord = data;
-    } else {
-      const { data, error } = await supabaseClient
-        .from("newsletters")
-        .insert({
-          subject,
-          body,
-          status: "sending",
-          recipients_count: recipientsCount,
-          created_by: user.id,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error creating newsletter:", error);
-      }
-      newsletterRecord = data;
+    if (action === 'schedule') {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Newsletter scheduled for ${scheduledAt}`,
+          newsletterId: newsletterRecord.id,
+          status: 'scheduled',
+          scheduledAt,
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
     // Check if Resend API key is configured
@@ -227,6 +326,24 @@ Deno.serve(async (req: Request) => {
 
       for (const subscriber of subscribers) {
         try {
+          // Create recipient record in database
+          const { data: recipientRecord, error: recipientError } = await supabaseClient
+            .from('newsletter_recipients')
+            .insert({
+              newsletter_id: newsletterRecord.id,
+              user_id: subscriber.id,
+              email: subscriber.email,
+              status: 'pending'
+            })
+            .select()
+            .single();
+
+          if (recipientError) {
+            console.error(`Error creating recipient record for ${subscriber.email}:`, recipientError);
+            failedCount++;
+            continue;
+          }
+
           // Replace placeholders with subscriber-specific data
           const personalizedSubject = replacePlaceholders(subject, subscriber, baseUrl);
           let personalizedHeader = templateHeader ? replacePlaceholders(templateHeader, subscriber, baseUrl) : '';
@@ -273,12 +390,32 @@ Deno.serve(async (req: Request) => {
               to: [subscriber.email],
               subject: personalizedSubject,
               html,
+              // Enable tracking
+              tags: [
+                { name: 'newsletter_id', value: newsletterRecord.id },
+                { name: 'recipient_id', value: recipientRecord.id }
+              ]
             }),
           });
 
           if (response.ok) {
+            // Update recipient status to sent
+            await supabaseClient
+              .from('newsletter_recipients')
+              .update({
+                status: 'sent',
+                sent_at: new Date().toISOString()
+              })
+              .eq('id', recipientRecord.id);
+
             sentCount++;
           } else {
+            // Update recipient status to failed
+            await supabaseClient
+              .from('newsletter_recipients')
+              .update({ status: 'failed' })
+              .eq('id', recipientRecord.id);
+
             failedCount++;
             console.error(`Failed to send to ${subscriber.email}:`, await response.text());
           }
