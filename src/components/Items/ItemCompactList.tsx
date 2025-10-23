@@ -6,6 +6,7 @@ import {
   Chip,
   IconButton,
   CircularProgress,
+  Checkbox,
 } from '@mui/material';
 import { Heart, MapPin, MoreVertical, Eye, Package, Truck } from 'lucide-react';
 import { Item } from '../../lib/supabase';
@@ -25,10 +26,13 @@ interface ItemCompactListProps {
   hasMore?: boolean;
   loadingMore?: boolean;
   isOwnItem?: boolean;
-  onItemUpdated?: () => void;
+  onItemUpdated?: (itemId?: string) => void;
+  isSelectionMode?: boolean;
+  selectedItemIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
-export const ItemCompactList = ({ items, onItemClick, allItems, onLoadMore, hasMore, loadingMore, isOwnItem = false, onItemUpdated }: ItemCompactListProps) => {
+export const ItemCompactList = ({ items, onItemClick, allItems, onLoadMore, hasMore, loadingMore, isOwnItem = false, onItemUpdated, isSelectionMode = false, selectedItemIds = new Set(), onToggleSelect }: ItemCompactListProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -99,6 +103,12 @@ export const ItemCompactList = ({ items, onItemClick, allItems, onLoadMore, hasM
   };
 
   const handleCardClick = (item: Item) => {
+    // In selection mode, toggle selection instead of navigating
+    if (isSelectionMode && isOwnItem && onToggleSelect) {
+      onToggleSelect(item.id);
+      return;
+    }
+
     if (onItemClick) {
       onItemClick(item);
     } else if (allItems) {
@@ -106,6 +116,13 @@ export const ItemCompactList = ({ items, onItemClick, allItems, onLoadMore, hasM
       navigate(`/item/${item.id}${window.location.search}`, { state: { allItems } });
     } else {
       navigate(`/item/${item.id}${window.location.search}`);
+    }
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent, itemId: string) => {
+    e.stopPropagation();
+    if (onToggleSelect) {
+      onToggleSelect(itemId);
     }
   };
 
@@ -146,13 +163,56 @@ export const ItemCompactList = ({ items, onItemClick, allItems, onLoadMore, hasM
                 }}
               />
 
-              {isOwnItem && (
+              {/* Checkbox for selection mode */}
+              {isSelectionMode && isOwnItem && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 6,
+                    left: 6,
+                    zIndex: 10,
+                  }}
+                  onClick={(e) => handleCheckboxClick(e, item.id)}
+                >
+                  <Checkbox
+                    checked={selectedItemIds.has(item.id)}
+                    sx={{
+                      bgcolor: 'rgba(255, 255, 255, 0.95)',
+                      borderRadius: 1,
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 1)',
+                      },
+                      padding: '3px',
+                    }}
+                    size="small"
+                  />
+                </Box>
+              )}
+
+              {isOwnItem && !isSelectionMode && (
                 <Chip
                   label={getStatusLabel(item.status)}
                   size="small"
                   sx={{
                     position: 'absolute',
                     top: 6,
+                    left: 6,
+                    bgcolor: getStatusColor(item.status),
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '0.7rem',
+                    height: 20,
+                  }}
+                />
+              )}
+
+              {isOwnItem && isSelectionMode && (
+                <Chip
+                  label={getStatusLabel(item.status)}
+                  size="small"
+                  sx={{
+                    position: 'absolute',
+                    top: 42,
                     left: 6,
                     bgcolor: getStatusColor(item.status),
                     color: 'white',
@@ -223,7 +283,7 @@ export const ItemCompactList = ({ items, onItemClick, allItems, onLoadMore, hasM
                   {item.title}
                 </Typography>
 
-                {isOwnItem ? (
+                {isOwnItem && !isSelectionMode ? (
                   <IconButton
                     size="small"
                     sx={{
@@ -235,7 +295,7 @@ export const ItemCompactList = ({ items, onItemClick, allItems, onLoadMore, hasM
                   >
                     <MoreVertical size={18} />
                   </IconButton>
-                ) : (
+                ) : !isOwnItem ? (
                   <IconButton
                     size="small"
                     sx={{
@@ -248,7 +308,7 @@ export const ItemCompactList = ({ items, onItemClick, allItems, onLoadMore, hasM
                   >
                     <Heart size={18} fill={isFavorite(item.id) ? 'currentColor' : 'none'} />
                   </IconButton>
-                )}
+                ) : null}
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>

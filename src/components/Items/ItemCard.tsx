@@ -7,6 +7,7 @@ import {
   Box,
   Chip,
   IconButton,
+  Checkbox,
 } from '@mui/material';
 import { Heart, MapPin, Package, Truck, MoreVertical, Eye } from 'lucide-react';
 import { Item, supabase } from '../../lib/supabase';
@@ -24,10 +25,13 @@ interface ItemCardProps {
   shippingEnabled?: boolean;
   pickupEnabled?: boolean;
   isOwnItem?: boolean;
-  onItemUpdated?: () => void;
+  onItemUpdated?: (itemId?: string) => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-const ItemCardComponent = ({ item, onClick, shippingEnabled, pickupEnabled, isOwnItem = false, onItemUpdated }: ItemCardProps) => {
+const ItemCardComponent = ({ item, onClick, shippingEnabled, pickupEnabled, isOwnItem = false, onItemUpdated, isSelectionMode = false, isSelected = false, onToggleSelect }: ItemCardProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isFavorite, toggleFavorite } = useFavoritesContext();
@@ -76,10 +80,23 @@ const ItemCardComponent = ({ item, onClick, shippingEnabled, pickupEnabled, isOw
   };
 
   const handleCardClick = () => {
+    // In selection mode, toggle selection instead of navigating
+    if (isSelectionMode && isOwnItem && onToggleSelect) {
+      onToggleSelect(item.id);
+      return;
+    }
+
     if (onClick) {
       onClick(item);
     } else {
       navigate(`/item/${item.id}${window.location.search}`);
+    }
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleSelect) {
+      onToggleSelect(item.id);
     }
   };
 
@@ -110,7 +127,33 @@ const ItemCardComponent = ({ item, onClick, shippingEnabled, pickupEnabled, isOw
             filter: isOwnItem && item.status === 'sold' ? 'grayscale(80%)' : 'none',
           }}
         />
-        {isOwnItem ? (
+
+        {/* Checkbox for selection mode */}
+        {isSelectionMode && isOwnItem && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              zIndex: 10,
+            }}
+            onClick={handleCheckboxClick}
+          >
+            <Checkbox
+              checked={isSelected}
+              sx={{
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: 1,
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 1)',
+                },
+                padding: '4px',
+              }}
+            />
+          </Box>
+        )}
+
+        {isOwnItem && !isSelectionMode ? (
           <IconButton
             sx={{
               position: 'absolute',
@@ -129,7 +172,7 @@ const ItemCardComponent = ({ item, onClick, shippingEnabled, pickupEnabled, isOw
           >
             <MoreVertical size={18} />
           </IconButton>
-        ) : (
+        ) : !isOwnItem ? (
           <IconButton
             sx={{
               position: 'absolute',
@@ -149,7 +192,7 @@ const ItemCardComponent = ({ item, onClick, shippingEnabled, pickupEnabled, isOw
           >
             <Heart size={18} fill={favorite ? 'white' : 'none'} />
           </IconButton>
-        )}
+        ) : null}
         {isOwnItem && (
           <>
             <Chip
@@ -157,7 +200,7 @@ const ItemCardComponent = ({ item, onClick, shippingEnabled, pickupEnabled, isOw
               size="small"
               sx={{
                 position: 'absolute',
-                top: 8,
+                top: isSelectionMode ? 48 : 8,
                 left: 8,
                 bgcolor: getStatusColor(item.status),
                 color: 'white',
@@ -304,6 +347,8 @@ export const ItemCard = memo(ItemCardComponent, (prevProps, nextProps) => {
     prevProps.item.image_url === nextProps.item.image_url &&
     prevProps.shippingEnabled === nextProps.shippingEnabled &&
     prevProps.pickupEnabled === nextProps.pickupEnabled &&
-    prevProps.isOwnItem === nextProps.isOwnItem
+    prevProps.isOwnItem === nextProps.isOwnItem &&
+    prevProps.isSelectionMode === nextProps.isSelectionMode &&
+    prevProps.isSelected === nextProps.isSelected
   );
 });

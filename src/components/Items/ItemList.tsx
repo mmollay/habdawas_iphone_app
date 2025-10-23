@@ -10,6 +10,7 @@ import {
   IconButton,
   CircularProgress,
   Button,
+  Checkbox,
 } from '@mui/material';
 import { Heart, MapPin, Package, Truck, MoreVertical } from 'lucide-react';
 import { Item, supabase } from '../../lib/supabase';
@@ -30,10 +31,13 @@ interface ItemListProps {
   hasMore?: boolean;
   loadingMore?: boolean;
   isOwnItem?: boolean;
-  onItemUpdated?: () => void;
+  onItemUpdated?: (itemId?: string) => void;
+  isSelectionMode?: boolean;
+  selectedItemIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
-export const ItemList = ({ items, onItemClick, sellerProfiles, allItems, onLoadMore, hasMore, loadingMore, isOwnItem = false, onItemUpdated }: ItemListProps) => {
+export const ItemList = ({ items, onItemClick, sellerProfiles, allItems, onLoadMore, hasMore, loadingMore, isOwnItem = false, onItemUpdated, isSelectionMode = false, selectedItemIds = new Set(), onToggleSelect }: ItemListProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -84,6 +88,12 @@ export const ItemList = ({ items, onItemClick, sellerProfiles, allItems, onLoadM
   };
 
   const handleCardClick = (item: Item) => {
+    // In selection mode, toggle selection instead of navigating
+    if (isSelectionMode && isOwnItem && onToggleSelect) {
+      onToggleSelect(item.id);
+      return;
+    }
+
     if (onItemClick) {
       onItemClick(item);
     } else if (allItems) {
@@ -91,6 +101,13 @@ export const ItemList = ({ items, onItemClick, sellerProfiles, allItems, onLoadM
       navigate(`/item/${item.id}${window.location.search}`, { state: { allItems } });
     } else {
       navigate(`/item/${item.id}${window.location.search}`);
+    }
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent, itemId: string) => {
+    e.stopPropagation();
+    if (onToggleSelect) {
+      onToggleSelect(itemId);
     }
   };
 
@@ -126,7 +143,33 @@ export const ItemList = ({ items, onItemClick, sellerProfiles, allItems, onLoadM
                   filter: isOwnItem && item.status === 'sold' ? 'grayscale(80%)' : 'none',
                 }}
               />
-              {isOwnItem ? (
+
+              {/* Checkbox for selection mode */}
+              {isSelectionMode && isOwnItem && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: { xs: 4, sm: 6, md: 8 },
+                    left: { xs: 4, sm: 6, md: 8 },
+                    zIndex: 10,
+                  }}
+                  onClick={(e) => handleCheckboxClick(e, item.id)}
+                >
+                  <Checkbox
+                    checked={selectedItemIds.has(item.id)}
+                    sx={{
+                      bgcolor: 'rgba(255, 255, 255, 0.95)',
+                      borderRadius: 1,
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 1)',
+                      },
+                      padding: '4px',
+                    }}
+                  />
+                </Box>
+              )}
+
+              {isOwnItem && !isSelectionMode ? (
                 <>
                   <IconButton
                     sx={{
@@ -185,7 +228,7 @@ export const ItemList = ({ items, onItemClick, sellerProfiles, allItems, onLoadM
                     </Box>
                   )}
                 </>
-              ) : (
+              ) : !isOwnItem ? (
                 <IconButton
                   sx={{
                     position: 'absolute',
@@ -205,6 +248,24 @@ export const ItemList = ({ items, onItemClick, sellerProfiles, allItems, onLoadM
                 >
                   <Heart size={18} fill={isFavorite(item.id) ? 'white' : 'none'} />
                 </IconButton>
+              ) : null}
+
+              {isOwnItem && isSelectionMode && (
+                <Chip
+                  label={getStatusLabel(item.status)}
+                  size="small"
+                  sx={{
+                    position: 'absolute',
+                    top: { xs: 44, sm: 48, md: 52 },
+                    left: { xs: 4, sm: 6, md: 8 },
+                    bgcolor: getStatusColor(item.status),
+                    color: 'white',
+                    fontWeight: 600,
+                    height: { xs: 20, sm: 22, md: 24 },
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    '& .MuiChip-label': { px: { xs: 0.75, sm: 1 } },
+                  }}
+                />
               )}
               {item.condition && (
                 <Chip

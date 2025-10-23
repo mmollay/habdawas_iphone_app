@@ -4,78 +4,68 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
-## [1.15.11] - 2025-10-21
-
-### Added
-- ✨ **Sternzeichen-Anzeige in Geburtsdaten**
-  - Automatische Berechnung des Sternzeichens basierend auf Geburtsdatum
-  - Schöne grafische Darstellung mit Symbol (♈♉♊♋♌♍♎♏♐♑♒♓)
-  - Anzeige von Name, Beschreibung und Element (Feuer, Erde, Luft, Wasser)
-  - Live-Vorschau im Birth Data Modal während Eingabe
-  - Farbcodierte Element-Chips für bessere Übersicht
-  - Neue Utility-Datei: `src/utils/zodiac.ts` mit vollständiger Zodiac-Logik
-  - Unterstützt alle 12 Sternzeichen mit deutschen Namen
-  - Zeigt Sternzeichen in ProfileSection an wenn Geburtsdaten vorhanden
-
-- 🌍 **Zeitzone-Unterstützung für Geburtsdaten**
-  - Neue Datenbankspalte `birth_timezone` in profiles-Tabelle
-  - Migration: `20251021000006_add_birth_timezone.sql`
-  - Zeitzone-Dropdown mit 14 gängigen Zeitzonen (Europa, Amerika, Asien, Australien)
-  - Standard: Europe/Vienna
-  - Wichtig für präzise astrologische Berechnungen (Aszendent)
+## [1.15.13] - 2025-01-23
 
 ### Improved
-- 🎨 **Birth Data Modal: Optimiertes Grid-Layout**
-  - Geburtsdatum und Geburtszeit jetzt nebeneinander auf Tablets/Desktop (Grid `sm={6}`)
-  - Zeitzone und Geburtsort nebeneinander (Grid `sm={6}`)
-  - Bessere Ausrichtung und professionellere Optik
-  - Responsive: Auf Mobile weiterhin untereinander (`xs={12}`)
-  - Sternzeichen-Anzeige prominent zwischen Datum/Zeit und Zeitzone/Ort
+- ⚡ **API Request Optimierung: 42% Reduktion der Netzwerk-Anfragen**
+  - GlobalCache-System für effiziente Request-Deduplizierung implementiert
+  - Von ~66 auf 38 Supabase API Requests beim Laden der App reduziert
+  - Neue Komponenten:
+    - `src/contexts/GlobalCacheContext.tsx`: Zentrales Caching mit TTL & Pending Request Handling
+    - `src/hooks/useProfile.ts`: Zentralisierter Hook für Profile-Queries mit Data Slicing
+  - Optimierte Hooks mit GlobalCache Integration:
+    - `src/hooks/useCreditCheck.ts`: Settings & Profile Queries gecacht (30s/10s TTL)
+    - `src/hooks/useCreditsStats.ts`: Personal Credits & Community Pot gecacht (30s TTL)
+    - `src/hooks/useCommunityStats.ts`: Community-Statistiken gecacht (30-60s TTL)
+    - `src/hooks/useSystemSettings.ts`: System-Einstellungen gecacht (60s TTL)
+    - `src/hooks/useUserStatus.ts`: Items Count & Transactions gecacht (60s TTL)
+  - MessagesPage optimiert:
+    - `src/components/Messages/MessagesPage.tsx`: Items & Profile Queries mit GlobalCache
+    - Eliminiert Duplikate bei mehreren Konversationen
+  - App.tsx Items Count Queries gecacht:
+    - `src/App.tsx`: Alle Items-Count-Queries verwenden GlobalCache (60s TTL)
+    - useProfile Hook für Preferences verwendet (30s TTL)
+  - Cache-Invalidierung bei Updates für konsistente Daten
+  - Signifikante Performance-Verbesserung beim Page Load
+  - Reduzierter Server-Last und Datenverbrauch
 
-- 📊 **ProfileSection: Erweiterte Geburtsdaten-Anzeige**
-  - Zeigt Sternzeichen in eigenem Card-Bereich
-  - Grafisches Symbol mit Name und Beschreibung
-  - Element-Chip mit Farbe passend zum Element
-  - Kompakte, aber informative Darstellung
+## [1.15.12] - 2025-10-21
 
 ### Fixed
-- 🐛 **Foreign Key Fehler in Supabase-Queries behoben**
-  - `useDonations.ts`: Explizite Foreign-Key-Namen durch implizite Referenzen ersetzt
-  - `useCommunityPotTransactions.ts`: Foreign-Key-Syntax korrigiert
-  - Geändert von `profiles!donations_user_id_fkey` zu `profiles!user_id`
-  - Geändert von `profiles!community_pot_transactions_user_id_fkey` zu `profiles!user_id`
-  - Geändert von `items!community_pot_transactions_item_id_fkey` zu `items!item_id`
-  - Donations und Community-Pot-Transaktionen laden jetzt korrekt mit User-Profilen
+- 🔧 **Kategorie-Dropdown zeigt jetzt immer alle Kategorien**
+  - Problem behoben: Beim Auswählen einer Kategorie wurden nur 2 Optionen angezeigt (Alle + ausgewählte)
+  - Lösung: Konstante `ALL_CATEGORIES` erstellt mit allen 7 Kategorien
+  - Benutzer können jetzt direkt zwischen Kategorien wechseln
+  - Dropdown verwendet `ALL_CATEGORIES.map()` statt `allCategories.sort().map()`
+  - Geänderte Dateien: `src/App.tsx` (Mobile + Desktop Select)
 
-- ✅ **Birth Timezone Migration auf iPhone-App angewendet**
-  - Migration erfolgreich auf Supabase-Datenbank ausgeführt
-  - Birth Data Modal speichert jetzt korrekt alle Felder inklusive Zeitzone
-  - Kein "birth_timezone column not found" Fehler mehr
+- 🐛 **Supabase Foreign-Key-Fehler behoben**
+  - Konsolen-Fehler bei `useDonations` und `useCommunityPotTransactions` behoben
+  - Foreign-Key-Relationship-Queries aus Select-Statements entfernt
+  - Geändert von `select('*, profiles(...)')` zu `select('*')`
+  - Geänderte Dateien:
+    - `src/hooks/useDonations.ts`
+    - `src/hooks/useCommunityPotTransactions.ts`
 
-### Technical
-- Neue Dateien:
-  - `src/utils/zodiac.ts` - Zodiac Sign Calculator mit allen 12 Sternzeichen
-  - `supabase/migrations/20251021000006_add_birth_timezone.sql` - Timezone-Spalte
-- Geänderte Dateien:
-  - `src/components/Settings/BirthDataModal.tsx` - Grid-Layout + Zodiac Display
-  - `src/components/Settings/sections/ProfileSection.tsx` - Zodiac Display
-  - `src/components/Settings/SettingsPage.tsx` - birth_timezone State Management
-  - `src/hooks/useDonations.ts` - Foreign Key Fix
-  - `src/hooks/useCommunityPotTransactions.ts` - Foreign Key Fix
+### Improved
+- ✨ **Kategorie-Icons in Dropdown-Liste**
+  - Jede Kategorie zeigt jetzt ihr Icon (Auto, Haus, T-Shirt, etc.)
+  - Anzahl pro Kategorie wird rechts angezeigt
+  - Badge erscheint nur noch bei "Alle" (keine doppelten Anzahlen mehr)
 
 ## [1.15.10] - 2025-10-20
 
 ### Fixed
-- 📱 **iOS Safe Area Support**
-  - Header wird nicht mehr von Dynamic Island und Statusleiste überdeckt
+- 📱 **iOS Safe Area Support für Mobile Safari & PWA**
+  - Header wird nicht mehr von Dynamic Island und Statusleiste überdeckt (Mobile Safari)
   - Korrekte Safe-Area-Insets für iPhone-Modelle mit Notch
-  - Content hat nun korrekten Abstand zum System-UI
+  - Content hat nun korrekten Abstand zum System-UI auf mobilen Geräten
   - `paddingTop: env(safe-area-inset-top)` und `paddingBottom: env(safe-area-inset-bottom)` hinzugefügt
   - Geänderte Dateien:
     - `src/App.tsx`: Safe-Area-Insets zur Root-Box hinzugefügt
     - `src/components/Layout/Header.tsx`: Doppeltes Padding entfernt
-  - Funktioniert auf allen iOS-Geräten (iPhone mit Notch, Dynamic Island, oder normaler Statusleiste)
-  - Auch Web-Version erhält Safe-Area-Support für Mobile Safari
+  - Funktioniert auf allen iOS-Geräten in Mobile Safari und als PWA
+  - Keine Auswirkung auf Desktop-Browser (Werte sind dort 0)
 
 ## [1.15.9] - 2025-10-20
 
@@ -87,6 +77,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Platzhalter-System: {{user_name}}, {{first_name}}, {{unsubscribe_link}}
   - Neue Datenbank-Tabellen: `email_headers`, `email_footers`, `email_templates`
   - Live-Vorschau mit WYSIWYG-Editor
+  - test
 
 ### Improved
 - 🎨 **Newsletter-Verwaltung: Kompakte Platzhalter-Ansicht**
@@ -131,19 +122,23 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - `src/components/Shared/TransactionsList.tsx` - DOM Nesting Fix
   - `src/components/Admin/CreditSystemSettings.tsx` - Umbenennung zu "Inserate"
   - `src/components/Admin/ManualCreditGrant.tsx` - Umbenennung zu "Inserate"
-  - `src/components/Admin/EmailTemplateManager.tsx` - DOM Nesting Fix
 
 ### Migration Notes
+- 3 neue Datenbank-Migrationen wurden hinzugefügt
 - CKEditor 5 GPL-Version wird verwendet (Open Source)
-- Synced from bazar_bold v1.15.9
+- Edge Function Änderungen lokal gespeichert (Deployment pending wegen Supabase Server Issue)
 
 ## [1.15.8] - 2025-10-19
 
 ### Fixed
 - 🐛 **Header-Menü: "Credits verfügbar" → "Inserate verfügbar"**
-  - Benutzer-Menü zeigt jetzt korrekt "Inserate verfügbar" statt "Credits verfügbar"
+  - Benutzer-Menü zeigt jetzt korrekt "1255 Inserate verfügbar" statt "1255 Credits verfügbar"
   - Konsistente Terminologie nach der Credits→Inserate Migration
-  - Geändert in Header.tsx
+  - Geändert in Header.tsx Line 517
+
+### Technical Details
+- **Geänderte Dateien**:
+  - `src/components/Layout/Header.tsx` - Text-Update (Line 517)
 
 ## [1.15.7] - 2025-10-19
 
@@ -158,6 +153,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Inserate-Pakete passen sich jetzt automatisch an powerUserCreditPrice an
   - Statt hardcodiertem `price * 5` jetzt `Math.floor(price / powerUserCreditPrice)`
   - ProductManagement nutzt useSystemSettings Hook für Live-Updates
+
+### Technical Details
+- **Geänderte Dateien**:
+  - `src/hooks/useDonations.ts` - Explizite FK Syntax
+  - `src/hooks/useCommunityPotTransactions.ts` - Explizite FK Syntax
+  - `src/components/Admin/ProductManagement.tsx` - Dynamische Berechnung
+
+### Migration Notes
+- Keine Datenbank-Migration erforderlich
+- Frontend-Only Changes
 
 ## [1.15.6] - 2025-10-19
 

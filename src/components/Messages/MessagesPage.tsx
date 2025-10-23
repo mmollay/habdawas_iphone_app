@@ -26,6 +26,7 @@ import { Send, ArrowLeft, Image as ImageIcon, Search, MoreVertical, Smile } from
 import { useSwipeable } from 'react-swipeable';
 import { supabase, Conversation, Message, Item, Profile } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGlobalCache } from '../../contexts/GlobalCacheContext';
 import { getRelativeTimeString } from '../../utils/dateUtils';
 
 interface ConversationWithDetails extends Conversation {
@@ -37,6 +38,7 @@ interface ConversationWithDetails extends Conversation {
 
 export const MessagesPage = () => {
   const { user } = useAuth();
+  const { getCached } = useGlobalCache();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
@@ -97,8 +99,22 @@ export const MessagesPage = () => {
           const otherUserId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id;
 
           const [itemResult, profileResult, messagesResult] = await Promise.all([
-            supabase.from('items').select('*').eq('id', conv.item_id).maybeSingle(),
-            supabase.from('profiles').select('*').eq('id', otherUserId).maybeSingle(),
+            getCached(
+              `items:${conv.item_id}`,
+              async () => {
+                const result = await supabase.from('items').select('*').eq('id', conv.item_id).maybeSingle();
+                return result;
+              },
+              60000 // 60s cache
+            ),
+            getCached(
+              `profile:${otherUserId}:full`,
+              async () => {
+                const result = await supabase.from('profiles').select('*').eq('id', otherUserId).maybeSingle();
+                return result;
+              },
+              60000 // 60s cache
+            ),
             supabase
               .from('messages')
               .select('*')

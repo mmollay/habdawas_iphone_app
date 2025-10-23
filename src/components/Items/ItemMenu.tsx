@@ -20,7 +20,7 @@ interface ItemMenuProps {
   open: boolean;
   onClose: (e?: React.MouseEvent) => void;
   onEdit: () => void;
-  onItemUpdated?: () => void;
+  onItemUpdated?: (itemId?: string) => void;
 }
 
 export const ItemMenu = ({ item, anchorEl, open, onClose, onEdit, onItemUpdated }: ItemMenuProps) => {
@@ -45,13 +45,32 @@ export const ItemMenu = ({ item, anchorEl, open, onClose, onEdit, onItemUpdated 
 
   const handleDelete = async () => {
     try {
+      // Immediately notify parent to remove item from UI
+      const itemId = item.id;
+      onItemUpdated?.(itemId);
+
+      // Delete images from storage in background
+      if (item.image_url) {
+        const imagePaths = [item.image_url, ...(item.additional_images || [])];
+        for (const imagePath of imagePaths) {
+          const fileName = imagePath.split('/').pop();
+          if (fileName) {
+            try {
+              await supabase.storage.from('items').remove([fileName]);
+            } catch (error) {
+              console.error('Error deleting image:', error);
+            }
+          }
+        }
+      }
+
+      // Delete item from database
       const { error } = await supabase
         .from('items')
         .delete()
-        .eq('id', item.id);
+        .eq('id', itemId);
 
       if (error) throw error;
-      onItemUpdated?.();
     } catch (error) {
       console.error('Error deleting item:', error);
     }

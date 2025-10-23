@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useGlobalCache } from '../contexts/GlobalCacheContext';
 import { supabase } from '../lib/supabase';
 
 export interface UserBadge {
@@ -21,6 +22,7 @@ export interface UserStatus {
 
 export const useUserStatus = () => {
   const { user, profile } = useAuth();
+  const { getCached } = useGlobalCache();
   const [status, setStatus] = useState<UserStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,32 +40,53 @@ export const useUserStatus = () => {
 
     setLoading(true);
     try {
-      // Fetch data for status calculation
-      const [itemsResult, transactionsResult, donationsResult] = await Promise.all([
-        // Count published items
-        supabase
-          .from('items')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('status', 'published'),
+      // Fetch data for status calculation using GlobalCache
+      const [itemsResult, transactionsCount, donationsResult] = await Promise.all([
+        // Count published items (cached)
+        getCached(
+          `items:count:${user.id}:published`,
+          async () => {
+            const result = await supabase
+              .from('items')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('status', 'published');
+            return result;
+          },
+          60000 // 60s cache
+        ),
 
-        // Check for credit purchases
-        supabase
-          .from('credit_transactions')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('transaction_type', 'purchase'),
+        // Check for credit purchases (cached)
+        getCached(
+          `credit_transactions:count:${user.id}:purchase`,
+          async () => {
+            const result = await supabase
+              .from('credit_transactions')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('transaction_type', 'purchase');
+            return result.count || 0;
+          },
+          60000 // 60s cache
+        ),
 
-        // Check for community donations
-        supabase
-          .from('credit_transactions')
-          .select('id, metadata')
-          .eq('user_id', user.id)
-          .eq('transaction_type', 'purchase'),
+        // Check for community donations (cached)
+        getCached(
+          `credit_transactions:${user.id}:purchases`,
+          async () => {
+            const result = await supabase
+              .from('credit_transactions')
+              .select('id, metadata')
+              .eq('user_id', user.id)
+              .eq('transaction_type', 'purchase');
+            return result;
+          },
+          60000 // 60s cache
+        ),
       ]);
 
       const itemCount = itemsResult.count || 0;
-      const hasPurchased = (transactionsResult.count || 0) > 0;
+      const hasPurchased = transactionsCount > 0;
 
       // Check if user has donated to community
       const hasDonatedToCommunity = (donationsResult.data || []).some(

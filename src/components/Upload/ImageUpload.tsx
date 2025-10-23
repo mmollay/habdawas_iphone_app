@@ -29,7 +29,7 @@ import {
   LinearProgress,
   Grid,
 } from '@mui/material';
-import { Camera, X, Truck, MapPin, Package, ChevronDown, ChevronUp, Image as ImageIcon, Images } from 'lucide-react';
+import { Camera, X, Truck, MapPin, Package, ChevronDown, ChevronUp, Image as ImageIcon, Images, Settings, Info } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { MultiImageUpload } from './MultiImageUpload';
@@ -155,7 +155,7 @@ export const ImageUpload = ({ open, onClose, onSuccess }: ImageUploadProps) => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('shipping_enabled, shipping_cost, shipping_cost_type, shipping_description, pickup_enabled, show_location_publicly, location_description, ai_analyze_all_images')
+          .select('shipping_enabled, shipping_cost, shipping_cost_type, shipping_description, pickup_enabled, show_location_publicly, location_description, ai_analyze_all_images, ai_text_style, ai_text_length')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -267,17 +267,67 @@ export const ImageUpload = ({ open, onClose, onSuccess }: ImageUploadProps) => {
         imagesToAnalyze.map(img => analyzeImage(img.preview, shippingCountry))
       );
 
-      const mergedAnalysis = analyses[0];
+      // Intelligent selection of primary analysis
+      // Prefer actual items over documents/papers
+      const documentKeywords = ['schein', 'dokument', 'papier', 'zertifikat', 'urkunde', 'bescheinigung', 'brief'];
+
+      const scoredAnalyses = analyses.map((analysis, index) => {
+        let score = 0;
+
+        // Penalize document-like items heavily
+        const titleLower = analysis.title.toLowerCase();
+        const hasDocumentKeyword = documentKeywords.some(keyword => titleLower.includes(keyword));
+        if (hasDocumentKeyword) {
+          score -= 1000; // Very strong penalty
+        }
+
+        // Prefer higher prices (documents usually cost little)
+        score += analysis.price;
+
+        // Prefer longer descriptions (more detailed analysis)
+        score += (analysis.description?.length || 0) / 10;
+
+        // Prefer items with brand (documents usually don't have brands)
+        if (analysis.brand && analysis.brand.length > 0) {
+          score += 100;
+        }
+
+        // Prefer items with more features
+        score += (analysis.features?.length || 0) * 10;
+
+        // Slight preference for primary image if scores are equal
+        if (index === 0) {
+          score += 1;
+        }
+
+        return { analysis, score, index };
+      });
+
+      // Sort by score (highest first) and take the best one
+      scoredAnalyses.sort((a, b) => b.score - a.score);
+      const bestAnalysis = scoredAnalyses[0].analysis;
+
+      console.log('🎯 Multi-image analysis scores:', scoredAnalyses.map(s => ({
+        title: s.analysis.title.substring(0, 40),
+        score: s.score,
+        price: s.analysis.price,
+        isDocument: documentKeywords.some(kw => s.analysis.title.toLowerCase().includes(kw))
+      })));
+
+      // Merge all analyses with the best one as base
+      const mergedAnalysis = { ...bestAnalysis };
       if (analyses.length > 1) {
-        analyses.slice(1).forEach(analysis => {
+        analyses.forEach(analysis => {
+          if (analysis === bestAnalysis) return; // Skip the base analysis
+
           if (analysis.features) {
-            mergedAnalysis.features = [...(mergedAnalysis.features || []), ...analysis.features];
+            mergedAnalysis.features = [...new Set([...(mergedAnalysis.features || []), ...analysis.features])];
           }
           if (analysis.colors) {
             mergedAnalysis.colors = [...new Set([...(mergedAnalysis.colors || []), ...analysis.colors])];
           }
           if (analysis.accessories) {
-            mergedAnalysis.accessories = [...(mergedAnalysis.accessories || []), ...analysis.accessories];
+            mergedAnalysis.accessories = [...new Set([...(mergedAnalysis.accessories || []), ...analysis.accessories])];
           }
           if (analysis.tags) {
             mergedAnalysis.tags = [...new Set([...(mergedAnalysis.tags || []), ...analysis.tags])];
@@ -624,6 +674,50 @@ export const ImageUpload = ({ open, onClose, onSuccess }: ImageUploadProps) => {
                   ))}
                 </TextField>
               )}
+
+              {/* AI Settings Info Banner */}
+              {sellerProfile && (
+                <Alert
+                  severity="info"
+                  icon={<Info size={20} />}
+                  sx={{ mb: 2 }}
+                  action={
+                    <Button
+                      size="small"
+                      startIcon={<Settings size={16} />}
+                      onClick={() => {
+                        onClose();
+                        window.location.href = '/settings?tab=ai';
+                      }}
+                    >
+                      Einstellungen
+                    </Button>
+                  }
+                >
+                  <Box>
+                    <Typography variant="body2" fontWeight={600} gutterBottom>
+                      Aktive KI-Einstellungen
+                    </Typography>
+                    <Typography variant="caption" component="div">
+                      📸 Bildanalyse: {sellerProfile.ai_analyze_all_images ?
+                        `Alle ${images.length} Bilder werden analysiert` :
+                        'Nur Hauptbild wird analysiert'}
+                    </Typography>
+                    <Typography variant="caption" component="div">
+                      ✍️ Schreibstil: {sellerProfile.ai_text_style || 'balanced'}
+                    </Typography>
+                    <Typography variant="caption" component="div">
+                      📝 Textlänge: {sellerProfile.ai_text_length || 'medium'}
+                    </Typography>
+                    {!sellerProfile.ai_analyze_all_images && images.length > 1 && (
+                      <Typography variant="caption" component="div" sx={{ mt: 0.5, color: 'warning.main', fontWeight: 600 }}>
+                        💡 Tipp: Aktiviere "Alle Bilder analysieren" für detailliertere Ergebnisse (z.B. bei Dokumenten wie Zulassungsschein)
+                      </Typography>
+                    )}
+                  </Box>
+                </Alert>
+              )}
+
               <Button
                 fullWidth
                 variant="contained"

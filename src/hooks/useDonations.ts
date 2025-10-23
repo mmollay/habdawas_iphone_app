@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Donation } from '../types/credit-system';
 
@@ -14,7 +14,21 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Deduplication refs
+  const loadingRef = useRef(false);
+  const lastFetchParamsRef = useRef<string>('');
+
   const fetchDonations = async () => {
+    const fetchParams = JSON.stringify({ userId, limit });
+
+    // Skip if already loading with same params
+    if (loadingRef.current && lastFetchParamsRef.current === fetchParams) {
+      return;
+    }
+
+    loadingRef.current = true;
+    lastFetchParamsRef.current = fetchParams;
+
     try {
       setLoading(true);
       setError(null);
@@ -40,6 +54,7 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
       console.error('Error fetching donations:', err);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   };
 

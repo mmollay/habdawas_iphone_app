@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useGlobalCache } from '../contexts/GlobalCacheContext';
 import { CreditCheckResult } from '../types/credit-system';
 
 export const useCreditCheck = () => {
   const { user } = useAuth();
+  const { getCached } = useGlobalCache();
   const [loading, setLoading] = useState(false);
 
   const checkCredit = useCallback(async (): Promise<CreditCheckResult> => {
@@ -20,13 +22,20 @@ export const useCreditCheck = () => {
     try {
       setLoading(true);
 
-      // Get system settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('credit_system_settings')
-        .select('setting_key, setting_value')
-        .in('setting_key', ['daily_free_listings', 'community_pot_balance']);
+      // Get system settings (cached)
+      const settingsData = await getCached(
+        'settings:credit_check',
+        async () => {
+          const { data, error } = await supabase
+            .from('credit_system_settings')
+            .select('setting_key, setting_value')
+            .in('setting_key', ['daily_free_listings', 'community_pot_balance']);
 
-      if (settingsError) throw settingsError;
+          if (error) throw error;
+          return data;
+        },
+        30000 // 30s cache for settings
+      );
 
       const dailyLimit = parseInt(
         settingsData?.find(s => s.setting_key === 'daily_free_listings')?.setting_value as string || '5'
@@ -35,14 +44,21 @@ export const useCreditCheck = () => {
         settingsData?.find(s => s.setting_key === 'community_pot_balance')?.setting_value as string || '0'
       );
 
-      // Get user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('daily_listings_used, last_listing_date, personal_credits')
-        .eq('id', user.id)
-        .single();
+      // Get user profile (cached)
+      const profileData = await getCached(
+        `profile:${user.id}:credits`,
+        async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('daily_listings_used, last_listing_date, personal_credits')
+            .eq('id', user.id)
+            .single();
 
-      if (profileError) throw profileError;
+          if (error) throw error;
+          return data;
+        },
+        10000 // 10s cache for profile
+      );
 
       const dailyUsed = parseInt(profileData.daily_listings_used as string) || 0;
       const lastListingDate = profileData.last_listing_date as string;
@@ -205,7 +221,7 @@ export const useCreditCheck = () => {
       console.error('Error consuming credit:', error);
       return false;
     }
-  }, [user]);
+  }, [user, getCached]);
 
   return {
     checkCredit,

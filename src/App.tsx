@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   ThemeProvider,
@@ -29,10 +29,11 @@ import {
   Tabs,
   Badge,
 } from '@mui/material';
-import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell } from 'lucide-react';
+import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { HandPreferenceProvider, useHandPreference } from './contexts/HandPreferenceContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
+import { GlobalCacheProvider, useGlobalCache } from './contexts/GlobalCacheContext';
 import { LoginDialog } from './components/Auth/LoginDialog';
 import { OnboardingWizard } from './components/Onboarding/OnboardingWizard';
 import { ImageUpload } from './components/Upload/ImageUpload';
@@ -40,6 +41,7 @@ import { ItemGrid } from './components/Items/ItemGrid';
 import { ItemList } from './components/Items/ItemList';
 import { ItemGallery } from './components/Items/ItemGallery';
 import { ItemCompactList } from './components/Items/ItemCompactList';
+import { FilterSidebar } from './components/Items/FilterSidebar';
 import { Header } from './components/Layout/Header';
 import { Footer } from './components/Layout/Footer';
 import { ErrorBoundary } from './components/Common/ErrorBoundary';
@@ -50,6 +52,9 @@ import { useSellerProfiles } from './hooks/useSellerProfiles';
 import { useCreditCheck } from './hooks/useCreditCheck';
 import { useSystemSettings } from './hooks/useSystemSettings';
 import { useCommunityStats } from './hooks/useCommunityStats';
+import { useProfile } from './hooks/useProfile';
+import { useCategories } from './hooks/useCategories';
+import { getCategoryName } from './utils/categories';
 
 const ItemDetailPage = lazy(() => import('./components/Items/ItemDetailPage').then(m => ({ default: m.ItemDetailPage })));
 const ItemEditPage = lazy(() => import('./components/Items/ItemEditPage').then(m => ({ default: m.ItemEditPage })));
@@ -95,6 +100,8 @@ const theme = createTheme({
 const MainContent = () => {
   const { user, signOut } = useAuth();
   const { handPreference } = useHandPreference();
+  const { data: profilePrefs } = useProfile('preferences', 30000);
+  const { getCached } = useGlobalCache();
   const navigate = useNavigate();
   const location = useLocation();
   const muiTheme = useMuiTheme();
@@ -130,7 +137,12 @@ const MainContent = () => {
   const [urlParamsLoaded, setUrlParamsLoaded] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string[]>(() => {
     const saved = localStorage.getItem('statusFilter');
-    return saved ? JSON.parse(saved) : ['draft', 'published', 'paused', 'sold', 'expired'];
+    try {
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed : ['draft', 'published', 'paused', 'sold', 'expired', 'archived'];
+    } catch {
+      return ['draft', 'published', 'paused', 'sold', 'expired', 'archived'];
+    }
   });
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [allItemsCount, setAllItemsCount] = useState(0);
@@ -147,8 +159,24 @@ const MainContent = () => {
     return saved ? JSON.parse(saved) : true;
   });
 
+  // Multi-select state
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  // Attribute filters
+  interface FilterValue {
+    attributeId: string;
+    attributeKey: string;
+    value: string | number | string[] | [number, number] | null;
+    type: string;
+  }
+  const [attributeFilters, setAttributeFilters] = useState<FilterValue[]>([]);
+
   const userIds = [...new Set(filteredItems.map(item => item.user_id))];
   const { profiles } = useSellerProfiles(userIds);
+
+  // Category system hook
+  const { categoryTree, categories, loading: categoriesLoading } = useCategories({ lang: 'de' });
 
   // Credit and Community Pot hooks
   const { checkCredit } = useCreditCheck();
@@ -191,28 +219,114 @@ const MainContent = () => {
     localStorage.setItem('statusFilter', JSON.stringify(newFilter));
   };
 
-  useEffect(() => {
-    const loadUserPreferences = async () => {
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('view_mode_preference, onboarding_completed')
-          .eq('id', user.id)
-          .maybeSingle();
+  // Multi-select handlers
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setSelectedItemIds(new Set());
+    }
+  };
 
-        if (data?.view_mode_preference && ['grid', 'list', 'gallery', 'compact'].includes(data.view_mode_preference)) {
-          setViewMode(data.view_mode_preference as 'grid' | 'list' | 'gallery' | 'compact');
-          localStorage.setItem('viewMode', data.view_mode_preference);
+  const toggleItemSelection = (itemId: string) => {
+    const newSet = new Set(selectedItemIds);
+    if (newSet.has(itemId)) {
+      newSet.delete(itemId);
+    } else {
+      newSet.add(itemId);
+    }
+    setSelectedItemIds(newSet);
+  };
+
+  const selectAllItems = () => {
+    const allIds = new Set(filteredItems.map(item => item.id));
+    setSelectedItemIds(allIds);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItemIds.size === 0) return;
+
+    const confirmDelete = window.confirm(
+      `Möchtest du ${selectedItemIds.size} Inserat(e) wirklich dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      // Optimistically update UI immediately
+      const deletedIds = Array.from(selectedItemIds);
+      setFilteredItems(prev => prev.filter(item => !selectedItemIds.has(item.id)));
+      setItems(prev => prev.filter(item => !selectedItemIds.has(item.id)));
+
+      // Reset selection mode
+      setSelectedItemIds(new Set());
+      setIsSelectionMode(false);
+
+      // Delete in background
+      for (const itemId of deletedIds) {
+        const item = items.find(i => i.id === itemId);
+        if (!item) continue;
+
+        // Delete images from storage
+        if (item.image_url) {
+          const imagePaths = [item.image_url, ...(item.additional_images || [])];
+          for (const imagePath of imagePaths) {
+            const fileName = imagePath.split('/').pop();
+            if (fileName) {
+              try {
+                await supabase.storage.from('items').remove([fileName]);
+              } catch (error) {
+                console.error('Error deleting image:', error);
+              }
+            }
+          }
         }
 
-        if (data && !data.onboarding_completed) {
-          setOnboardingOpen(true);
+        // Delete item from database
+        const { error } = await supabase
+          .from('items')
+          .delete()
+          .eq('id', itemId);
+
+        if (error) {
+          console.error('Error deleting item:', error);
         }
       }
-    };
+    } catch (error) {
+      console.error('Error in bulk delete:', error);
+      // Reload on error
+      loadItems();
+    }
+  };
 
-    loadUserPreferences();
-  }, [user]);
+  // Optimistic single-item update
+  const handleItemUpdate = (itemId?: string) => {
+    if (itemId) {
+      // Remove item from state immediately
+      setFilteredItems(prev => prev.filter(item => item.id !== itemId));
+      setItems(prev => prev.filter(item => item.id !== itemId));
+    } else {
+      // Full reload if no itemId specified
+      loadItems();
+    }
+  };
+
+  useEffect(() => {
+    // Load user preferences from cached profile data
+    if (user && profilePrefs) {
+      if (profilePrefs.view_mode_preference && ['grid', 'list', 'gallery', 'compact'].includes(profilePrefs.view_mode_preference)) {
+        setViewMode(profilePrefs.view_mode_preference as 'grid' | 'list' | 'gallery' | 'compact');
+        localStorage.setItem('viewMode', profilePrefs.view_mode_preference);
+      }
+
+      if (!profilePrefs.onboarding_completed) {
+        setOnboardingOpen(true);
+      }
+    }
+  }, [user, profilePrefs]);
+
+  // Ref to track if counts are currently loading
+  const countsLoadingRef = useRef(false);
+  const countsLoadedForUserRef = useRef<string | null>(null);
 
   useEffect(() => {
     const loadCounts = async () => {
@@ -221,22 +335,41 @@ const MainContent = () => {
         setMyItemsCount(0);
         setFavoritesCount(0);
         setStatusCounts({});
+        countsLoadedForUserRef.current = null;
         return;
       }
 
+      // Skip if already loading or already loaded for this user
+      if (countsLoadingRef.current || countsLoadedForUserRef.current === user.id) {
+        return;
+      }
+
+      countsLoadingRef.current = true;
+
       try {
-        // Use regular queries with count instead of HEAD requests to avoid RLS issues
+        // Use GlobalCache for all count queries
         const [allCountRes, myCountRes, favCountRes, ...statusResults] = await Promise.all([
-          supabase.from('items').select('id', { count: 'exact', head: true }).eq('status', 'published').then(res => ({ count: res.count || 0, error: res.error })),
-          supabase.from('items').select('id', { count: 'exact', head: true }).eq('user_id', user.id).then(res => ({ count: res.count || 0, error: res.error })),
-          supabase.from('favorites').select('id', { count: 'exact', head: true }).eq('user_id', user.id).then(res => ({ count: res.count || 0, error: res.error })),
+          getCached('items:count:all:published', async () => {
+            const res = await supabase.from('items').select('id', { count: 'exact', head: true }).eq('status', 'published');
+            return { count: res.count || 0, error: res.error };
+          }, 60000),
+          getCached(`items:count:${user.id}:all`, async () => {
+            const res = await supabase.from('items').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+            return { count: res.count || 0, error: res.error };
+          }, 60000),
+          getCached(`favorites:count:${user.id}`, async () => {
+            const res = await supabase.from('favorites').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+            return { count: res.count || 0, error: res.error };
+          }, 60000),
           ...['draft', 'published', 'paused', 'sold', 'expired', 'archived'].map((status) =>
-            supabase
-              .from('items')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-              .eq('status', status)
-              .then(res => ({ status, count: res.count || 0, error: res.error }))
+            getCached(`items:count:${user.id}:${status}`, async () => {
+              const res = await supabase
+                .from('items')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .eq('status', status);
+              return { status, count: res.count || 0, error: res.error };
+            }, 60000)
           )
         ]);
 
@@ -252,14 +385,17 @@ const MainContent = () => {
           }
         });
         setStatusCounts(counts);
+        countsLoadedForUserRef.current = user.id;
       } catch (error) {
         // Silently handle errors - counts will remain at previous values
         console.error('Error loading counts (non-critical):', error);
+      } finally {
+        countsLoadingRef.current = false;
       }
     };
 
     loadCounts();
-  }, [user]);
+  }, [user, getCached]);
 
   const loadItems = async (loadMore = false, forceRefresh = false) => {
     // Check cache for initial load
@@ -287,7 +423,7 @@ const MainContent = () => {
     try {
       const currentPage = loadMore ? page + 1 : 0;
       const from = currentPage * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
+      const to = from + ITEMS_PER_PAGE; // Fetch one extra item to check if there are more
 
       let query = supabase
         .from('items')
@@ -330,8 +466,32 @@ const MainContent = () => {
         }
       }
 
+      // Apply hierarchical category filtering and/or attribute filters
+      // Using search_items_with_attributes for ALL category filtering ensures
+      // hierarchical support (e.g., selecting "Fahrzeuge" finds items in "Autos" subcategory)
       if (selectedCategories.length > 0) {
-        query = query.in('category', selectedCategories);
+        const categoryId = selectedCategories.length === 1 ? selectedCategories[0] : null;
+
+        const { data: filteredItemIds, error: filterError } = await supabase
+          .rpc('search_items_with_attributes', {
+            p_category_id: categoryId,
+            p_filters: attributeFilters  // Can be empty array for category-only filtering
+          });
+
+        if (filterError) {
+          console.error('Category/Attribute filter error:', filterError);
+        } else if (filteredItemIds && filteredItemIds.length > 0) {
+          const itemIds = filteredItemIds.map((row: any) => row.item_id);
+          query = query.in('id', itemIds);
+        } else {
+          // No items match filters
+          setItems([]);
+          setFilteredItems([]);
+          setHasMore(false);
+          setLoading(false);
+          setLoadingMore(false);
+          return;
+        }
       }
 
       query = query
@@ -367,7 +527,9 @@ const MainContent = () => {
 
         if (error) throw error;
 
-        const favoriteItems = data || [];
+        const fetchedFavorites = data || [];
+        const hasMoreFavorites = fetchedFavorites.length > ITEMS_PER_PAGE;
+        const favoriteItems = hasMoreFavorites ? fetchedFavorites.slice(0, ITEMS_PER_PAGE) : fetchedFavorites;
 
         if (loadMore) {
           setItems(prev => [...prev, ...favoriteItems]);
@@ -377,14 +539,15 @@ const MainContent = () => {
           setFilteredItems(favoriteItems);
         }
 
-        setHasMore(favoriteItems.length === ITEMS_PER_PAGE);
+        setHasMore(hasMoreFavorites);
         setPage(currentPage);
         setLoading(false);
         setLoadingMore(false);
         return;
       } else if (showMyItems && user) {
         query = query.eq('user_id', user.id);
-        if (statusFilter.length > 0) {
+        // Apply status filter for user's own items
+        if (Array.isArray(statusFilter) && statusFilter.length > 0) {
           query = query.in('status', statusFilter);
         }
       } else if (filterBySeller) {
@@ -416,7 +579,11 @@ const MainContent = () => {
 
       if (error) throw error;
 
-      const newItems = data || [];
+      const fetchedItems = data || [];
+      // Check if there are more items by checking if we got ITEMS_PER_PAGE + 1
+      const hasMoreItems = fetchedItems.length > ITEMS_PER_PAGE;
+      // Only take ITEMS_PER_PAGE items
+      const newItems = hasMoreItems ? fetchedItems.slice(0, ITEMS_PER_PAGE) : fetchedItems;
 
       if (loadMore) {
         setItems(prev => [...prev, ...newItems]);
@@ -426,7 +593,7 @@ const MainContent = () => {
         setFilteredItems(newItems);
       }
 
-      setHasMore((data || []).length === ITEMS_PER_PAGE);
+      setHasMore(hasMoreItems);
       setPage(currentPage);
 
       if (!loadMore) {
@@ -472,30 +639,49 @@ const MainContent = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [activeSearchQuery, selectedCategories, priceRange, sortBy, statusFilter, showMyItems, showFavorites, filterBySeller]); // Removed 'user' to prevent double loading
+  }, [activeSearchQuery, selectedCategories, priceRange, sortBy, statusFilter, showMyItems, showFavorites, filterBySeller, attributeFilters]); // Removed 'user' to prevent double loading
 
-  // Define all available categories (always show all categories in dropdown)
-  const ALL_CATEGORIES = ['Fahrzeuge', 'Haushalt', 'Kleidung', 'Lebensmittel', 'Möbel', 'Spielzeug', 'Sport'];
+  // Get all subcategory IDs for a given category (recursive)
+  const getSubcategoryIds = (categoryId: string): string[] => {
+    const subcategories = categories.filter(c => c.parent_id === categoryId);
+    const allIds = [categoryId];
 
-  const allCategories = [...new Set(items.map(item => item.category).filter(Boolean))] as string[];
+    subcategories.forEach(sub => {
+      allIds.push(...getSubcategoryIds(sub.id));
+    });
+
+    return allIds;
+  };
 
   // Count items per category based on current view (all/my/favorites)
-  const getCategoryCount = (category: string) => {
-    return filteredItems.filter(item => item.category === category).length;
+  // Includes items from subcategories
+  const getCategoryCount = (categoryId: string) => {
+    const categoryIds = getSubcategoryIds(categoryId);
+    return filteredItems.filter(item => categoryIds.includes(item.category_id)).length;
   };
 
   // Get icon for category
-  const getCategoryIcon = (category: string) => {
+  const getCategoryIcon = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return <Globe size={16} />;
+
+    const slug = category.slug;
     const iconMap: Record<string, JSX.Element> = {
-      'Fahrzeuge': <Car size={16} />,
-      'Haushalt': <Home size={16} />,
-      'Kleidung': <Shirt size={16} />,
-      'Lebensmittel': <Apple size={16} />,
-      'Möbel': <Sofa size={16} />,
-      'Spielzeug': <Baby size={16} />,
-      'Sport': <Dumbbell size={16} />,
+      'fahrzeuge': <Car size={16} />,
+      'immobilien': <Home size={16} />,
+      'haushalt-moebel': <Sofa size={16} />,
+      'elektronik': <Apple size={16} />,
+      'freizeit-sport': <Dumbbell size={16} />,
+      'mode-lifestyle': <Shirt size={16} />,
+      'kinder-familie': <Baby size={16} />,
+      'tiere': <PawPrint size={16} />,
+      'arbeit': <Briefcase size={16} />,
+      'marktplatz': <Store size={16} />,
+      'landwirtschaft': <Sprout size={16} />,
+      'industrie': <Factory size={16} />,
+      'digitale-produkte': <Cloud size={16} />,
     };
-    return iconMap[category] || <Globe size={16} />;
+    return iconMap[slug] || <Globe size={16} />;
   };
 
   const updateURL = (params: Record<string, string | null>) => {
@@ -527,6 +713,7 @@ const MainContent = () => {
     setPriceRange([0, 10000]);
     setSearchQuery('');
     setActiveSearchQuery('');
+    setAttributeFilters([]);
     updateURL({
       categories: null,
       minPrice: null,
@@ -542,6 +729,7 @@ const MainContent = () => {
     if (priceRange[0] > 0 || priceRange[1] < 10000) count += 1;
     if (activeSearchQuery) count += 1;
     if (sortBy !== 'newest') count += 1;
+    if (attributeFilters.length > 0) count += attributeFilters.length;
     return count;
   };
 
@@ -566,7 +754,14 @@ const MainContent = () => {
     const parts: string[] = [];
 
     if (activeSearchQuery) parts.push(`Suche: "${activeSearchQuery}"`);
-    if (selectedCategories.length > 0) parts.push(`Kategorien: ${selectedCategories.join(', ')}`);
+    if (selectedCategories.length > 0) {
+      const categoryNames = selectedCategories
+        .map(id => categories.find(c => c.id === id))
+        .filter(Boolean)
+        .map(cat => getCategoryName(cat!, 'de'))
+        .join(', ');
+      parts.push(`Kategorien: ${categoryNames}`);
+    }
     if (priceRange[0] > 0 || priceRange[1] < 10000) {
       parts.push(`Preis: ${priceRange[0]}€ - ${priceRange[1]}€`);
     }
@@ -882,8 +1077,10 @@ const MainContent = () => {
                                 const value = e.target.value;
                                 if (value === 'all') {
                                   setSelectedCategories([]);
+                                  updateURL({ categories: null });
                                 } else {
                                   setSelectedCategories([value]);
+                                  updateURL({ categories: value });
                                 }
                               }}
                               onClick={(e) => e.stopPropagation()}
@@ -892,7 +1089,7 @@ const MainContent = () => {
                               MenuProps={{
                                 PaperProps: {
                                   style: {
-                                    maxHeight: 400,
+                                    maxHeight: 'none',
                                   },
                                 },
                               }}
@@ -912,7 +1109,11 @@ const MainContent = () => {
                                   right: -2,
                                 },
                               }}
-                              renderValue={(value) => value === 'all' ? 'Alle' : value}
+                              renderValue={(value) => {
+                                if (value === 'all') return 'Alle';
+                                const cat = categories.find(c => c.id === value);
+                                return cat ? getCategoryName(cat, 'de') : value;
+                              }}
                             >
                               <MenuItem value="all">
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -920,14 +1121,14 @@ const MainContent = () => {
                                   <span>Alle</span>
                                 </Box>
                               </MenuItem>
-                              {ALL_CATEGORIES.map(category => (
-                                <MenuItem key={category} value={category}>
+                              {categoryTree.map(category => (
+                                <MenuItem key={category.id} value={category.id}>
                                   <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      {getCategoryIcon(category)}
-                                      <span>{category}</span>
+                                      {getCategoryIcon(category.id)}
+                                      <span>{getCategoryName(category, 'de')}</span>
                                     </Box>
-                                    <span style={{ opacity: 0.6 }}>{getCategoryCount(category)}</span>
+                                    <span style={{ opacity: 0.6 }}>{getCategoryCount(category.id)}</span>
                                   </Box>
                                 </MenuItem>
                               ))}
@@ -941,8 +1142,10 @@ const MainContent = () => {
                               const value = e.target.value;
                               if (value === 'all') {
                                 setSelectedCategories([]);
+                                updateURL({ categories: null });
                               } else {
                                 setSelectedCategories([value]);
+                                updateURL({ categories: value });
                               }
                             }}
                             onClick={(e) => e.stopPropagation()}
@@ -951,7 +1154,7 @@ const MainContent = () => {
                             MenuProps={{
                               PaperProps: {
                                 style: {
-                                  maxHeight: 400,
+                                  maxHeight: 'none',
                                 },
                               },
                             }}
@@ -971,7 +1174,11 @@ const MainContent = () => {
                                 right: -2,
                               },
                             }}
-                            renderValue={(value) => value === 'all' ? 'Alle' : value}
+                            renderValue={(value) => {
+                              if (value === 'all') return 'Alle';
+                              const cat = categories.find(c => c.id === value);
+                              return cat ? getCategoryName(cat, 'de') : value;
+                            }}
                           >
                             <MenuItem value="all">
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -979,14 +1186,14 @@ const MainContent = () => {
                                 <span>Alle</span>
                               </Box>
                             </MenuItem>
-                            {ALL_CATEGORIES.map(category => (
-                              <MenuItem key={category} value={category}>
+                            {categoryTree.map(category => (
+                              <MenuItem key={category.id} value={category.id}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    {getCategoryIcon(category)}
-                                    <span>{category}</span>
+                                    {getCategoryIcon(category.id)}
+                                    <span>{getCategoryName(category, 'de')}</span>
                                   </Box>
-                                  <span style={{ opacity: 0.6 }}>{getCategoryCount(category)}</span>
+                                  <span style={{ opacity: 0.6 }}>{getCategoryCount(category.id)}</span>
                                 </Box>
                               </MenuItem>
                             ))}
@@ -1410,79 +1617,96 @@ const MainContent = () => {
               </Box>
             )}
 
-            {showMyItems && (
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    mb: statusFilterExpanded ? 1.5 : 0,
+            {/* Multi-select toolbar & Status filter */}
+            {showMyItems && filteredItems.length > 0 && (
+              <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Status Filter with Counts */}
+                <Select
+                  size="small"
+                  value={
+                    Array.isArray(statusFilter) && statusFilter.length === 6
+                      ? 'all'
+                      : Array.isArray(statusFilter) && statusFilter.length === 1
+                      ? statusFilter[0]
+                      : 'all'
+                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === 'all') {
+                      setStatusFilter(['draft', 'published', 'paused', 'sold', 'expired', 'archived']);
+                    } else {
+                      setStatusFilter([value]);
+                    }
                   }}
-                  onClick={() => {
-                    const newValue = !statusFilterExpanded;
-                    setStatusFilterExpanded(newValue);
-                    localStorage.setItem('statusFilterExpanded', JSON.stringify(newValue));
+                  sx={{
+                    minWidth: 140,
+                    borderRadius: 2,
+                    '& .MuiSelect-select': { py: 0.75 }
                   }}
                 >
-                  <Typography variant="subtitle2" fontWeight={600}>
-                    Status filtern
-                  </Typography>
-                  <IconButton size="small" sx={{ p: 0.5 }}>
-                    {statusFilterExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  </IconButton>
-                </Box>
-                {statusFilterExpanded && (
+                  <MenuItem value="all">
+                    Alle Status ({Object.values(statusCounts).reduce((a, b) => a + b, 0)})
+                  </MenuItem>
+                  <MenuItem value="published">Live ({statusCounts.published || 0})</MenuItem>
+                  <MenuItem value="draft">Entwurf ({statusCounts.draft || 0})</MenuItem>
+                  <MenuItem value="paused">Pausiert ({statusCounts.paused || 0})</MenuItem>
+                  <MenuItem value="sold">Verkauft ({statusCounts.sold || 0})</MenuItem>
+                  <MenuItem value="archived">Archiviert ({statusCounts.archived || 0})</MenuItem>
+                  <MenuItem value="expired">Abgelaufen ({statusCounts.expired || 0})</MenuItem>
+                </Select>
+
+                {/* Multi-select toggle */}
+                <IconButton
+                  onClick={toggleSelectionMode}
+                  color={isSelectionMode ? 'primary' : 'default'}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: isSelectionMode ? 'primary.main' : 'divider',
+                    borderRadius: 2,
+                  }}
+                  title={isSelectionMode ? 'Auswahl beenden' : 'Mehrfachauswahl'}
+                >
+                  {isSelectionMode ? <CheckSquare size={20} /> : <Square size={20} />}
+                </IconButton>
+
+                {isSelectionMode && (
                   <>
-                    <Box sx={{
-                      display: 'flex',
-                      flexWrap: isMobile ? 'nowrap' : 'wrap',
-                      gap: 1,
-                      overflowX: isMobile ? 'auto' : 'visible',
-                      pb: isMobile ? 0.5 : 0,
-                      '&::-webkit-scrollbar': {
-                        height: 6,
-                      },
-                      '&::-webkit-scrollbar-track': {
-                        bgcolor: 'transparent',
-                      },
-                      '&::-webkit-scrollbar-thumb': {
-                        bgcolor: 'rgba(0,0,0,0.2)',
-                        borderRadius: 3,
-                      },
-                    }}>
-                      {['draft', 'published', 'paused', 'sold', 'expired', 'archived'].map(status => {
-                        const labels: Record<string, string> = {
-                          draft: 'Entwurf',
-                          published: 'Live',
-                          paused: 'Pausiert',
-                          sold: 'Verkauft',
-                          archived: 'Archiviert',
-                          expired: 'Abgelaufen'
-                        };
-                        const count = statusCounts[status] || 0;
-                        const isSelected = statusFilter.includes(status);
-                        return (
-                          <Chip
-                            key={status}
-                            label={`${labels[status]} ${count}`}
-                            onClick={() => handleStatusFilterChange(status)}
-                            color={isSelected ? 'primary' : 'default'}
-                            variant={isSelected ? 'filled' : 'outlined'}
-                            sx={{
-                              fontWeight: isSelected ? 600 : 400,
-                              flexShrink: 0,
-                            }}
-                          />
-                        );
-                      })}
-                    </Box>
-                    {statusFilter.length === 0 && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                        Wähle mindestens einen Status aus
-                      </Typography>
-                    )}
+                    <IconButton
+                      onClick={selectAllItems}
+                      disabled={selectedItemIds.size === filteredItems.length}
+                      size="small"
+                      sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+                      title={`Alle auswählen (${filteredItems.length})`}
+                    >
+                      <CheckSquare size={18} />
+                    </IconButton>
+
+                    <Chip
+                      label={`${selectedItemIds.size} ausgewählt`}
+                      size="small"
+                      sx={{ fontWeight: 600 }}
+                    />
+
+                    <IconButton
+                      onClick={handleBulkDelete}
+                      disabled={selectedItemIds.size === 0}
+                      color="error"
+                      size="small"
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'error.main',
+                        borderRadius: 2,
+                        bgcolor: selectedItemIds.size > 0 ? 'error.main' : 'transparent',
+                        color: selectedItemIds.size > 0 ? 'white' : 'error.main',
+                        '&:hover': {
+                          bgcolor: 'error.dark',
+                          color: 'white',
+                        }
+                      }}
+                      title={`Löschen (${selectedItemIds.size})`}
+                    >
+                      <Trash2 size={18} />
+                    </IconButton>
                   </>
                 )}
               </Box>
@@ -1510,21 +1734,27 @@ const MainContent = () => {
         ) : viewMode === 'grid' ? (
           <ItemGrid
             items={filteredItems}
-            onItemUpdated={loadItems}
+            onItemUpdated={handleItemUpdate}
             allItems={filteredItems}
             onLoadMore={loadMoreItems}
             hasMore={hasMore}
             loadingMore={loadingMore}
+            isSelectionMode={isSelectionMode}
+            selectedItemIds={selectedItemIds}
+            onToggleSelect={toggleItemSelection}
           />
         ) : viewMode === 'compact' ? (
           <ItemCompactList
             items={filteredItems}
-            onItemUpdated={loadItems}
+            onItemUpdated={handleItemUpdate}
             allItems={filteredItems}
             onLoadMore={loadMoreItems}
             hasMore={hasMore}
             loadingMore={loadingMore}
             isOwnItem={showMyItems}
+            isSelectionMode={isSelectionMode}
+            selectedItemIds={selectedItemIds}
+            onToggleSelect={toggleItemSelection}
           />
         ) : viewMode === 'gallery' ? (
           <>
@@ -1550,7 +1780,10 @@ const MainContent = () => {
                     <ItemGallery
                       item={item}
                       isOwnItem={isOwn}
-                      onItemUpdated={loadItems}
+                      onItemUpdated={handleItemUpdate}
+                      isSelectionMode={isSelectionMode}
+                      isSelected={selectedItemIds.has(item.id)}
+                      onToggleSelect={toggleItemSelection}
                       onClick={() => {
                         sessionStorage.setItem('returnSearch', location.search);
                         navigate(`/item/${item.id}`, { state: { allItems: filteredItems } });
@@ -1596,7 +1829,10 @@ const MainContent = () => {
             hasMore={hasMore}
             loadingMore={loadingMore}
             isOwnItem={showMyItems}
-            onItemUpdated={loadItems}
+            onItemUpdated={handleItemUpdate}
+            isSelectionMode={isSelectionMode}
+            selectedItemIds={selectedItemIds}
+            onToggleSelect={toggleItemSelection}
           />
         )}
 
@@ -1630,9 +1866,9 @@ const MainContent = () => {
               sx: { width: isMobile ? '100%' : 360 }
             }}
           >
-            <Box sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6" fontWeight={600}>
+            <Box sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" fontWeight={600} fontSize="1.1rem">
                   Filter
                 </Typography>
                 <IconButton onClick={() => setFilterOpen(false)} size="small">
@@ -1640,8 +1876,9 @@ const MainContent = () => {
                 </IconButton>
               </Box>
 
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
+              {/* Preisspanne */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mb: 1.5, fontSize: '0.875rem' }}>
                   Preisspanne
                 </Typography>
                 <Slider
@@ -1659,75 +1896,48 @@ const MainContent = () => {
                   max={10000}
                   step={50}
                   valueLabelFormat={(value) => `${value} €`}
+                  size="small"
                 />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
                     {priceRange[0]} €
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary">
                     {priceRange[1]} €
                   </Typography>
                 </Box>
               </Box>
 
-              {showMyItems && (
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
-                    Status
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {['draft', 'published', 'paused', 'sold', 'archived', 'expired'].map(status => {
-                      const labels: Record<string, string> = {
-                        draft: 'Entwurf',
-                        published: 'Live',
-                        paused: 'Pausiert',
-                        sold: 'Verkauft',
-                        archived: 'Archiviert',
-                        expired: 'Abgelaufen'
-                      };
-                      const count = statusCounts[status] || 0;
-                      const isSelected = statusFilter.includes(status);
-                      return (
-                        <Chip
-                          key={status}
-                          label={`${labels[status]} ${count}`}
-                          onClick={() => handleStatusFilterChange(status)}
-                          color={isSelected ? 'primary' : 'default'}
-                          variant={isSelected ? 'filled' : 'outlined'}
-                          sx={{
-                            fontWeight: isSelected ? 600 : 400,
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-                </Box>
-              )}
+              {/* Attribute Filters - Show when category is selected */}
+              {(() => {
+                const selectedCategory = selectedCategories.length === 1
+                  ? categories.find(c => c.id === selectedCategories[0])
+                  : null;
 
-              {allCategories.length > 0 && (
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
-                    Kategorien
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {allCategories.map(category => (
-                      <Chip
-                        key={category}
-                        label={category}
-                        onClick={() => handleCategoryToggle(category)}
-                        color={selectedCategories.includes(category) ? 'primary' : 'default'}
-                        variant={selectedCategories.includes(category) ? 'filled' : 'outlined'}
-                      />
-                    ))}
+                return selectedCategory ? (
+                  <Box sx={{ mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                      {getCategoryIcon(selectedCategories[0])}
+                      <Typography variant="subtitle2" fontWeight={600} fontSize="0.875rem">
+                        {getCategoryName(selectedCategory, 'de')}
+                      </Typography>
+                    </Box>
+                    <FilterSidebar
+                      categoryId={selectedCategories[0]}
+                      language="de"
+                      onFilterChange={setAttributeFilters}
+                    />
                   </Box>
-                </Box>
-              )}
+                ) : null;
+              })()}
 
-              <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
                 <Button
                   fullWidth
                   variant="outlined"
                   onClick={clearFilters}
+                  size="small"
+                  sx={{ py: 1 }}
                 >
                   Zurücksetzen
                 </Button>
@@ -1735,6 +1945,8 @@ const MainContent = () => {
                   fullWidth
                   variant="contained"
                   onClick={() => setFilterOpen(false)}
+                  size="small"
+                  sx={{ py: 1 }}
                 >
                   Anwenden
                 </Button>
@@ -1860,10 +2072,11 @@ function App() {
           paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
-          <AuthProvider>
-            <FavoritesProvider>
-              <HandPreferenceProvider>
-                <BrowserRouter>
+          <GlobalCacheProvider>
+            <AuthProvider>
+              <FavoritesProvider>
+                <HandPreferenceProvider>
+                  <BrowserRouter>
                 <Suspense fallback={
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
                     <CircularProgress />
@@ -1894,10 +2107,11 @@ function App() {
                     </Routes>
                   </LayoutWrapper>
                 </Suspense>
-                </BrowserRouter>
-              </HandPreferenceProvider>
-            </FavoritesProvider>
-          </AuthProvider>
+                  </BrowserRouter>
+                </HandPreferenceProvider>
+              </FavoritesProvider>
+            </AuthProvider>
+          </GlobalCacheProvider>
         </Box>
       </ThemeProvider>
     </ErrorBoundary>

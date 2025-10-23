@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -16,17 +16,29 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
+  // Deduplication refs
+  const loadingRef = useRef(false);
+  const loadedForUserRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (user) {
       loadFavorites();
     } else {
       setFavorites(new Set());
       setLoading(false);
+      loadedForUserRef.current = null;
     }
   }, [user]);
 
   const loadFavorites = async () => {
     if (!user) return;
+
+    // Skip if already loading or already loaded for this user
+    if (loadingRef.current || loadedForUserRef.current === user.id) {
+      return;
+    }
+
+    loadingRef.current = true;
 
     try {
       const { data, error } = await supabase
@@ -38,10 +50,12 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
 
       const favoriteIds = new Set(data?.map(f => f.item_id) || []);
       setFavorites(favoriteIds);
+      loadedForUserRef.current = user.id;
     } catch (err) {
       console.error('Error loading favorites:', err);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   };
 

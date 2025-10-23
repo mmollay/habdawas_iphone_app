@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -25,13 +25,25 @@ export const HandPreferenceProvider = ({ children }: { children: ReactNode }) =>
   const [handPreference, setHandPreferenceState] = useState<HandPreference>('right');
   const [loading, setLoading] = useState(true);
 
+  // Deduplication refs
+  const loadingRef = useRef(false);
+  const loadedForUserRef = useRef<string | null>(null);
+
   useEffect(() => {
     const loadHandPreference = async () => {
       if (!user) {
         setHandPreferenceState('right');
         setLoading(false);
+        loadedForUserRef.current = null;
         return;
       }
+
+      // Skip if already loading or already loaded for this user
+      if (loadingRef.current || loadedForUserRef.current === user.id) {
+        return;
+      }
+
+      loadingRef.current = true;
 
       try {
         const { data, error } = await supabase
@@ -45,10 +57,12 @@ export const HandPreferenceProvider = ({ children }: { children: ReactNode }) =>
         if (data?.hand_preference) {
           setHandPreferenceState(data.hand_preference as HandPreference);
         }
+        loadedForUserRef.current = user.id;
       } catch (error) {
         console.error('Error loading hand preference:', error);
       } finally {
         setLoading(false);
+        loadingRef.current = false;
       }
     };
 

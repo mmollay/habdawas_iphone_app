@@ -8,14 +8,17 @@ import { useAuth } from '../../contexts/AuthContext';
 interface ItemGridProps {
   items: Item[];
   onItemClick?: (item: Item) => void;
-  onItemUpdated?: () => void;
+  onItemUpdated?: (itemId?: string) => void;
   allItems?: Item[];
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  isSelectionMode?: boolean;
+  selectedItemIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
-export const ItemGrid = ({ items, onItemClick, onItemUpdated, allItems, onLoadMore, hasMore, loadingMore }: ItemGridProps) => {
+export const ItemGrid = ({ items, onItemClick, onItemUpdated, allItems, onLoadMore, hasMore, loadingMore, isSelectionMode = false, selectedItemIds = new Set(), onToggleSelect }: ItemGridProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +59,9 @@ export const ItemGrid = ({ items, onItemClick, onItemUpdated, allItems, onLoadMo
             pickupEnabled={profiles[item.user_id]?.pickup_enabled}
             isOwnItem={user?.id === item.user_id}
             onItemUpdated={onItemUpdated}
+            isSelectionMode={isSelectionMode}
+            isSelected={selectedItemIds.has(item.id)}
+            onToggleSelect={onToggleSelect}
           />
         ))}
       </Box>

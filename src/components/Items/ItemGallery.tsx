@@ -5,6 +5,7 @@ import {
   Typography,
   IconButton,
   Chip,
+  Checkbox,
 } from '@mui/material';
 import { Heart, MoreVertical, Clock } from 'lucide-react';
 import { Item } from '../../lib/supabase';
@@ -21,9 +22,12 @@ interface ItemGalleryProps {
   onClick?: (item: Item) => void;
   isOwnItem?: boolean;
   onItemUpdated?: () => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated }: ItemGalleryProps) => {
+const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated, isSelectionMode = false, isSelected = false, onToggleSelect }: ItemGalleryProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isFavorite, toggleFavorite } = useFavoritesContext();
@@ -73,10 +77,23 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated 
   };
 
   const handleCardClick = () => {
+    // In selection mode, toggle selection instead of navigating
+    if (isSelectionMode && isOwnItem && onToggleSelect) {
+      onToggleSelect(item.id);
+      return;
+    }
+
     if (onClick) {
       onClick(item);
     } else {
       navigate(`/item/${item.id}${window.location.search}`);
+    }
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleSelect) {
+      onToggleSelect(item.id);
     }
   };
 
@@ -112,7 +129,32 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated 
           }}
         />
 
-        {isOwnItem ? (
+        {/* Checkbox for selection mode */}
+        {isSelectionMode && isOwnItem && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 6,
+              left: 6,
+              zIndex: 10,
+            }}
+            onClick={handleCheckboxClick}
+          >
+            <Checkbox
+              checked={isSelected}
+              sx={{
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: 1,
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 1)',
+                },
+                padding: '4px',
+              }}
+            />
+          </Box>
+        )}
+
+        {isOwnItem && !isSelectionMode ? (
           <IconButton
             sx={{
               position: 'absolute',
@@ -131,7 +173,7 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated 
           >
             <MoreVertical size={16} />
           </IconButton>
-        ) : (
+        ) : !isOwnItem ? (
           <IconButton
             sx={{
               position: 'absolute',
@@ -151,7 +193,7 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated 
           >
             <Heart size={16} fill={favorite ? 'white' : 'none'} />
           </IconButton>
-        )}
+        ) : null}
 
         {isOwnItem && (
           <>
@@ -160,7 +202,7 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated 
               size="small"
               sx={{
                 position: 'absolute',
-                top: 6,
+                top: isSelectionMode ? 46 : 6,
                 left: 6,
                 bgcolor: getStatusColor(item.status),
                 color: 'white',
@@ -269,7 +311,7 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated 
             size="small"
             sx={{
               position: 'absolute',
-              top: isOwnItem ? 38 : 6,
+              top: isOwnItem ? (isSelectionMode ? 78 : 38) : 6,
               left: 6,
               bgcolor: 'rgba(255, 255, 255, 0.95)',
               fontWeight: 600,
@@ -301,6 +343,8 @@ export const ItemGallery = memo(ItemGalleryComponent, (prevProps, nextProps) => 
     prevProps.item.title === nextProps.item.title &&
     prevProps.item.price === nextProps.item.price &&
     prevProps.item.image_url === nextProps.item.image_url &&
-    prevProps.isOwnItem === nextProps.isOwnItem
+    prevProps.isOwnItem === nextProps.isOwnItem &&
+    prevProps.isSelectionMode === nextProps.isSelectionMode &&
+    prevProps.isSelected === nextProps.isSelected
   );
 });
