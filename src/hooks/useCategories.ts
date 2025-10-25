@@ -4,7 +4,7 @@
  * @description React hook for loading and managing hierarchical categories
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   Category,
@@ -33,6 +33,7 @@ interface UseCategoriesReturn {
   error: string | null;
   refresh: () => Promise<void>;
   getCategoryById: (id: string) => Category | undefined;
+  getCategoryBySlug: (slug: string) => Category | undefined;
   getChildrenOf: (parentId: string | null) => Category[];
   getPathFor: (categoryId: string) => Category[];
 }
@@ -45,7 +46,7 @@ export const useCategories = (options: UseCategoriesOptions = {}): UseCategories
   const [error, setError] = useState<string | null>(null);
 
   // Load categories from Supabase
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -73,7 +74,7 @@ export const useCategories = (options: UseCategoriesOptions = {}): UseCategories
     } finally {
       setLoading(false);
     }
-  };
+  }, [maxLevel]);
 
   // Auto-load on mount
   useEffect(() => {
@@ -88,33 +89,39 @@ export const useCategories = (options: UseCategoriesOptions = {}): UseCategories
   }, [categories]);
 
   // Get category by ID
-  const getCategoryById = (id: string): Category | undefined => {
+  const getCategoryById = useCallback((id: string): Category | undefined => {
     return findCategoryById(id, categories);
-  };
+  }, [categories]);
+
+  // Get category by slug
+  const getCategoryBySlug = useCallback((slug: string): Category | undefined => {
+    return categories.find(cat => cat.slug === slug);
+  }, [categories]);
 
   // Get children of a category
-  const getChildrenOf = (parentId: string | null): Category[] => {
+  const getChildrenOf = useCallback((parentId: string | null): Category[] => {
     return findChildCategories(parentId, categories);
-  };
+  }, [categories]);
 
   // Get full path for a category
-  const getPathFor = (categoryId: string): Category[] => {
+  const getPathFor = useCallback((categoryId: string): Category[] => {
     const pathItems = getCategoryPath(categoryId, categories, lang);
     return pathItems
       .map(item => findCategoryById(item.id, categories))
       .filter((cat): cat is Category => cat !== undefined);
-  };
+  }, [categories, lang]);
 
-  return {
+  return useMemo(() => ({
     categories,
     categoryTree,
     loading,
     error,
     refresh: loadCategories,
     getCategoryById,
+    getCategoryBySlug,
     getChildrenOf,
     getPathFor,
-  };
+  }), [categories, categoryTree, loading, error, loadCategories, getCategoryById, getCategoryBySlug, getChildrenOf, getPathFor]);
 };
 
 /**

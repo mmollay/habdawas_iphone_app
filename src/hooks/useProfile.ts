@@ -38,6 +38,55 @@ const SLICE_FIELDS: Record<ProfileSlice, string> = {
   full: '*',
 };
 
+// Warm all profile caches with a single query
+export const warmProfileCache = async (userId: string, setCached: (key: string, data: any) => void) => {
+  try {
+    // Fetch full profile in ONE query
+    const { data: fullProfile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!fullProfile) return;
+
+    // Warm all slice caches with the full profile data
+
+    // Warm 'full' cache
+    setCached(`profile:${userId}:full`, fullProfile);
+
+    // Warm 'credits' cache
+    const { daily_listings_used, last_listing_date, personal_credits } = fullProfile;
+    setCached(`profile:${userId}:credits`,
+      { daily_listings_used, last_listing_date, personal_credits });
+
+    // Warm 'preferences' cache
+    const { view_mode_preference, onboarding_completed } = fullProfile;
+    setCached(`profile:${userId}:preferences`,
+      { view_mode_preference, onboarding_completed });
+
+    // Warm 'hand_preference' cache
+    const { hand_preference } = fullProfile;
+    setCached(`profile:${userId}:hand_preference`,
+      { hand_preference });
+
+    // Warm 'donations' cache
+    const { total_donated, community_listings_donated } = fullProfile;
+    setCached(`profile:${userId}:donations`,
+      { total_donated, community_listings_donated });
+
+    // Warm 'shipping' cache
+    const { shipping_enabled, pickup_enabled } = fullProfile;
+    setCached(`profile:${userId}:shipping`,
+      { shipping_enabled, pickup_enabled });
+
+    console.log('✅ Profile cache warmed successfully');
+  } catch (error) {
+    console.error('Error warming profile cache:', error);
+  }
+};
+
 export const useProfile = (slice: ProfileSlice = 'full', ttl: number = 60000) => {
   const { user } = useAuth();
   const { getCached } = useGlobalCache();

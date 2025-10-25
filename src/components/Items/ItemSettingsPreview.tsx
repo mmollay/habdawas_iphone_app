@@ -52,7 +52,7 @@ export const ItemSettingsPreview = ({
   return (
     <Accordion
       sx={{
-        mt: 3,
+        mt: 2.5,
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 2,
@@ -124,10 +124,10 @@ export const ItemSettingsPreview = ({
         </Box>
       </AccordionSummary>
 
-      <AccordionDetails sx={{ pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <AccordionDetails sx={{ pt: 1.75, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
               <MapPin size={16} />
               Abholung
             </Typography>
@@ -161,7 +161,7 @@ export const ItemSettingsPreview = ({
           </Box>
 
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
               <Package size={16} />
               Versand
             </Typography>
@@ -175,7 +175,7 @@ export const ItemSettingsPreview = ({
                 />
               }
               label="Versand aktivieren"
-              sx={{ mb: 2 }}
+              sx={{ mb: 1.5 }}
             />
 
             {shippingEnabled && (
@@ -223,7 +223,7 @@ export const ItemSettingsPreview = ({
           </Box>
 
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
               <Tag size={16} />
               Preis
             </Typography>
@@ -271,7 +271,7 @@ export const ItemSettingsPreview = ({
           </Box>
 
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
               <Calendar size={16} />
               Laufzeit
             </Typography>

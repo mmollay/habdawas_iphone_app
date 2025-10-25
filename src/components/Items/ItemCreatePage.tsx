@@ -20,7 +20,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { ChevronDown, ChevronUp, Sparkles, Info, Package, Save, Coins, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sparkles, Info, Package, Save, Coins, X, Lightbulb, Smartphone, Car, FileText, Camera } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCreditsStats } from '../../hooks/useCreditsStats';
 import { useCreditCheck } from '../../hooks/useCreditCheck';
@@ -117,10 +117,12 @@ export const ItemCreatePage = () => {
   const [sellerProfile, setSellerProfile] = useState<any>(null);
   const [showAiHint, setShowAiHint] = useState(false);
   const [isFirstItem, setIsFirstItem] = useState(false);
+  const [showAiTips, setShowAiTips] = useState(true);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [category, setCategory] = useState(''); // String category for BasicInfoSection
   const [categorySelection, setCategorySelection] = useState<CategorySelection | undefined>(undefined);
   const [brand, setBrand] = useState('');
   const [condition, setCondition] = useState('');
@@ -383,6 +385,33 @@ export const ItemCreatePage = () => {
             mergedAnalysis.tags = [...new Set([...(mergedAnalysis.tags || []), ...analysis.tags])];
           }
 
+          // ⚡ MERGE VEHICLE ATTRIBUTES from all analyses
+          // Prefer non-empty values from any analysis (especially documents like Zulassungsschein)
+          if (analysis.vehicle_brand && !mergedAnalysis.vehicle_brand) {
+            mergedAnalysis.vehicle_brand = analysis.vehicle_brand;
+          }
+          if (analysis.vehicle_year && !mergedAnalysis.vehicle_year) {
+            mergedAnalysis.vehicle_year = analysis.vehicle_year;
+          }
+          if (analysis.vehicle_mileage && !mergedAnalysis.vehicle_mileage) {
+            mergedAnalysis.vehicle_mileage = analysis.vehicle_mileage;
+          }
+          if (analysis.vehicle_fuel_type && !mergedAnalysis.vehicle_fuel_type) {
+            mergedAnalysis.vehicle_fuel_type = analysis.vehicle_fuel_type;
+          }
+          if (analysis.vehicle_color && !mergedAnalysis.vehicle_color) {
+            mergedAnalysis.vehicle_color = analysis.vehicle_color;
+          }
+          if (analysis.vehicle_power_kw && !mergedAnalysis.vehicle_power_kw) {
+            mergedAnalysis.vehicle_power_kw = analysis.vehicle_power_kw;
+          }
+          if (analysis.vehicle_first_registration && !mergedAnalysis.vehicle_first_registration) {
+            mergedAnalysis.vehicle_first_registration = analysis.vehicle_first_registration;
+          }
+          if (analysis.vehicle_tuv_until && !mergedAnalysis.vehicle_tuv_until) {
+            mergedAnalysis.vehicle_tuv_until = analysis.vehicle_tuv_until;
+          }
+
           // Collect document descriptions (Zulassungsschein, etc.)
           const isDocument = documentKeywords.some(kw => analysis.title.toLowerCase().includes(kw));
           if (isDocument && analysis.description) {
@@ -585,6 +614,25 @@ export const ItemCreatePage = () => {
 
     if (!itemTitle || !itemDescription || !itemPrice) return;
 
+    // Build complete data object combining AI data and manual form data
+    const manualFormData: Partial<AnalysisResult> = analysisData ? {} : {
+      condition,
+      brand,
+      size,
+      weight,
+      material,
+      colors,
+      style,
+      serialNumber,
+      dimensions: {
+        length: dimensionsLength,
+        width: dimensionsWidth,
+        height: dimensionsHeight,
+      }
+    };
+
+    const completeDataToUse = analysisData || (Object.keys(manualFormData).length > 0 ? manualFormData as AnalysisResult : null);
+
     if (!user.email_confirmed_at) {
       setError('Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.');
       return;
@@ -639,28 +687,46 @@ export const ItemCreatePage = () => {
 
       const countryCode = countryCodeMap[selectedAddress?.country || getDefaultCountry()] || 'DE';
       const primaryImageUrl = uploadedImageUrls[images.findIndex(img => img.isPrimary)] || uploadedImageUrls[0];
-      const dataToUse = analysisData || analysis;
 
       // IMPORTANT: Extract Gemini tokens BEFORE insert
-      const geminiInputTokens = dataToUse?.tokenUsage?.inputTokens || 0;
-      const geminiOutputTokens = dataToUse?.tokenUsage?.outputTokens || 0;
+      const geminiInputTokens = completeDataToUse?.tokenUsage?.inputTokens || 0;
+      const geminiOutputTokens = completeDataToUse?.tokenUsage?.outputTokens || 0;
       const totalGeminiTokens = geminiInputTokens + geminiOutputTokens;
 
       console.log('[Item Insert] Gemini Tokens:', {
         input: geminiInputTokens,
         output: geminiOutputTokens,
         total: totalGeminiTokens,
-        hasTokenUsage: !!dataToUse?.tokenUsage
+        hasTokenUsage: !!completeDataToUse?.tokenUsage
       });
 
       // Determine category_id: from AI analysis or from manual selection
-      let categoryId = dataToUse?.category_id || categorySelection?.level3?.id || categorySelection?.level2?.id || categorySelection?.level1?.id;
+      let categoryId = completeDataToUse?.category_id || categorySelection?.level3?.id || categorySelection?.level2?.id || categorySelection?.level1?.id;
+
+      // If no categoryId but we have a category string from BasicInfoSection, look it up
+      if (!categoryId && category) {
+        console.log('Looking up category ID from string:', category);
+        const { data: categoryData, error: catLookupError } = await supabase
+          .from('categories')
+          .select('id')
+          .ilike('translations->de->>name', `%${category}%`)
+          .order('level', { ascending: true })
+          .limit(1)
+          .single();
+
+        if (!catLookupError && categoryData) {
+          categoryId = categoryData.id;
+          console.log('✅ Found category ID:', categoryId);
+        } else {
+          console.log('❌ Category lookup failed:', catLookupError);
+        }
+      }
 
       // If AI returned text categories instead of category_id, map them to the hierarchical system
-      if (!categoryId && dataToUse?.category) {
+      if (!categoryId && completeDataToUse?.category) {
         console.log('Mapping AI text categories to hierarchical system:', {
-          category: dataToUse.category,
-          subcategory: dataToUse.subcategory
+          category: completeDataToUse.category,
+          subcategory: completeDataToUse.subcategory
         });
 
         // Fetch all categories to find matches
@@ -673,9 +739,9 @@ export const ItemCreatePage = () => {
         // Find level 1 category by matching translated name
         const level1 = allCategories?.find(c =>
           c.level === 1 && (
-            c.translations?.de?.name?.toLowerCase().includes(dataToUse.category.toLowerCase()) ||
-            c.translations?.en?.name?.toLowerCase().includes(dataToUse.category.toLowerCase()) ||
-            c.slug.toLowerCase().includes(dataToUse.category.toLowerCase())
+            c.translations?.de?.name?.toLowerCase().includes(completeDataToUse.category.toLowerCase()) ||
+            c.translations?.en?.name?.toLowerCase().includes(completeDataToUse.category.toLowerCase()) ||
+            c.slug.toLowerCase().includes(completeDataToUse.category.toLowerCase())
           )
         );
 
@@ -684,13 +750,13 @@ export const ItemCreatePage = () => {
         let level2 = null;
 
         // Try to find level 2 subcategory if AI provided one
-        if (level1 && dataToUse.subcategory) {
+        if (level1 && completeDataToUse.subcategory) {
           level2 = allCategories?.find(c =>
             c.level === 2 &&
             c.parent_id === level1.id && (
-              c.translations?.de?.name?.toLowerCase().includes(dataToUse.subcategory.toLowerCase()) ||
-              c.translations?.en?.name?.toLowerCase().includes(dataToUse.subcategory.toLowerCase()) ||
-              c.slug.toLowerCase().includes(dataToUse.subcategory.toLowerCase())
+              c.translations?.de?.name?.toLowerCase().includes(completeDataToUse.subcategory.toLowerCase()) ||
+              c.translations?.en?.name?.toLowerCase().includes(completeDataToUse.subcategory.toLowerCase()) ||
+              c.slug.toLowerCase().includes(completeDataToUse.subcategory.toLowerCase())
             )
           );
 
@@ -760,28 +826,28 @@ export const ItemCreatePage = () => {
           price: itemPrice,
           image_url: primaryImageUrl,
           status: publishImmediately ? 'published' : 'draft',
-          ai_generated: dataToUse !== null,
+          ai_generated: analysisData !== undefined || analysis !== null,
           category_id: categoryId,
-          condition: dataToUse?.condition,
-          brand: dataToUse?.brand,
-          size: dataToUse?.size,
-          weight: dataToUse?.weight,
-          dimensions_length: dataToUse?.dimensions?.length,
-          dimensions_width: dataToUse?.dimensions?.width,
-          dimensions_height: dataToUse?.dimensions?.height,
-          material: dataToUse?.material,
-          colors: dataToUse?.colors,
-          style: dataToUse?.style,
-          serial_number: dataToUse?.serialNumber,
-          features: dataToUse?.features,
-          accessories: dataToUse?.accessories,
-          tags: dataToUse?.tags,
+          condition: completeDataToUse?.condition,
+          brand: completeDataToUse?.brand,
+          size: completeDataToUse?.size,
+          weight: completeDataToUse?.weight,
+          dimensions_length: completeDataToUse?.dimensions?.length,
+          dimensions_width: completeDataToUse?.dimensions?.width,
+          dimensions_height: completeDataToUse?.dimensions?.height,
+          material: completeDataToUse?.material,
+          colors: completeDataToUse?.colors,
+          style: completeDataToUse?.style,
+          serial_number: completeDataToUse?.serialNumber,
+          features: completeDataToUse?.features,
+          accessories: completeDataToUse?.accessories,
+          tags: completeDataToUse?.tags,
           postal_code: selectedAddress?.postal_code,
           location: selectedAddress?.city,
-          estimated_weight_kg: dataToUse?.estimated_weight_kg,
-          package_dimensions: dataToUse?.package_dimensions,
-          ai_shipping_domestic: dataToUse?.ai_shipping_domestic,
-          ai_shipping_international: dataToUse?.ai_shipping_international,
+          estimated_weight_kg: completeDataToUse?.estimated_weight_kg,
+          package_dimensions: completeDataToUse?.package_dimensions,
+          ai_shipping_domestic: completeDataToUse?.ai_shipping_domestic,
+          ai_shipping_international: completeDataToUse?.ai_shipping_international,
           selected_address_id: selectedShippingAddress || null,
           shipping_from_country: countryCode,
           snapshot_shipping_enabled: shippingEnabled,
@@ -838,7 +904,7 @@ export const ItemCreatePage = () => {
       }
 
       // Save vehicle attributes if present
-      if (itemData && dataToUse && categoryId === 'f5fb69d5-e054-47e8-a72e-dc05fc3620bf') {  // Autos category ID
+      if (itemData && completeDataToUse && categoryId === 'f5fb69d5-e054-47e8-a72e-dc05fc3620bf') {  // Autos category ID
         console.log('[Vehicle Attributes] Saving vehicle attributes...');
         const { data: categoryAttributes } = await supabase
           .from('category_attributes')
@@ -850,60 +916,60 @@ export const ItemCreatePage = () => {
           const itemAttributes = [];
 
           // Map vehicle_* fields to item_attributes
-          if (dataToUse.vehicle_brand && attributeMap.has('brand')) {
+          if (completeDataToUse.vehicle_brand && attributeMap.has('brand')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('brand'),
-              value_text: dataToUse.vehicle_brand
+              value_text: completeDataToUse.vehicle_brand
             });
           }
-          if (dataToUse.vehicle_year && attributeMap.has('year')) {
+          if (completeDataToUse.vehicle_year && attributeMap.has('year')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('year'),
-              value_number: dataToUse.vehicle_year
+              value_number: completeDataToUse.vehicle_year
             });
           }
-          if (dataToUse.vehicle_mileage && attributeMap.has('mileage')) {
+          if (completeDataToUse.vehicle_mileage && attributeMap.has('mileage')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('mileage'),
-              value_number: dataToUse.vehicle_mileage
+              value_number: completeDataToUse.vehicle_mileage
             });
           }
-          if (dataToUse.vehicle_fuel_type && attributeMap.has('fuel_type')) {
+          if (completeDataToUse.vehicle_fuel_type && attributeMap.has('fuel_type')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('fuel_type'),
-              value_text: dataToUse.vehicle_fuel_type
+              value_text: completeDataToUse.vehicle_fuel_type
             });
           }
-          if (dataToUse.vehicle_color && attributeMap.has('color')) {
+          if (completeDataToUse.vehicle_color && attributeMap.has('color')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('color'),
-              value_text: dataToUse.vehicle_color
+              value_text: completeDataToUse.vehicle_color
             });
           }
-          if (dataToUse.vehicle_power_kw && attributeMap.has('power_kw')) {
+          if (completeDataToUse.vehicle_power_kw && attributeMap.has('power_kw')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('power_kw'),
-              value_number: dataToUse.vehicle_power_kw
+              value_number: completeDataToUse.vehicle_power_kw
             });
           }
-          if (dataToUse.vehicle_first_registration && attributeMap.has('first_registration')) {
+          if (completeDataToUse.vehicle_first_registration && attributeMap.has('first_registration')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('first_registration'),
-              value_date: dataToUse.vehicle_first_registration
+              value_date: completeDataToUse.vehicle_first_registration
             });
           }
-          if (dataToUse.vehicle_tuv_until && attributeMap.has('tuv_until')) {
+          if (completeDataToUse.vehicle_tuv_until && attributeMap.has('tuv_until')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('tuv_until'),
-              value_date: dataToUse.vehicle_tuv_until
+              value_date: completeDataToUse.vehicle_tuv_until
             });
           }
 
@@ -921,11 +987,89 @@ export const ItemCreatePage = () => {
         }
       }
 
+      // 🔥 CRITICAL: Save general attributes to item_attributes for ALL categories (so they appear in filters!)
+      if (itemData && completeDataToUse && categoryId) {
+        console.log('[General Attributes] Saving general attributes for filters...');
+
+        // Fetch both category-specific AND global filterable attributes
+        const { data: allCategoryAttributes } = await supabase
+          .from('category_attributes')
+          .select('id, attribute_key, is_global')
+          .or(`category_id.eq.${categoryId},is_global.eq.true`)
+          .eq('is_filterable', true);
+
+        if (allCategoryAttributes && allCategoryAttributes.length > 0) {
+          const attributeMap = new Map(allCategoryAttributes.map(attr => [attr.attribute_key, attr.id]));
+          const generalItemAttributes = [];
+
+          console.log('[General Attributes] Available filterable attributes:', Array.from(attributeMap.keys()));
+
+          // Map general fields to item_attributes
+          if (completeDataToUse.condition && attributeMap.has('condition')) {
+            generalItemAttributes.push({
+              item_id: itemData.id,
+              attribute_id: attributeMap.get('condition'),
+              value_text: completeDataToUse.condition
+            });
+            console.log('[General Attributes] Adding condition:', completeDataToUse.condition);
+          }
+
+          if (completeDataToUse.brand && (attributeMap.has('brand') || attributeMap.has('brand_global'))) {
+            const brandAttributeId = attributeMap.get('brand') || attributeMap.get('brand_global');
+            generalItemAttributes.push({
+              item_id: itemData.id,
+              attribute_id: brandAttributeId,
+              value_text: completeDataToUse.brand
+            });
+            console.log('[General Attributes] Adding brand:', completeDataToUse.brand);
+          }
+
+          if (completeDataToUse.material && attributeMap.has('material')) {
+            generalItemAttributes.push({
+              item_id: itemData.id,
+              attribute_id: attributeMap.get('material'),
+              value_text: completeDataToUse.material
+            });
+            console.log('[General Attributes] Adding material:', completeDataToUse.material);
+          }
+
+          // Colors - handle array
+          if (completeDataToUse.colors && Array.isArray(completeDataToUse.colors) && attributeMap.has('color')) {
+            // Save first color (or could save all separately)
+            const colorValue = completeDataToUse.colors[0];
+            if (colorValue) {
+              generalItemAttributes.push({
+                item_id: itemData.id,
+                attribute_id: attributeMap.get('color'),
+                value_text: colorValue
+              });
+              console.log('[General Attributes] Adding color:', colorValue);
+            }
+          }
+
+          if (generalItemAttributes.length > 0) {
+            const { error: generalAttributesError } = await supabase
+              .from('item_attributes')
+              .insert(generalItemAttributes);
+
+            if (generalAttributesError) {
+              console.error('[General Attributes] Error saving attributes:', generalAttributesError);
+            } else {
+              console.log('[General Attributes] ✅ Saved', generalItemAttributes.length, 'attributes to item_attributes');
+            }
+          } else {
+            console.log('[General Attributes] ⚠️ No matching attributes found to save');
+          }
+        } else {
+          console.log('[General Attributes] ⚠️ No filterable category attributes found for category:', categoryId);
+        }
+      }
+
       // Handle credit deduction based on listing type
       console.log('[Credit Check] Processing credit deduction...', {
         creditSource: creditCheck.source,
         geminiTokens: totalGeminiTokens,
-        aiGenerated: dataToUse !== null
+        aiGenerated: analysisData !== undefined || analysis !== null
       });
 
       // CRITICAL FIX: Deduct credits for AI usage REGARDLESS of credit source
@@ -975,7 +1119,7 @@ export const ItemCreatePage = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4, pb: 12 }}>
+    <Container maxWidth="md" sx={{ py: 3, pb: 10 }}>
       {/* AI Analysis Preview Modal */}
       {showPreview && previewData && (
         <AIAnalysisPreview
@@ -991,20 +1135,28 @@ export const ItemCreatePage = () => {
             setShowPreview(false);
             setPreviewData(null);
           }}
+          onRegenerate={async () => {
+            // Close preview and regenerate analysis
+            setShowPreview(false);
+            setPreviewData(null);
+            setAnalysis(null);
+            // Trigger AI generation again
+            await handleAIGenerate();
+          }}
         />
       )}
 
       {!showPreview && (
         <>
-          <Box sx={{ mb: 5, textAlign: 'center' }}>
+          <Box sx={{ mb: 4, textAlign: 'center' }}>
             <Typography
               variant="h4"
               sx={{
                 fontWeight: 700,
                 color: 'primary.main',
-                fontSize: { xs: '1.75rem', md: '2.25rem' },
+                fontSize: { xs: '1.75rem', md: '2.125rem' },
                 letterSpacing: '-0.02em',
-                mb: 1
+                mb: 0.75
               }}
             >
               Artikel erstellen
@@ -1013,7 +1165,7 @@ export const ItemCreatePage = () => {
               variant="body2"
               sx={{
                 color: 'text.secondary',
-                fontSize: '0.95rem',
+                fontSize: '0.9rem',
                 maxWidth: '500px',
                 mx: 'auto'
               }}
@@ -1021,6 +1173,46 @@ export const ItemCreatePage = () => {
               Lade deine Bilder hoch und lass die KI die Arbeit machen
             </Typography>
           </Box>
+
+          {/* Compact Listing Availability Banner */}
+          <Paper
+            elevation={0}
+            sx={{
+              mb: 3,
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: personalCredits > 0 ? 'success.light' : 'info.light',
+              bgcolor: personalCredits > 0 ? 'rgba(46, 125, 50, 0.04)' : 'rgba(25, 118, 210, 0.04)',
+            }}
+          >
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Sparkles size={20} style={{ color: personalCredits > 0 ? '#2e7d32' : '#1976d2' }} />
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontWeight: 600,
+                    color: personalCredits > 0 ? 'success.main' : 'info.main'
+                  }}
+                >
+                  {personalCredits > 0
+                    ? `${personalCredits} ${personalCredits === 1 ? 'KI-Inserat' : 'KI-Inserate'} verfügbar`
+                    : 'Keine KI-Inserate verfügbar'
+                  }
+                </Typography>
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: '0.75rem'
+                }}
+              >
+                Manuelle Inserate sind immer kostenlos möglich
+              </Typography>
+            </Box>
+          </Paper>
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -1032,18 +1224,19 @@ export const ItemCreatePage = () => {
         <Collapse in={showAiHint}>
           <Alert
             severity="info"
-            icon={<Sparkles size={20} />}
+            icon={<Sparkles size={18} />}
             action={
               <IconButton
                 size="small"
                 onClick={() => setShowAiHint(false)}
                 sx={{ color: 'inherit' }}
               >
-                <X size={18} />
+                <X size={16} />
               </IconButton>
             }
             sx={{
-              mb: 3,
+              mb: 2.5,
+              py: 1.5,
               backgroundColor: 'rgba(16, 185, 129, 0.08)',
               borderColor: '#10b981',
               border: '1px solid',
@@ -1053,14 +1246,14 @@ export const ItemCreatePage = () => {
             }}
           >
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: '#047857' }}>
-                💡 Willkommen! Ihr erster Artikel
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: '#047857', fontSize: '0.9rem' }}>
+                💡 Willkommen! Dein erster Artikel
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
-                Laden Sie einfach Fotos hoch - unser KI-Assistent analysiert die Bilder automatisch und schlägt Titel, Beschreibung, Preis und weitere Details vor.
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 0.75, lineHeight: 1.5 }}>
+                Lade einfach Fotos hoch - der KI-Assistent analysiert die Bilder und schlägt Titel, Beschreibung, Preis und Details vor.
               </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                Sie können die KI-Einstellungen jederzeit unter <strong>Profil → Einstellungen → KI-Assistent</strong> anpassen.
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.75rem' }}>
+                KI-Einstellungen unter <strong>Profil → Einstellungen → KI-Assistent</strong>
               </Typography>
             </Box>
           </Alert>
@@ -1070,71 +1263,126 @@ export const ItemCreatePage = () => {
       {images.length === 0 ? (
         <MultiImageUpload images={images} onImagesChange={setImages} />
       ) : (
-        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, mb: 3 }}>
+        <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: 2.5, mb: 2.5 }}>
           <MultiImageUpload images={images} onImagesChange={setImages} />
 
         {images.length > 0 && (
           <>
-            <Box sx={{ mt: 3, p: 2.5, border: '2px solid', borderColor: 'primary.main', borderRadius: 2, bgcolor: 'rgba(25, 118, 210, 0.02)' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Sparkles size={18} style={{ color: '#1976d2' }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+            <Box sx={{ mt: 2.5, p: 2, border: '1.5px solid', borderColor: 'primary.main', borderRadius: 1.5, bgcolor: 'rgba(25, 118, 210, 0.02)' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25, flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Sparkles size={16} style={{ color: '#1976d2' }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.875rem' }}>
                     KI-Unterstützung
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  {analysis && (
-                    <Chip
-                      icon={<Info size={14} />}
-                      label={`${analysis.tokenUsage?.totalTokens || 0} Gemini Tokens`}
-                      size="small"
-                      variant="outlined"
-                      color="info"
-                      sx={{ fontWeight: 600 }}
-                    />
-                  )}
-                  {estimatedCost > 0 ? (
-                    <Chip
-                      icon={<Coins size={14} />}
-                      label={`≈${estimatedCost} Credits`}
-                      size="small"
-                      variant="outlined"
-                      color="warning"
-                      sx={{ fontWeight: 600 }}
-                    />
-                  ) : (
-                    <Chip
-                      label="Manuell = KOSTENLOS"
-                      size="small"
-                      color="success"
-                      sx={{ fontWeight: 600 }}
-                    />
-                  )}
+                {analysis && estimatedCost > 0 && (
                   <Chip
-                    icon={<Coins size={16} />}
-                    label={`${personalCredits} Credits verfügbar`}
+                    icon={<Coins size={12} />}
+                    label={`≈${estimatedCost} Credits`}
                     size="small"
-                    color={personalCredits >= estimatedCost ? "primary" : "error"}
-                    sx={{ fontWeight: 600 }}
+                    variant="outlined"
+                    color="warning"
+                    sx={{ fontWeight: 600, height: '24px', fontSize: '0.75rem' }}
                   />
-                </Box>
+                )}
               </Box>
               <TextField
                 fullWidth
                 multiline
-                rows={3}
+                rows={2}
                 label="Zusätzliche Informationen für die KI (optional)"
-                placeholder="z.B. Erbstück, Notverkauf, versteckte Mängel, besondere Merkmale, die auf dem Bild nicht sichtbar sind..."
+                placeholder="z.B. Erbstück, Notverkauf, versteckte Mängel, besondere Merkmale..."
                 value={additionalNotes}
                 onChange={(e) => setAdditionalNotes(e.target.value)}
-                helperText="Diese Informationen helfen der KI, eine bessere Beschreibung und einen realistischeren Preis zu erstellen"
+                helperText="Hilft der KI für bessere Beschreibung und realistischeren Preis"
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: 'white',
+                  },
+                  '& .MuiInputBase-input': {
+                    fontSize: '0.875rem',
+                  },
+                  '& .MuiFormHelperText-root': {
+                    fontSize: '0.7rem',
                   }
                 }}
               />
+
+              {/* AI Tips Section */}
+              <Collapse in={showAiTips}>
+                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'rgba(255, 152, 0, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(255, 152, 0, 0.3)' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <Lightbulb size={16} style={{ color: '#ed6c02' }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'warning.main', fontSize: '0.8rem' }}>
+                        Tipp: So verbessern Sie das KI-Ergebnis deutlich
+                      </Typography>
+                    </Box>
+                    <IconButton
+                      size="small"
+                      onClick={() => setShowAiTips(false)}
+                      sx={{ p: 0.25 }}
+                    >
+                      <X size={14} />
+                    </IconButton>
+                  </Box>
+
+                  <Typography variant="caption" sx={{ display: 'block', mb: 1.25, color: 'text.secondary', fontSize: '0.75rem', lineHeight: 1.4 }}>
+                    Die KI kann nur sehen, was auf den Bildern zu erkennen ist. Geben Sie zusätzliche Infos an, die schwer zu erkennen sind:
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <Smartphone size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
+                          Elektronik:
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
+                          "iPhone 17 Pro, 256GB, Space Gray, OVP vorhanden"
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <Car size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
+                          Fahrzeuge:
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
+                          "VW Golf 8, Baujahr 2021, 45.000 km, TÜV bis 08/2025"
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <Camera size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
+                          Zusätzliche Fotos:
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
+                          Laden Sie Zulassungsschein, Rechnung, Planette oder technische Daten hoch
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <FileText size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
+                          Wichtige Details:
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
+                          Modellbezeichnung, Seriennummer, Garantie, versteckte Mängel
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                </Box>
+              </Collapse>
             </Box>
 
             <ItemSettingsPreview
@@ -1173,19 +1421,18 @@ export const ItemCreatePage = () => {
         )}
 
           {workflowStep === 'choose' && images.length > 0 && (
-            <Box sx={{ mt: 4 }}>
-              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+            <Box sx={{ mt: 2.5 }}>
+              <Box sx={{ display: 'flex', gap: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <Button
                   fullWidth
                   variant="outlined"
-                  size="large"
                   onClick={() => setWorkflowStep('manual')}
                   sx={{
-                    py: 1.5,
+                    py: 1.25,
                     textTransform: 'none',
-                    fontSize: '0.95rem',
+                    fontSize: '0.9rem',
                     fontWeight: 500,
-                    borderRadius: 2,
+                    borderRadius: 1.5,
                   }}
                 >
                   Manuell weitermachen
@@ -1194,23 +1441,22 @@ export const ItemCreatePage = () => {
                 <Button
                   fullWidth
                   variant="contained"
-                  size="large"
                   onClick={handleAIGenerate}
                   disabled={analyzing || personalCredits < 1}
-                  startIcon={analyzing ? <CircularProgress size={18} color="inherit" /> : <Sparkles size={18} />}
+                  startIcon={analyzing ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={16} />}
                   sx={{
-                    py: 1.5,
+                    py: 1.25,
                     textTransform: 'none',
-                    fontSize: '0.95rem',
+                    fontSize: '0.9rem',
                     fontWeight: 600,
-                    borderRadius: 2,
+                    borderRadius: 1.5,
                     boxShadow: 2,
                   }}
                 >
                   {analyzing ? 'Generiere mit KI...' : 'Mit KI erzeugen'}
                 </Button>
               </Box>
-              <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(25, 118, 210, 0.2)' }}>
+              <Box sx={{ mt: 1.5, p: 1.15, bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(25, 118, 210, 0.2)' }}>
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -1221,10 +1467,10 @@ export const ItemCreatePage = () => {
                   }
                   label={
                     <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
                         Gleich veröffentlichen
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                         Nach KI-Generierung direkt veröffentlichen
                       </Typography>
                     </Box>
@@ -1238,27 +1484,28 @@ export const ItemCreatePage = () => {
       )}
 
       {workflowStep === 'manual' && (
-        <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 3 }}>
+        <Paper sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
+          <Box sx={{ p: 2.5 }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2.5, fontSize: '1.125rem' }}>
               Artikelinformationen
             </Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Accordion defaultExpanded elevation={0} sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
                 <AccordionSummary
-                  expandIcon={<ChevronDown size={20} />}
+                  expandIcon={<ChevronDown size={18} />}
                   sx={{
+                    minHeight: '48px',
                     bgcolor: 'rgba(25, 118, 210, 0.04)',
                     '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.08)' }
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Info size={20} color="#1976d2" />
-                    <Typography fontWeight={600}>Grundinformationen</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                    <Info size={18} color="#1976d2" />
+                    <Typography fontWeight={600} sx={{ fontSize: '0.95rem' }}>Grundinformationen</Typography>
                   </Box>
                 </AccordionSummary>
-                <AccordionDetails sx={{ p: 3 }}>
+                <AccordionDetails sx={{ p: 2.5 }}>
                   <BasicInfoSection
                     title={title}
                     description={description}
@@ -1274,7 +1521,7 @@ export const ItemCreatePage = () => {
                     onTitleChange={setTitle}
                     onDescriptionChange={setDescription}
                     onPriceChange={setPrice}
-                    onCategoryChange={setCategorySelection}
+                    onCategoryChange={setCategory}
                     onBrandChange={setBrand}
                     onConditionChange={setCondition}
                     onTagsChange={setTags}
@@ -1290,18 +1537,19 @@ export const ItemCreatePage = () => {
 
               <Accordion elevation={0} sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
                 <AccordionSummary
-                  expandIcon={<ChevronDown size={20} />}
+                  expandIcon={<ChevronDown size={18} />}
                   sx={{
+                    minHeight: '48px',
                     bgcolor: 'rgba(156, 39, 176, 0.04)',
                     '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.08)' }
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Package size={20} color="#9c27b0" />
-                    <Typography fontWeight={600}>Details (Optional)</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                    <Package size={18} color="#9c27b0" />
+                    <Typography fontWeight={600} sx={{ fontSize: '0.95rem' }}>Details (Optional)</Typography>
                   </Box>
                 </AccordionSummary>
-                <AccordionDetails sx={{ p: 3 }}>
+                <AccordionDetails sx={{ p: 2.5 }}>
                   <DetailedInfoSection
                     size={size}
                     weight={weight}
@@ -1330,8 +1578,8 @@ export const ItemCreatePage = () => {
             </Box>
           </Box>
 
-          <Box sx={{ p: 3, pt: 0 }}>
-            <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(25, 118, 210, 0.2)' }}>
+          <Box sx={{ p: 2.5, pt: 0 }}>
+            <Box sx={{ mb: 1.5, p: 1.25, bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(25, 118, 210, 0.2)' }}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -1342,10 +1590,10 @@ export const ItemCreatePage = () => {
                 }
                 label={
                   <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
                       Gleich veröffentlichen
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                       Inserat direkt online stellen (sonst als Entwurf speichern)
                     </Typography>
                   </Box>
@@ -1354,20 +1602,19 @@ export const ItemCreatePage = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+            <Box sx={{ display: 'flex', gap: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
               <Button
                 fullWidth
                 variant="outlined"
-                size="large"
                 onClick={handleAIGenerate}
                 disabled={analyzing}
-                startIcon={analyzing ? <CircularProgress size={18} color="inherit" /> : <Sparkles size={18} />}
+                startIcon={analyzing ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={16} />}
                 sx={{
-                  py: 1.5,
+                  py: 1.25,
                   textTransform: 'none',
-                  fontSize: '0.95rem',
+                  fontSize: '0.9rem',
                   fontWeight: 500,
-                  borderRadius: 2,
+                  borderRadius: 1.5,
                 }}
               >
                 {analyzing ? 'Generiere mit KI...' : 'Mit KI erzeugen'}
@@ -1376,16 +1623,15 @@ export const ItemCreatePage = () => {
               <Button
                 fullWidth
                 variant="contained"
-                size="large"
                 onClick={() => publishItem()}
                 disabled={uploading || !title || !description || !price}
-                startIcon={uploading ? <CircularProgress size={18} color="inherit" /> : <Save size={18} />}
+                startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <Save size={16} />}
                 sx={{
-                  py: 1.5,
+                  py: 1.25,
                   textTransform: 'none',
-                  fontSize: '0.95rem',
+                  fontSize: '0.9rem',
                   fontWeight: 600,
-                  borderRadius: 2,
+                  borderRadius: 1.5,
                 }}
               >
                 {uploading ? 'Speichere...' : (publishImmediately ? 'Veröffentlichen' : 'Als Entwurf speichern')}

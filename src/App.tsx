@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   ThemeProvider,
@@ -41,7 +41,7 @@ import { ItemGrid } from './components/Items/ItemGrid';
 import { ItemList } from './components/Items/ItemList';
 import { ItemGallery } from './components/Items/ItemGallery';
 import { ItemCompactList } from './components/Items/ItemCompactList';
-import { FilterSidebar } from './components/Items/FilterSidebar';
+import { AdvancedFilterSidebar, SelectedFilters } from './components/Items/AdvancedFilterSidebar';
 import { Header } from './components/Layout/Header';
 import { Footer } from './components/Layout/Footer';
 import { ErrorBoundary } from './components/Common/ErrorBoundary';
@@ -73,6 +73,8 @@ const TokenSuccessPage = lazy(() => import('./components/Tokens/TokenSuccessPage
 const AdminPage = lazy(() => import('./components/Admin/AdminPage'));
 const ResetPasswordPage = lazy(() => import('./components/Auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const OAuthCallbackPage = lazy(() => import('./components/Auth/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
+const FilterCountsTest = lazy(() => import('./components/Test/FilterCountsTest').then(m => ({ default: m.FilterCountsTest })));
+const AdvancedFilterSidebarTest = lazy(() => import('./components/Test/AdvancedFilterSidebarTest').then(m => ({ default: m.AdvancedFilterSidebarTest })));
 
 const theme = createTheme({
   palette: {
@@ -110,6 +112,7 @@ const MainContent = () => {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+  const [allItemsForCounting, setAllItemsForCounting] = useState<Item[]>([]); // For category counts only
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -154,6 +157,7 @@ const MainContent = () => {
   const RELOAD_THRESHOLD = 30000; // 30 seconds
   const [filterChangeTime, setFilterChangeTime] = useState<number>(Date.now());
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const filterChangeSkipFirst = useRef(true); // Skip first filter-change effect after initial load
   const [statusFilterExpanded, setStatusFilterExpanded] = useState(() => {
     const saved = localStorage.getItem('statusFilterExpanded');
     return saved ? JSON.parse(saved) : true;
@@ -171,12 +175,16 @@ const MainContent = () => {
     type: string;
   }
   const [attributeFilters, setAttributeFilters] = useState<FilterValue[]>([]);
+  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
 
-  const userIds = [...new Set(filteredItems.map(item => item.user_id))];
+  const userIds = useMemo(
+    () => [...new Set(filteredItems.map(item => item.user_id))],
+    [filteredItems]
+  );
   const { profiles } = useSellerProfiles(userIds);
 
   // Category system hook
-  const { categoryTree, categories, loading: categoriesLoading } = useCategories({ lang: 'de' });
+  const { categoryTree, categories, loading: categoriesLoading, getCategoryBySlug, getCategoryById } = useCategories({ lang: 'de' });
 
   // Credit and Community Pot hooks
   const { checkCredit } = useCreditCheck();
@@ -397,6 +405,7 @@ const MainContent = () => {
     loadCounts();
   }, [user, getCached]);
 
+
   const loadItems = async (loadMore = false, forceRefresh = false) => {
     // Check cache for initial load
     // Only use cache if we actually have items and a valid lastLoadTime
@@ -466,16 +475,28 @@ const MainContent = () => {
         }
       }
 
-      // Apply hierarchical category filtering and/or attribute filters
+      // Separate general filters (direct item columns) from attribute filters (item_attributes table)
+      const generalFilterKeys = ['brand', 'color', 'condition', 'material'];
+      const generalFilters = attributeFilters.filter(f => generalFilterKeys.includes(f.attributeKey));
+      const realAttributeFilters = attributeFilters.filter(f => !generalFilterKeys.includes(f.attributeKey));
+
+      console.log('🔍 Filter Debug:', {
+        attributeFilters,
+        generalFilters,
+        realAttributeFilters,
+        selectedCategories
+      });
+
+      // Apply hierarchical category filtering and/or real attribute filters
       // Using search_items_with_attributes for ALL category filtering ensures
       // hierarchical support (e.g., selecting "Fahrzeuge" finds items in "Autos" subcategory)
-      if (selectedCategories.length > 0) {
+      if (selectedCategories.length > 0 || realAttributeFilters.length > 0) {
         const categoryId = selectedCategories.length === 1 ? selectedCategories[0] : null;
 
         const { data: filteredItemIds, error: filterError } = await supabase
           .rpc('search_items_with_attributes', {
             p_category_id: categoryId,
-            p_filters: attributeFilters  // Can be empty array for category-only filtering
+            p_filters: realAttributeFilters  // Only send real attribute filters with UUIDs
           });
 
         if (filterError) {
@@ -483,8 +504,9 @@ const MainContent = () => {
         } else if (filteredItemIds && filteredItemIds.length > 0) {
           const itemIds = filteredItemIds.map((row: any) => row.item_id);
           query = query.in('id', itemIds);
-        } else {
-          // No items match filters
+        } else if (filteredItemIds && filteredItemIds.length === 0 && generalFilters.length === 0) {
+          // No items match filters AND no general filters to apply
+          // Only return empty if there are no general filters that might still match
           setItems([]);
           setFilteredItems([]);
           setHasMore(false);
@@ -492,7 +514,24 @@ const MainContent = () => {
           setLoadingMore(false);
           return;
         }
+        // If filteredItemIds is empty but we have general filters, continue to apply general filters
+        // This handles the case where category/attribute RPC returns nothing but general filters might match
       }
+
+      // Apply general filters directly to query
+      generalFilters.forEach(filter => {
+        const key = filter.attributeKey;
+        const value = filter.value;
+
+        if (key === 'color') {
+          // colors is an array field, use overlaps operator for array matching
+          // overlaps checks if arrays have any elements in common
+          query = query.overlaps('colors', [value]);
+        } else if (key === 'brand' || key === 'condition' || key === 'material') {
+          // Direct column filters
+          query = query.eq(key, value);
+        }
+      });
 
       query = query
         .gte('price', priceRange[0])
@@ -591,6 +630,14 @@ const MainContent = () => {
       } else {
         setItems(newItems);
         setFilteredItems(newItems);
+
+        // Update allItemsForCounting only when no filters are active
+        // This ensures category counts always show total items per category
+        if (!activeSearchQuery && selectedCategories.length === 0 &&
+            !showMyItems && !showFavorites && !filterBySeller &&
+            attributeFilters.length === 0 && priceRange[0] === 0 && priceRange[1] === 10000) {
+          setAllItemsForCounting(newItems);
+        }
       }
 
       setHasMore(hasMoreItems);
@@ -627,6 +674,12 @@ const MainContent = () => {
   useEffect(() => {
     if (!urlParamsLoaded || !initialLoadComplete) return;
 
+    // Skip first execution after initial load to prevent double loading
+    if (filterChangeSkipFirst.current) {
+      filterChangeSkipFirst.current = false;
+      return;
+    }
+
     // Mark that filters have changed
     setFilterChangeTime(Date.now());
 
@@ -642,7 +695,7 @@ const MainContent = () => {
   }, [activeSearchQuery, selectedCategories, priceRange, sortBy, statusFilter, showMyItems, showFavorites, filterBySeller, attributeFilters]); // Removed 'user' to prevent double loading
 
   // Get all subcategory IDs for a given category (recursive)
-  const getSubcategoryIds = (categoryId: string): string[] => {
+  const getSubcategoryIds = useCallback((categoryId: string): string[] => {
     const subcategories = categories.filter(c => c.parent_id === categoryId);
     const allIds = [categoryId];
 
@@ -651,17 +704,29 @@ const MainContent = () => {
     });
 
     return allIds;
-  };
+  }, [categories]);
 
-  // Count items per category based on current view (all/my/favorites)
+  // Count items per category from ALL items (not filtered)
   // Includes items from subcategories
-  const getCategoryCount = (categoryId: string) => {
-    const categoryIds = getSubcategoryIds(categoryId);
-    return filteredItems.filter(item => categoryIds.includes(item.category_id)).length;
-  };
+  const getCategoryCount = useCallback((categoryId: string) => {
+    // Helper function to get all subcategory IDs recursively
+    const getAllSubcategoryIds = (catId: string): string[] => {
+      const subcategories = categories.filter(c => c.parent_id === catId);
+      const allIds = [catId];
+      subcategories.forEach(sub => {
+        allIds.push(...getAllSubcategoryIds(sub.id));
+      });
+      return [...new Set(allIds)];
+    };
+
+    const subcategoryIds = getAllSubcategoryIds(categoryId);
+    return allItemsForCounting.filter(item =>
+      item.category_id && subcategoryIds.includes(item.category_id)
+    ).length;
+  }, [categories, allItemsForCounting]);
 
   // Get icon for category
-  const getCategoryIcon = (categoryId: string) => {
+  const getCategoryIcon = useCallback((categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     if (!category) return <Globe size={16} />;
 
@@ -682,9 +747,62 @@ const MainContent = () => {
       'digitale-produkte': <Cloud size={16} />,
     };
     return iconMap[slug] || <Globe size={16} />;
-  };
+  }, [categories]);
 
-  const updateURL = (params: Record<string, string | null>) => {
+  // Handlers for AdvancedFilterSidebar
+  const handleFilterClose = useCallback(() => {
+    setFilterOpen(false);
+  }, []);
+
+  const handleFilterChange = useCallback((filters: SelectedFilters) => {
+    setSelectedFilters(filters);
+
+    // Update priceRange if present
+    if (filters.priceRange) {
+      setPriceRange(filters.priceRange);
+    }
+
+    // Update URL with all filter parameters
+    const urlParams: Record<string, string | null> = {};
+    if (filters.priceRange) {
+      urlParams.minPrice = filters.priceRange[0] > 0 ? filters.priceRange[0].toString() : null;
+      urlParams.maxPrice = filters.priceRange[1] < 10000 ? filters.priceRange[1].toString() : null;
+    }
+
+    // Serialize other filters to URL
+    const filtersToSerialize = { ...filters };
+    delete filtersToSerialize.priceRange;
+    if (Object.keys(filtersToSerialize).length > 0) {
+      urlParams.filters = JSON.stringify(filtersToSerialize);
+    } else {
+      urlParams.filters = null;
+    }
+
+    updateURL(urlParams);
+
+    // Convert SelectedFilters to old FilterValue[] format for attributeFilters
+    const newAttributeFilters: FilterValue[] = [];
+    Object.entries(filters).forEach(([key, values]) => {
+      if (key !== 'priceRange' && Array.isArray(values)) {
+        values.forEach((value) => {
+          newAttributeFilters.push({
+            attributeId: key,
+            attributeKey: key,
+            value: value,
+            type: 'text'
+          });
+        });
+      }
+    });
+    setAttributeFilters(newAttributeFilters);
+  }, []);
+
+  const filterCategoryId = useMemo(
+    () => selectedCategories.length === 1 ? selectedCategories[0] : undefined,
+    [selectedCategories]
+  );
+
+  const updateURL = (params: Record<string, string | null>, updateFilters: boolean = false) => {
     const newSearchParams = new URLSearchParams(location.search);
 
     Object.entries(params).forEach(([key, value]) => {
@@ -694,6 +812,19 @@ const MainContent = () => {
         newSearchParams.set(key, value);
       }
     });
+
+    // Update filters parameter if requested
+    if (updateFilters && Object.keys(selectedFilters).length > 0) {
+      const filtersToSerialize = { ...selectedFilters };
+      delete filtersToSerialize.priceRange;
+      if (Object.keys(filtersToSerialize).length > 0) {
+        newSearchParams.set('filters', JSON.stringify(filtersToSerialize));
+      } else {
+        newSearchParams.delete('filters');
+      }
+    } else if (updateFilters) {
+      newSearchParams.delete('filters');
+    }
 
     const newSearch = newSearchParams.toString();
     navigate(newSearch ? `/?${newSearch}` : '/', { replace: true });
@@ -705,7 +836,13 @@ const MainContent = () => {
       : [...selectedCategories, category];
 
     setSelectedCategories(newCategories);
-    updateURL({ categories: newCategories.length > 0 ? newCategories.join(',') : null });
+
+    // Convert UUIDs to slugs for URL
+    const categorySlugs = newCategories
+      .map(id => getCategoryById(id)?.slug || id)
+      .filter(Boolean);
+
+    updateURL({ categories: categorySlugs.length > 0 ? categorySlugs.join(',') : null });
   };
 
   const clearFilters = () => {
@@ -741,7 +878,27 @@ const MainContent = () => {
     if (sortBy !== 'newest') params.set('sort', sortBy);
     if (priceRange[0] > 0) params.set('minPrice', priceRange[0].toString());
     if (priceRange[1] < 10000) params.set('maxPrice', priceRange[1].toString());
-    if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
+
+    // Convert UUIDs to slugs for shareable URL
+    if (selectedCategories.length > 0) {
+      const categorySlugs = selectedCategories
+        .map(id => getCategoryById(id)?.slug || id)
+        .filter(Boolean);
+      if (categorySlugs.length > 0) {
+        params.set('categories', categorySlugs.join(','));
+      }
+    }
+
+    // Serialize attribute filters to URL
+    if (Object.keys(selectedFilters).length > 0) {
+      const filtersToSerialize = { ...selectedFilters };
+      // Remove priceRange as it's already in minPrice/maxPrice
+      delete filtersToSerialize.priceRange;
+      if (Object.keys(filtersToSerialize).length > 0) {
+        params.set('filters', JSON.stringify(filtersToSerialize));
+      }
+    }
+
     if (showMyItems) params.set('view', 'myitems');
     if (showFavorites) params.set('view', 'favorites');
     if (filterBySeller) params.set('seller', filterBySeller);
@@ -898,9 +1055,61 @@ const MainContent = () => {
       const sort = (params.get('sort') as any) || 'newest';
       const minPrice = parseInt(params.get('minPrice') || '0');
       const maxPrice = parseInt(params.get('maxPrice') || '10000');
-      const categories = params.get('categories') ? params.get('categories')!.split(',') : [];
+      const categoriesParam = params.get('categories') ? params.get('categories')!.split(',') : [];
       const view = params.get('view');
       const seller = params.get('seller');
+      const filtersParam = params.get('filters');
+
+      // Convert slugs to UUIDs (support both for backward compatibility)
+      let hasUUIDs = false;
+      const categoryIds = categoriesParam.map(item => {
+        // Check if it's a UUID (contains dashes in UUID format)
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item);
+
+        if (isUUID) {
+          hasUUIDs = true;
+          // Already a UUID, use as-is
+          return item;
+        } else {
+          // It's a slug, convert to UUID
+          const category = getCategoryBySlug(item);
+          return category?.id || item; // Fallback to original if not found
+        }
+      }).filter(Boolean);
+
+      // If UUIDs were found in URL, automatically correct the URL to use slugs
+      // But only if categories are loaded
+      if (hasUUIDs && categoryIds.length > 0 && !categoriesLoading && categories.length > 0) {
+        const categorySlugs = categoryIds
+          .map(id => getCategoryById(id)?.slug)
+          .filter(Boolean);
+
+        // Only update if we found valid slugs
+        if (categorySlugs.length > 0) {
+          const newParams = new URLSearchParams(params);
+          newParams.set('categories', categorySlugs.join(','));
+          const newSearch = newParams.toString();
+          navigate(`/?${newSearch}`, { replace: true });
+        }
+      }
+
+      // Deserialize attribute filters from URL
+      let deserializedFilters: SelectedFilters = {};
+      if (filtersParam) {
+        try {
+          const parsed = JSON.parse(filtersParam);
+          if (typeof parsed === 'object' && parsed !== null) {
+            deserializedFilters = parsed;
+          }
+        } catch (e) {
+          console.error('Error parsing filters from URL:', e);
+        }
+      }
+
+      // Add priceRange if different from default
+      if (minPrice !== 0 || maxPrice !== 10000) {
+        deserializedFilters.priceRange = [minPrice, maxPrice];
+      }
 
       const newShowMyItems = view === 'myitems';
       const newShowFavorites = view === 'favorites';
@@ -909,7 +1118,8 @@ const MainContent = () => {
       setActiveSearchQuery(search);
       setSortBy(sort);
       setPriceRange([minPrice, maxPrice]);
-      setSelectedCategories(categories);
+      setSelectedCategories(categoryIds);
+      setSelectedFilters(deserializedFilters);
       setShowMyItems(newShowMyItems);
       setShowFavorites(newShowFavorites);
       setFilterBySeller(seller);
@@ -918,7 +1128,7 @@ const MainContent = () => {
         setUrlParamsLoaded(true);
       }
     }
-  }, [location.search, location.pathname]);
+  }, [location.search, location.pathname, getCategoryBySlug, getCategoryById, navigate, categoriesLoading, categories]);
 
   if (location.pathname.startsWith('/item/')) {
     return null;
@@ -1080,7 +1290,9 @@ const MainContent = () => {
                                   updateURL({ categories: null });
                                 } else {
                                   setSelectedCategories([value]);
-                                  updateURL({ categories: value });
+                                  // Convert UUID to slug for URL
+                                  const categorySlug = getCategoryById(value)?.slug || value;
+                                  updateURL({ categories: categorySlug });
                                 }
                               }}
                               onClick={(e) => e.stopPropagation()}
@@ -1145,7 +1357,9 @@ const MainContent = () => {
                                 updateURL({ categories: null });
                               } else {
                                 setSelectedCategories([value]);
-                                updateURL({ categories: value });
+                                // Convert UUID to slug for URL
+                                const categorySlug = getCategoryById(value)?.slug || value;
+                                updateURL({ categories: categorySlug });
                               }
                             }}
                             onClick={(e) => e.stopPropagation()}
@@ -1854,105 +2068,13 @@ const MainContent = () => {
         )}
           </Container>
 
-          <Drawer
-            anchor="right"
+          <AdvancedFilterSidebar
             open={filterOpen}
-            onClose={() => setFilterOpen(false)}
-            variant="temporary"
-            ModalProps={{
-              keepMounted: true,
-            }}
-            PaperProps={{
-              sx: { width: isMobile ? '100%' : 360 }
-            }}
-          >
-            <Box sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" fontWeight={600} fontSize="1.1rem">
-                  Filter
-                </Typography>
-                <IconButton onClick={() => setFilterOpen(false)} size="small">
-                  <X size={20} />
-                </IconButton>
-              </Box>
-
-              {/* Preisspanne */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mb: 1.5, fontSize: '0.875rem' }}>
-                  Preisspanne
-                </Typography>
-                <Slider
-                  value={priceRange}
-                  onChange={(_, newValue) => setPriceRange(newValue as number[])}
-                  onChangeCommitted={(_, newValue) => {
-                    const range = newValue as number[];
-                    updateURL({
-                      minPrice: range[0] > 0 ? range[0].toString() : null,
-                      maxPrice: range[1] < 10000 ? range[1].toString() : null
-                    });
-                  }}
-                  valueLabelDisplay="auto"
-                  min={0}
-                  max={10000}
-                  step={50}
-                  valueLabelFormat={(value) => `${value} €`}
-                  size="small"
-                />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    {priceRange[0]} €
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {priceRange[1]} €
-                  </Typography>
-                </Box>
-              </Box>
-
-              {/* Attribute Filters - Show when category is selected */}
-              {(() => {
-                const selectedCategory = selectedCategories.length === 1
-                  ? categories.find(c => c.id === selectedCategories[0])
-                  : null;
-
-                return selectedCategory ? (
-                  <Box sx={{ mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                      {getCategoryIcon(selectedCategories[0])}
-                      <Typography variant="subtitle2" fontWeight={600} fontSize="0.875rem">
-                        {getCategoryName(selectedCategory, 'de')}
-                      </Typography>
-                    </Box>
-                    <FilterSidebar
-                      categoryId={selectedCategories[0]}
-                      language="de"
-                      onFilterChange={setAttributeFilters}
-                    />
-                  </Box>
-                ) : null;
-              })()}
-
-              <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={clearFilters}
-                  size="small"
-                  sx={{ py: 1 }}
-                >
-                  Zurücksetzen
-                </Button>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={() => setFilterOpen(false)}
-                  size="small"
-                  sx={{ py: 1 }}
-                >
-                  Anwenden
-                </Button>
-              </Box>
-            </Box>
-          </Drawer>
+            onClose={handleFilterClose}
+            categoryId={filterCategoryId}
+            onFilterChange={handleFilterChange}
+            selectedFilters={selectedFilters}
+          />
         </>
       )}
       </Box>
@@ -2101,6 +2223,8 @@ function App() {
                       <Route path="/tokens/buy" element={<CreditPurchasePage />} />
                       <Route path="/tokens/success" element={<TokenSuccessPage />} />
                       <Route path="/admin" element={<AdminPage />} />
+                      <Route path="/test/filter-counts" element={<FilterCountsTest />} />
+                      <Route path="/test/filter-sidebar" element={<AdvancedFilterSidebarTest />} />
                       <Route path="/auth/callback" element={<OAuthCallbackPage />} />
                       <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
                       <Route path="*" element={<MainContent />} />

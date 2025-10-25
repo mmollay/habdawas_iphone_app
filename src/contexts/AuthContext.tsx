@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useCapacitorPush } from '../hooks/useCapacitorPush';
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -76,9 +76,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       throw new Error('Ein unerwarteter Fehler ist aufgetreten');
     }
-  };
+  }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -117,9 +117,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       throw new Error('Ein unerwarteter Fehler ist aufgetreten');
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       // Clean up push notifications before signing out
       await cleanupPushNotifications();
@@ -147,9 +147,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Also manually clear localStorage to be 100% sure
     localStorage.removeItem('sb-hsbjflixgavjqxvnkivi-auth-token');
-  };
+  }, [cleanupPushNotifications]);
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = useCallback(async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
@@ -172,9 +172,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       throw new Error('Ein unerwarteter Fehler ist aufgetreten');
     }
-  };
+  }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     try {
       setOauthLoading(true);
       const isNative = Capacitor.isNativePlatform();
@@ -208,9 +208,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setOauthLoading(false);
       throw err;
     }
-  };
+  }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     session,
     loading,
@@ -220,7 +220,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signOut,
     resetPassword,
     signInWithGoogle,
-  };
+  }), [user, session, loading, oauthLoading, signIn, signUp, signOut, resetPassword, signInWithGoogle]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -41,6 +41,15 @@ export interface Donation {
   updated_at: string;
 }
 
+// Donation with populated user data
+export interface DonationWithUser extends Donation {
+  profiles?: {
+    id: string;
+    full_name: string | null;
+    email: string;
+  };
+}
+
 export type CommunityPotTransactionType = 'donation' | 'usage' | 'adjustment';
 
 export interface CommunityPotTransaction {
@@ -53,6 +62,19 @@ export interface CommunityPotTransaction {
   item_id: string | null;
   donation_id: string | null;
   created_at: string;
+}
+
+// CommunityPotTransaction with populated user and item data
+export interface CommunityPotTransactionWithRelations extends CommunityPotTransaction {
+  profiles?: {
+    id: string;
+    full_name: string | null;
+    email: string;
+  } | null;
+  items?: {
+    id: string;
+    title: string;
+  } | null;
 }
 
 // Erweiterte Profile mit Credit-Feldern

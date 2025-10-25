@@ -146,7 +146,7 @@ export const useCreditCheck = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, getCached]);
 
   const consumeCredit = useCallback(async (source: 'community_pot' | 'personal_credits', itemId?: string): Promise<boolean> => {
     if (!user) return false;

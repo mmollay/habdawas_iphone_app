@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode, useMemo, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -69,7 +69,7 @@ export const HandPreferenceProvider = ({ children }: { children: ReactNode }) =>
     loadHandPreference();
   }, [user]);
 
-  const setHandPreference = async (preference: HandPreference) => {
+  const setHandPreference = useCallback(async (preference: HandPreference) => {
     if (!user) return;
 
     try {
@@ -85,13 +85,13 @@ export const HandPreferenceProvider = ({ children }: { children: ReactNode }) =>
       console.error('Error updating hand preference:', error);
       throw error;
     }
-  };
+  }, [user]);
 
-  const value = {
+  const value = useMemo(() => ({
     handPreference,
     setHandPreference,
     loading,
-  };
+  }), [handPreference, setHandPreference, loading]);
 
   return <HandPreferenceContext.Provider value={value}>{children}</HandPreferenceContext.Provider>;
 };

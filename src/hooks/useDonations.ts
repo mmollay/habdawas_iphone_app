@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Donation } from '../types/credit-system';
+import { Donation, DonationWithUser } from '../types/credit-system';
 
 interface UseDonationsOptions {
   userId?: string;
   limit?: number;
   autoFetch?: boolean;
+  includeUser?: boolean; // Whether to include user profile data
 }
 
 export const useDonations = (options: UseDonationsOptions = {}) => {
-  const { userId, limit = 50, autoFetch = true } = options;
-  const [donations, setDonations] = useState<Donation[]>([]);
+  const { userId, limit = 50, autoFetch = true, includeUser = false } = options;
+  const [donations, setDonations] = useState<DonationWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +20,7 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
   const lastFetchParamsRef = useRef<string>('');
 
   const fetchDonations = async () => {
-    const fetchParams = JSON.stringify({ userId, limit });
+    const fetchParams = JSON.stringify({ userId, limit, includeUser });
 
     // Skip if already loading with same params
     if (loadingRef.current && lastFetchParamsRef.current === fetchParams) {
@@ -33,9 +34,14 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
       setLoading(true);
       setError(null);
 
+      // Build select statement - include user profile if requested
+      const selectStatement = includeUser
+        ? '*, profiles(id, full_name, email)'
+        : '*';
+
       let query = supabase
         .from('donations')
-        .select('*')
+        .select(selectStatement)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -62,7 +68,7 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
     if (autoFetch) {
       fetchDonations();
     }
-  }, [userId, limit, autoFetch]);
+  }, [userId, limit, autoFetch, includeUser]);
 
   const getTotalDonations = () => {
     return donations.reduce((sum, d) => sum + Number(d.amount), 0);

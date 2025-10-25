@@ -21,7 +21,7 @@ interface ItemGalleryProps {
   item: Item;
   onClick?: (item: Item) => void;
   isOwnItem?: boolean;
-  onItemUpdated?: () => void;
+  onItemUpdated?: (itemId?: string) => void;
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
@@ -154,7 +154,7 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated,
           </Box>
         )}
 
-        {isOwnItem && !isSelectionMode ? (
+        {isOwnItem && !isSelectionMode && (
           <IconButton
             sx={{
               position: 'absolute',
@@ -173,7 +173,8 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated,
           >
             <MoreVertical size={16} />
           </IconButton>
-        ) : !isOwnItem ? (
+        )}
+        {!isOwnItem && (
           <IconButton
             sx={{
               position: 'absolute',
@@ -193,7 +194,7 @@ const ItemGalleryComponent = ({ item, onClick, isOwnItem = false, onItemUpdated,
           >
             <Heart size={16} fill={favorite ? 'white' : 'none'} />
           </IconButton>
-        ) : null}
+        )}
 
         {isOwnItem && (
           <>

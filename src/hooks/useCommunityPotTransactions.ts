@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { CommunityPotTransaction } from '../types/credit-system';
+import { CommunityPotTransaction, CommunityPotTransactionWithRelations } from '../types/credit-system';
 
 interface UseTransactionsOptions {
   limit?: number;
   transactionType?: 'donation' | 'usage' | 'adjustment';
   autoFetch?: boolean;
+  includeUser?: boolean; // Whether to include user profile data
+  includeItem?: boolean; // Whether to include item data
 }
 
 export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}) => {
-  const { limit = 100, transactionType, autoFetch = true } = options;
-  const [transactions, setTransactions] = useState<CommunityPotTransaction[]>([]);
+  const { limit = 100, transactionType, autoFetch = true, includeUser = false, includeItem = false } = options;
+  const [transactions, setTransactions] = useState<CommunityPotTransactionWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +21,7 @@ export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}
   const lastFetchParamsRef = useRef<string>('');
 
   const fetchTransactions = async () => {
-    const fetchParams = JSON.stringify({ limit, transactionType });
+    const fetchParams = JSON.stringify({ limit, transactionType, includeUser, includeItem });
 
     // Skip if already loading with same params
     if (loadingRef.current && lastFetchParamsRef.current === fetchParams) {
@@ -33,9 +35,19 @@ export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}
       setLoading(true);
       setError(null);
 
+      // Build select statement - include relations if requested
+      let selectParts = ['*'];
+      if (includeUser) {
+        selectParts.push('profiles(id, full_name, email)');
+      }
+      if (includeItem) {
+        selectParts.push('items(id, title)');
+      }
+      const selectStatement = selectParts.join(', ');
+
       let query = supabase
         .from('community_pot_transactions')
-        .select('*')
+        .select(selectStatement)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -62,7 +74,7 @@ export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}
     if (autoFetch) {
       fetchTransactions();
     }
-  }, [limit, transactionType, autoFetch]);
+  }, [limit, transactionType, autoFetch, includeUser, includeItem]);
 
   const getTotalDonations = () => {
     return transactions

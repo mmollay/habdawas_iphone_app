@@ -39,6 +39,9 @@ import { useHandPreference } from '../../contexts/HandPreferenceContext';
 import { useItemView } from '../../hooks/useItemView';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useCategory } from '../../hooks/useCategories';
+import { getCategoryName } from '../../utils/categories';
+import { useItemAttributes, getAttributeValue, getAttributeLabel } from '../../hooks/useItemAttributes';
 import { InlineTextField } from './InlineEdit/InlineTextField';
 import { InlineSelect } from './InlineEdit/InlineSelect';
 import { InlineChipList } from './InlineEdit/InlineChipList';
@@ -98,6 +101,12 @@ export const ItemDetailPage = () => {
     enabled: isEditMode && hasUnsavedChanges,
     debounceMs: 1500,
   });
+
+  // Load category hierarchy
+  const { category: itemCategory, path: categoryPath } = useCategory(item?.category_id);
+
+  // Load item attributes
+  const { attributes: itemAttributes, loading: attributesLoading } = useItemAttributes(item?.id);
 
   const allItems = (location.state as { allItems?: Item[] })?.allItems || [];
   const currentIndex = allItems.findIndex(i => i.id === id);
@@ -1853,32 +1862,6 @@ export const ItemDetailPage = () => {
                 )}
               </Box>
 
-              <Box sx={{ display: 'flex', gap: 1, mb: isMobile ? 1.5 : 3, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', width: '100%' }}>
-                  <Box sx={{ minWidth: 200, flex: 1 }}>
-                    <InlineSelect
-                      value={draftData.condition || item.condition || ''}
-                      isEditing={isEditMode}
-                      onChange={(value) => handleUpdateDraft('condition', value)}
-                      onSave={handleInlineEditSave}
-                      options={conditionOptions}
-                      placeholder="Zustand wählen"
-                      label="Zustand"
-                    />
-                  </Box>
-                  <Box sx={{ minWidth: 200, flex: 1 }}>
-                    <InlineTextField
-                      value={draftData.brand || item.brand || ''}
-                      isEditing={isEditMode}
-                      onChange={(value) => handleUpdateDraft('brand', value)}
-                      onSave={handleInlineEditSave}
-                      placeholder="Marke"
-                      label="Marke"
-                    />
-                  </Box>
-                </Box>
-              </Box>
-
               <Divider sx={{ my: isMobile ? 2 : 3 }} />
 
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
@@ -1895,6 +1878,7 @@ export const ItemDetailPage = () => {
               />
 
               {(
+                categoryPath.length > 0 || itemAttributes.length > 0 ||
                 item.category || item.subcategory ||
                 item.size || item.weight || item.dimensions_length ||
                 item.material || item.colors?.length || item.style ||
@@ -1909,7 +1893,7 @@ export const ItemDetailPage = () => {
                   </Typography>
 
                   <Box sx={{ display: 'grid', gap: 2 }}>
-                    {(item.category || item.subcategory || isEditMode) && (
+                    {(categoryPath.length > 0 || item.category || item.subcategory || isEditMode) && (
                       <Box
                         sx={{
                           display: 'flex',
@@ -1953,10 +1937,90 @@ export const ItemDetailPage = () => {
                                 Kategorie
                               </Typography>
                               <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
-                                {[item.category, item.subcategory].filter(Boolean).join(' › ')}
+                                {categoryPath.length > 0
+                                  ? categoryPath.map(cat => getCategoryName(cat, 'de')).join(' › ')
+                                  : [item.category, item.subcategory].filter(Boolean).join(' › ')}
                               </Typography>
                             </>
                           )}
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Dynamic Attributes from category_attributes */}
+                    {itemAttributes.length > 0 && itemAttributes.map((attr) => {
+                      const label = getAttributeLabel(attr, 'de');
+                      const value = getAttributeValue(attr);
+
+                      if (!value && !isEditMode) return null;
+
+                      return (
+                        <Box
+                          key={attr.id}
+                          sx={{
+                            display: 'flex',
+                            gap: 1.5,
+                            p: 2,
+                            bgcolor: isEditMode ? '#e8f5e9' : '#f8f9fa',
+                            borderRadius: 2,
+                            border: '1px solid',
+                            borderColor: isEditMode ? '#4caf50' : 'grey.200',
+                          }}
+                        >
+                          {!isEditMode && (
+                            <Box sx={{ mt: 0.25, color: 'info.main' }}>
+                              <Tag size={20} />
+                            </Box>
+                          )}
+                          <Box sx={{ flex: 1 }}>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.8,
+                                display: 'block',
+                                mb: 0.5
+                              }}
+                            >
+                              {label}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                              {Array.isArray(value) ? value.join(', ') : String(value)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      );
+                    })}
+
+                    {/* Zustand (Condition) Box */}
+                    {item.condition && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f8f9fa', borderRadius: 2, border: '1px solid', borderColor: 'grey.200' }}>
+                        <Box sx={{ mt: 0.25, color: 'info.main' }}><Tag size={20} /></Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Zustand
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                            {getConditionLabel(item.condition)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Marke (Brand) Box */}
+                    {item.brand && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f8f9fa', borderRadius: 2, border: '1px solid', borderColor: 'grey.200' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}><Tag size={20} /></Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Marke
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500, textTransform: 'uppercase' }}>
+                            {item.brand}
+                          </Typography>
                         </Box>
                       </Box>
                     )}

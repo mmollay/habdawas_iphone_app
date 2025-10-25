@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -59,7 +59,7 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const toggleFavorite = async (itemId: string) => {
+  const toggleFavorite = useCallback(async (itemId: string) => {
     if (!user) {
       alert('Bitte melde dich an, um Artikel zu merken.');
       return false;
@@ -102,12 +102,19 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
       }
       return false;
     }
-  };
+  }, [user, favorites]);
 
-  const isFavorite = (itemId: string) => favorites.has(itemId);
+  const isFavorite = useCallback((itemId: string) => favorites.has(itemId), [favorites]);
+
+  const value = useMemo(() => ({
+    favorites,
+    loading,
+    toggleFavorite,
+    isFavorite
+  }), [favorites, loading, toggleFavorite, isFavorite]);
 
   return (
-    <FavoritesContext.Provider value={{ favorites, loading, toggleFavorite, isFavorite }}>
+    <FavoritesContext.Provider value={value}>
       {children}
     </FavoritesContext.Provider>
   );

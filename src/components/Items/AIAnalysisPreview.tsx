@@ -12,7 +12,8 @@ import {
   IconButton,
   Collapse,
 } from '@mui/material';
-import { ChevronDown, ChevronUp, CheckCircle, XCircle, Star } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, Star, RefreshCw } from 'lucide-react';
+import { AttributeStatusTable } from './AttributeStatusTable';
 
 interface AnalysisResult {
   title: string;
@@ -26,6 +27,26 @@ interface AnalysisResult {
   accessories?: string[];
   tags?: string[];
   colors?: string[];
+  // Physical attributes
+  size?: string;
+  weight?: string;
+  dimensions?: {
+    length?: string;
+    width?: string;
+    height?: string;
+  };
+  material?: string;
+  style?: string;
+  serialNumber?: string;
+  // Vehicle-specific attributes
+  vehicle_brand?: string;
+  vehicle_year?: number;
+  vehicle_mileage?: number;
+  vehicle_fuel_type?: string;
+  vehicle_color?: string;
+  vehicle_power_kw?: number;
+  vehicle_first_registration?: string;
+  vehicle_tuv_until?: string;
   [key: string]: any;
 }
 
@@ -47,6 +68,7 @@ interface AIAnalysisPreviewProps {
   };
   onConfirm: () => void;
   onCancel: () => void;
+  onRegenerate: () => void;
 }
 
 export const AIAnalysisPreview = ({
@@ -56,6 +78,7 @@ export const AIAnalysisPreview = ({
   categoryInfo,
   onConfirm,
   onCancel,
+  onRegenerate,
 }: AIAnalysisPreviewProps) => {
   const [expandedAnalysis, setExpandedAnalysis] = useState<number | null>(null);
   const [showMerged, setShowMerged] = useState(true);
@@ -70,6 +93,9 @@ export const AIAnalysisPreview = ({
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         {analyses.length} Bilder analysiert - Überprüfe die Ergebnisse vor dem Speichern
       </Typography>
+
+      {/* Attribute Status Table - Shows all attributes with fill status */}
+      <AttributeStatusTable analysis={mergedAnalysis} categoryInfo={categoryInfo} />
 
       {/* Merged Result (Final) */}
       <Paper sx={{ p: 2, mb: 3, bgcolor: 'success.50', border: '2px solid', borderColor: 'success.main' }}>
@@ -138,8 +164,9 @@ export const AIAnalysisPreview = ({
 
             {mergedAnalysis.colors && mergedAnalysis.colors.length > 0 && (
               <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Farben</Typography>
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>🎨 Farben</Typography>
+                <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
                   {mergedAnalysis.colors.map((c, i) => (
                     <Chip key={i} label={c} size="small" />
                   ))}
@@ -147,8 +174,147 @@ export const AIAnalysisPreview = ({
               </Grid>
             )}
 
+            {/* Fahrzeug-spezifische Attribute */}
+            {(mergedAnalysis.vehicle_brand || mergedAnalysis.vehicle_year || mergedAnalysis.vehicle_mileage ||
+              mergedAnalysis.vehicle_fuel_type || mergedAnalysis.vehicle_power_kw || mergedAnalysis.vehicle_first_registration ||
+              mergedAnalysis.vehicle_tuv_until || mergedAnalysis.vehicle_color) && (
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>🚗 Fahrzeug-Attribute</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                  {mergedAnalysis.vehicle_brand && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Marke:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.vehicle_brand}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.vehicle_year && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Baujahr:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.vehicle_year}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.vehicle_mileage && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Kilometerstand:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.vehicle_mileage.toLocaleString()} km</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.vehicle_fuel_type && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Kraftstoff:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.vehicle_fuel_type}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.vehicle_power_kw && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Leistung:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.vehicle_power_kw} kW ({Math.round(mergedAnalysis.vehicle_power_kw * 1.36)} PS)</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.vehicle_first_registration && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Erstzulassung:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.vehicle_first_registration}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.vehicle_tuv_until && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        TÜV bis:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.vehicle_tuv_until}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.vehicle_color && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Fahrzeugfarbe:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.vehicle_color}</Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
+            )}
+
+            {/* Physische Attribute */}
+            {(mergedAnalysis.size || mergedAnalysis.weight || mergedAnalysis.dimensions || mergedAnalysis.material || mergedAnalysis.style || mergedAnalysis.serialNumber) && (
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>📐 Physische Eigenschaften</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                  {mergedAnalysis.size && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Größe:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.size}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.weight && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Gewicht:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.weight}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.dimensions && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Abmessungen (L × B × H):
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>
+                        {[mergedAnalysis.dimensions.length, mergedAnalysis.dimensions.width, mergedAnalysis.dimensions.height]
+                          .filter(Boolean)
+                          .join(' × ')}
+                      </Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.material && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Material:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.material}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.style && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Stil:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.style}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.serialNumber && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Seriennummer:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500} sx={{ fontFamily: 'monospace' }}>{mergedAnalysis.serialNumber}</Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
+            )}
+
             {mergedAnalysis.tags && mergedAnalysis.tags.length > 0 && (
               <Grid item xs={12}>
+                <Divider sx={{ my: 1 }} />
                 <Typography variant="subtitle2" color="text.secondary">Tags ({mergedAnalysis.tags.length})</Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', maxHeight: 100, overflow: 'auto' }}>
                   {mergedAnalysis.tags.slice(0, 15).map((t, i) => (
@@ -256,24 +422,43 @@ export const AIAnalysisPreview = ({
       </Grid>
 
       {/* Action Buttons */}
-      <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+      <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <Button
           variant="outlined"
           size="large"
-          startIcon={<XCircle />}
-          onClick={onCancel}
+          startIcon={<RefreshCw />}
+          onClick={onRegenerate}
+          color="info"
+          sx={{
+            borderWidth: 2,
+            '&:hover': {
+              borderWidth: 2,
+              bgcolor: 'rgba(25, 118, 210, 0.04)',
+            }
+          }}
         >
-          Abbrechen
+          Neu generieren
         </Button>
-        <Button
-          variant="contained"
-          size="large"
-          startIcon={<CheckCircle />}
-          onClick={onConfirm}
-          color="success"
-        >
-          Bestätigen & Speichern
-        </Button>
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            size="large"
+            startIcon={<XCircle />}
+            onClick={onCancel}
+          >
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<CheckCircle />}
+            onClick={onConfirm}
+            color="success"
+          >
+            Bestätigen & Speichern
+          </Button>
+        </Box>
       </Box>
     </Box>
   );

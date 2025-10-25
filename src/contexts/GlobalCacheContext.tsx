@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useRef, ReactNode, useCallback, useMemo } from 'react';
 
 interface CacheEntry<T> {
   data: T;
@@ -6,15 +6,19 @@ interface CacheEntry<T> {
   promise?: Promise<T>;
 }
 
+type InvalidationListener = (key: string) => void;
+
 interface GlobalCacheContextType {
   getCached: <T>(
     key: string,
     fetcher: () => Promise<T>,
     ttl?: number
   ) => Promise<T>;
+  setCached: <T>(key: string, data: T) => void;
   invalidate: (key: string) => void;
   invalidatePattern: (pattern: string) => void;
   clearAll: () => void;
+  addInvalidationListener: (listener: InvalidationListener) => () => void;
 }
 
 const GlobalCacheContext = createContext<GlobalCacheContextType | undefined>(undefined);
@@ -30,6 +34,14 @@ export const useGlobalCache = () => {
 export const GlobalCacheProvider = ({ children }: { children: ReactNode }) => {
   const cacheRef = useRef<Map<string, CacheEntry<any>>>(new Map());
   const pendingRef = useRef<Map<string, Promise<any>>>(new Map());
+  const listenersRef = useRef<Set<InvalidationListener>>(new Set());
+
+  const setCached = useCallback(<T,>(key: string, data: T) => {
+    cacheRef.current.set(key, {
+      data,
+      timestamp: Date.now(),
+    });
+  }, []);
 
   const getCached = useCallback(async <T,>(
     key: string,
@@ -72,6 +84,9 @@ export const GlobalCacheProvider = ({ children }: { children: ReactNode }) => {
   const invalidate = useCallback((key: string) => {
     cacheRef.current.delete(key);
     pendingRef.current.delete(key);
+
+    // Notify all listeners
+    listenersRef.current.forEach(listener => listener(key));
   }, []);
 
   const invalidatePattern = useCallback((pattern: string) => {
@@ -87,6 +102,9 @@ export const GlobalCacheProvider = ({ children }: { children: ReactNode }) => {
     keysToDelete.forEach((key) => {
       cacheRef.current.delete(key);
       pendingRef.current.delete(key);
+
+      // Notify all listeners
+      listenersRef.current.forEach(listener => listener(key));
     });
   }, []);
 
@@ -95,12 +113,23 @@ export const GlobalCacheProvider = ({ children }: { children: ReactNode }) => {
     pendingRef.current.clear();
   }, []);
 
-  const value = {
+  const addInvalidationListener = useCallback((listener: InvalidationListener) => {
+    listenersRef.current.add(listener);
+
+    // Return cleanup function to remove listener
+    return () => {
+      listenersRef.current.delete(listener);
+    };
+  }, []);
+
+  const value = useMemo(() => ({
     getCached,
+    setCached,
     invalidate,
     invalidatePattern,
     clearAll,
-  };
+    addInvalidationListener,
+  }), [getCached, setCached, invalidate, invalidatePattern, clearAll, addInvalidationListener]);
 
   return (
     <GlobalCacheContext.Provider value={value}>
