@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { useGlobalCache } from '../contexts/GlobalCacheContext';
 import {
   Category,
   CategoryWithChildren,
@@ -40,33 +41,44 @@ interface UseCategoriesReturn {
 
 export const useCategories = (options: UseCategoriesOptions = {}): UseCategoriesReturn => {
   const { autoLoad = true, maxLevel, lang = DEFAULT_LANGUAGE } = options;
+  const { getCached } = useGlobalCache();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load categories from Supabase
+  // Load categories from Supabase with caching
   const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      let query = supabase
-        .from('categories')
-        .select('*')
-        .order('level', { ascending: true })
-        .order('sort_order', { ascending: true });
+      const cacheKey = `categories${maxLevel ? `:maxLevel${maxLevel}` : ''}`;
 
-      // Optional: filter by max level
-      if (maxLevel) {
-        query = query.lte('level', maxLevel);
-      }
+      const categoriesData = await getCached(
+        cacheKey,
+        async () => {
+          let query = supabase
+            .from('categories')
+            .select('*')
+            .order('level', { ascending: true })
+            .order('sort_order', { ascending: true });
 
-      const { data, error: fetchError } = await query;
+          // Optional: filter by max level
+          if (maxLevel) {
+            query = query.lte('level', maxLevel);
+          }
 
-      if (fetchError) throw fetchError;
+          const { data, error: fetchError } = await query;
 
-      setCategories(data || []);
+          if (fetchError) throw fetchError;
+
+          return data || [];
+        },
+        5 * 60 * 1000 // 5 minutes cache for categories
+      );
+
+      setCategories(categoriesData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load categories';
       setError(errorMessage);
@@ -74,7 +86,7 @@ export const useCategories = (options: UseCategoriesOptions = {}): UseCategories
     } finally {
       setLoading(false);
     }
-  }, [maxLevel]);
+  }, [maxLevel, getCached]);
 
   // Auto-load on mount
   useEffect(() => {
