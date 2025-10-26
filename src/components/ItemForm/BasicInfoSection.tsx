@@ -1,11 +1,14 @@
 import { Box, TextField, Typography, MenuItem, Autocomplete, Chip, FormControlLabel, Switch, FormControl, InputLabel, Select } from '@mui/material';
 import { conditionOptions } from '../../utils/translations';
+import { CategoryDropdown } from '../CategoryDropdown';
+import { CategorySelection } from '../../types/categories';
+import { CategorySuggestions } from '../CategorySuggestions';
 
 interface BasicInfoSectionProps {
   title: string;
   description: string;
   price: string;
-  category: string;
+  category?: CategorySelection;
   brand: string;
   condition: string;
   tags?: string[];
@@ -16,7 +19,7 @@ interface BasicInfoSectionProps {
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onPriceChange: (value: string) => void;
-  onCategoryChange: (value: string) => void;
+  onCategoryChange: (selection: CategorySelection) => void;
   onBrandChange: (value: string) => void;
   onConditionChange: (value: string) => void;
   onTagsChange?: (value: string[]) => void;
@@ -27,19 +30,6 @@ interface BasicInfoSectionProps {
   isMobile?: boolean;
   hideExtendedSettings?: boolean;
 }
-
-const categories = [
-  'Elektronik',
-  'Möbel',
-  'Kleidung',
-  'Bücher',
-  'Sport',
-  'Spielzeug',
-  'Haushalt',
-  'Garten',
-  'Auto & Motorrad',
-  'Sonstiges',
-];
 
 
 const commonTags = [
@@ -118,20 +108,20 @@ export const BasicInfoSection = ({
           helperText="in Euro (€)"
         />
 
-        <TextField
-          label="Kategorie"
+        {/* AI-basierte Kategorie-Vorschläge */}
+        <CategorySuggestions
+          title={title}
+          description={description}
+          currentCategory={category}
+          onSelect={onCategoryChange}
+        />
+
+        <CategoryDropdown
           value={category}
-          onChange={(e) => onCategoryChange(e.target.value)}
-          fullWidth
-          select
-        >
-          <MenuItem value="">Keine Kategorie</MenuItem>
-          {categories.map((cat) => (
-            <MenuItem key={cat} value={cat}>
-              {cat}
-            </MenuItem>
-          ))}
-        </TextField>
+          onChange={onCategoryChange}
+          required
+          showBreadcrumbs
+        />
 
         <TextField
           label="Marke"

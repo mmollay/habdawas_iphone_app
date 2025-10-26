@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Box, Button, IconButton, TextField, InputAdornment, useMediaQuery, useTheme, Badge, Avatar, Menu, MenuItem, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
-import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp, Calendar } from 'lucide-react';
+import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp, Calendar, FolderTree } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 import { useCreditsStats } from '../../hooks/useCreditsStats';
@@ -557,6 +557,12 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             </ListItemIcon>
             <ListItemText>Favoriten</ListItemText>
             <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>({favoritesCount})</Typography>
+          </MenuItem>
+          <MenuItem onClick={() => { handleMenuClose(); navigate('/categories'); }}>
+            <ListItemIcon>
+              <FolderTree size={20} />
+            </ListItemIcon>
+            <ListItemText>Kategorien</ListItemText>
           </MenuItem>
         </Box>
 

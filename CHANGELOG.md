@@ -4,6 +4,65 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.14] - 2025-01-26
+
+### Added
+- 🗂️ **Erweiterte Kategorien-Struktur: +38 neue Kategorien**
+  - Neue Level 2 Kategorien:
+    - Angeln & Fischen (unter Freizeit, Hobby & Sport)
+    - Jagen (unter Freizeit, Hobby & Sport)
+    - Reiten (unter Freizeit, Hobby & Sport)
+    - Drucker & Verbrauchsmaterial (unter Elektronik & Technik)
+    - Heizung & Klima (unter Haushalt & Möbel)
+    - Nähen & Handarbeit (unter Haushalt & Möbel)
+    - Trachten & Dirndl (unter Mode & Lifestyle)
+    - Hochzeitsmode (unter Mode & Lifestyle)
+    - E-Learning & Bildung (unter Digitale Produkte & Services)
+    - IT & Technik Services (unter Arbeit & Dienstleistungen)
+    - Soziale Berufe (unter Arbeit & Dienstleistungen)
+    - Barrierefreiheit & Senioren (unter Haushalt & Möbel)
+    - Party & Events (unter Marktplatz & Kleinanzeigen)
+  - Neue Level 3 Kategorien (25):
+    - Angelruten & Rollen, Köder & Zubehör, Angelbekleidung
+    - Jagdwaffen & Zubehör, Jagdbekleidung, Jagdoptik
+    - Sättel & Zaumzeug, Reitbekleidung, Pferdedecken
+    - Tintenpatronen, Tonerkartuschen, Fotopapier
+    - Heizlüfter, Klimaanlagen, Ventilatoren
+    - Nähmaschinen, Stoffe
+    - Dirndl, Lederhosen
+    - Brautkleider, Bräutigam Anzüge
+    - Gehhilfen, Rollstühle
+    - Party Dekoration, Kostüme & Verkleidung
+  - Datenbank-Migrationen: `add_missing_categories_v2`, `add_level3_subcategories`
+
+### Changed
+- 🔄 **Kategorien-Route von `/baum` zu `/categories` geändert**
+  - `src/App.tsx:2227`: Route-Pfad aktualisiert
+  - `src/components/Layout/Footer.tsx:45-46`: Footer-Link aktualisiert
+  - SEO-freundlichere URL-Struktur
+
+### Improved
+- 💾 **Optimierte State-Persistierung für Kategorien**
+  - `src/components/Common/CategoryTree.tsx:55-78`: Verbesserte localStorage-Logik
+  - Geöffnete Kategorien bleiben nach Seiten-Reload erhalten
+  - "Alle ausklappen/einklappen" Button überschreibt State nur bei explizitem Klick
+  - Bessere Handhabung des initialen Zustands
+
+- 🎯 **Neuer Kategorie-Schnellzugriff in der Hauptnavigation**
+  - `src/App.tsx:1233-1251`: FolderTree-Icon-Button neben Tabs hinzugefügt
+  - Direkter Zugriff auf `/categories` von der Startseite
+  - Visuell ansprechendes Design mit Hover-Effekten
+
+- 📱 **Erweiterte Kategorien im Header-Menü**
+  - `src/components/Layout/Header.tsx:4`: FolderTree-Icon importiert
+  - `src/components/Layout/Header.tsx:561-566`: "Kategorien" Menüeintrag unter "Meine Inserate"
+  - Konsistente Navigation über alle Plattformen
+
+### Technical
+- Datenbank jetzt mit 13 Level 2 und 25 Level 3 Kategorien erweitert
+- Alle neuen Kategorien mit deutschen Übersetzungen und Beschreibungen versehen
+- UUID-Struktur für neue Kategorien: `a1000000-...` (Level 2), `a2000000-...` (Level 3)
+
 ## [1.15.13] - 2025-01-23
 
 ### Improved

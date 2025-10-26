@@ -27,6 +27,7 @@ import { BasicInfoSection } from '../ItemForm/BasicInfoSection';
 import { DetailedInfoSection } from '../ItemForm/DetailedInfoSection';
 import { ShippingPickupSection } from '../ItemForm/ShippingPickupSection';
 import { MultiImageUpload } from '../Upload/MultiImageUpload';
+import { CategorySelection } from '../../types/categories';
 
 interface ImageFile {
   file?: File;
@@ -54,7 +55,7 @@ export const ItemEditPage = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<CategorySelection>({});
   const [brand, setBrand] = useState('');
   const [condition, setCondition] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -120,7 +121,80 @@ export const ItemEditPage = () => {
       setTitle(itemData.title || '');
       setDescription(itemData.description || '');
       setPrice(itemData.price?.toString() || '');
-      setCategory(itemData.category || '');
+
+      // Load category hierarchy from category_id
+      if (itemData.category_id) {
+        const { data: categoryData } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('id', itemData.category_id)
+          .single();
+
+        if (categoryData) {
+          const categorySelection: CategorySelection = {};
+
+          if (categoryData.level === 1) {
+            categorySelection.level1 = categoryData;
+          } else if (categoryData.level === 2) {
+            categorySelection.level2 = categoryData;
+            // Load parent level 1
+            const { data: level1 } = await supabase
+              .from('categories')
+              .select('*')
+              .eq('id', categoryData.parent_id)
+              .single();
+            if (level1) categorySelection.level1 = level1;
+          } else if (categoryData.level === 3) {
+            categorySelection.level3 = categoryData;
+            // Load parent level 2
+            const { data: level2 } = await supabase
+              .from('categories')
+              .select('*')
+              .eq('id', categoryData.parent_id)
+              .single();
+            if (level2) {
+              categorySelection.level2 = level2;
+              // Load grandparent level 1
+              const { data: level1 } = await supabase
+                .from('categories')
+                .select('*')
+                .eq('id', level2.parent_id)
+                .single();
+              if (level1) categorySelection.level1 = level1;
+            }
+          } else if (categoryData.level === 4) {
+            categorySelection.level4 = categoryData;
+            // Load parent level 3
+            const { data: level3 } = await supabase
+              .from('categories')
+              .select('*')
+              .eq('id', categoryData.parent_id)
+              .single();
+            if (level3) {
+              categorySelection.level3 = level3;
+              // Load grandparent level 2
+              const { data: level2 } = await supabase
+                .from('categories')
+                .select('*')
+                .eq('id', level3.parent_id)
+                .single();
+              if (level2) {
+                categorySelection.level2 = level2;
+                // Load great-grandparent level 1
+                const { data: level1 } = await supabase
+                  .from('categories')
+                  .select('*')
+                  .eq('id', level2.parent_id)
+                  .single();
+                if (level1) categorySelection.level1 = level1;
+              }
+            }
+          }
+
+          setCategory(categorySelection);
+        }
+      }
+
       setBrand(itemData.brand || '');
       setCondition(itemData.condition || '');
       setTags(itemData.tags || []);
@@ -294,11 +368,14 @@ export const ItemEditPage = () => {
         pickupAddress = addrData;
       }
 
+      // Extract final category_id from CategorySelection (deepest level selected)
+      const finalCategoryId = category.level4?.id || category.level3?.id || category.level2?.id || category.level1?.id || null;
+
       const updateData: any = {
         title: title.trim(),
         description: description.trim(),
         price: priceValue,
-        category: category || null,
+        category_id: finalCategoryId,
         brand: brand || null,
         condition: condition || null,
         tags: tags.length > 0 ? tags : null,

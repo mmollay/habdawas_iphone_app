@@ -42,6 +42,15 @@ export const Footer = () => {
               Über uns
             </Link>
             <Link
+              href="/categories"
+              onClick={handleNavigation('/categories')}
+              underline="hover"
+              color="text.secondary"
+              sx={{ fontSize: '0.813rem', '&:hover': { color: 'primary.main' } }}
+            >
+              Kategorien
+            </Link>
+            <Link
               href="/help"
               onClick={handleNavigation('/help')}
               underline="hover"

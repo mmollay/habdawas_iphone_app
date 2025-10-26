@@ -27,12 +27,14 @@ import { InlineTextField } from './InlineEdit/InlineTextField';
 import { InlineSelect } from './InlineEdit/InlineSelect';
 import { InlineChipList } from './InlineEdit/InlineChipList';
 import { InlineImageGallery } from './InlineEdit/InlineImageGallery';
+import { CategoryDropdown } from '../CategoryDropdown';
+import { CategorySelection, getFinalCategoryId } from '../../types/categories';
 
 interface PreviewData {
   title: string;
   description: string;
   price: number;
-  category: string;
+  category: CategorySelection;
   brand: string;
   condition: string;
   tags: string[];
@@ -79,7 +81,7 @@ export const ItemPreviewPage = () => {
   const [title, setTitle] = useState(previewData?.title || '');
   const [description, setDescription] = useState(previewData?.description || '');
   const [price, setPrice] = useState(previewData?.price || 0);
-  const [category, setCategory] = useState(previewData?.category || '');
+  const [category, setCategory] = useState<CategorySelection>(previewData?.category || {});
   const [brand, setBrand] = useState(previewData?.brand || '');
   const [condition, setCondition] = useState(previewData?.condition || 'used_good');
   const [tags, setTags] = useState<string[]>(previewData?.tags || []);
@@ -111,12 +113,19 @@ export const ItemPreviewPage = () => {
     setError(null);
 
     try {
+      const finalCategoryId = getFinalCategoryId(category);
+      if (!finalCategoryId) {
+        setError('Bitte wähle eine Kategorie aus');
+        setIsPublishing(false);
+        return;
+      }
+
       const itemData = {
         user_id: user.id,
         title,
         description,
         price: previewData.is_free ? 0 : price,
-        category,
+        category_id: finalCategoryId,
         brand: brand || null,
         condition,
         tags: tags.length > 0 ? tags : null,
@@ -181,6 +190,13 @@ export const ItemPreviewPage = () => {
     setError(null);
 
     try {
+      const finalCategoryId = getFinalCategoryId(category);
+      if (!finalCategoryId) {
+        setError('Bitte wähle eine Kategorie aus');
+        setIsPublishing(false);
+        return;
+      }
+
       const now = new Date();
       const scheduledDate = publishNow ? null : new Date(publishDate);
       const expiresAt = new Date(now);
@@ -191,7 +207,7 @@ export const ItemPreviewPage = () => {
         title,
         description,
         price: previewData.is_free ? 0 : price,
-        category,
+        category_id: finalCategoryId,
         brand: brand || null,
         condition,
         tags: tags.length > 0 ? tags : null,
@@ -354,13 +370,18 @@ export const ItemPreviewPage = () => {
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                       Kategorie
                     </Typography>
-                    <InlineTextField
-                      value={category}
-                      onChange={setCategory}
-                      isEditMode={isEditMode}
-                      variant="body2"
-                      placeholder="Kategorie"
-                    />
+                    {isEditMode ? (
+                      <CategoryDropdown
+                        value={category}
+                        onChange={setCategory}
+                        required
+                        showBreadcrumbs
+                      />
+                    ) : (
+                      <Typography variant="body2">
+                        {category.level4 || category.level3 || category.level2 || category.level1 || 'Keine Kategorie'}
+                      </Typography>
+                    )}
                   </Box>
 
                   <Box>

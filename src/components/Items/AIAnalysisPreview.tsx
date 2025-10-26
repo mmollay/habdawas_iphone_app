@@ -12,8 +12,7 @@ import {
   IconButton,
   Collapse,
 } from '@mui/material';
-import { ChevronDown, ChevronUp, CheckCircle, XCircle, Star, RefreshCw } from 'lucide-react';
-import { AttributeStatusTable } from './AttributeStatusTable';
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, Star } from 'lucide-react';
 
 interface AnalysisResult {
   title: string;
@@ -68,7 +67,6 @@ interface AIAnalysisPreviewProps {
   };
   onConfirm: () => void;
   onCancel: () => void;
-  onRegenerate: () => void;
 }
 
 export const AIAnalysisPreview = ({
@@ -78,7 +76,6 @@ export const AIAnalysisPreview = ({
   categoryInfo,
   onConfirm,
   onCancel,
-  onRegenerate,
 }: AIAnalysisPreviewProps) => {
   const [expandedAnalysis, setExpandedAnalysis] = useState<number | null>(null);
   const [showMerged, setShowMerged] = useState(true);
@@ -93,9 +90,6 @@ export const AIAnalysisPreview = ({
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         {analyses.length} Bilder analysiert - Überprüfe die Ergebnisse vor dem Speichern
       </Typography>
-
-      {/* Attribute Status Table - Shows all attributes with fill status */}
-      <AttributeStatusTable analysis={mergedAnalysis} categoryInfo={categoryInfo} />
 
       {/* Merged Result (Final) */}
       <Paper sx={{ p: 2, mb: 3, bgcolor: 'success.50', border: '2px solid', borderColor: 'success.main' }}>
@@ -137,27 +131,40 @@ export const AIAnalysisPreview = ({
               </Typography>
             </Grid>
 
-            {mergedAnalysis.brand && (
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Marke</Typography>
-                <Chip label={mergedAnalysis.brand} size="small" />
-              </Grid>
-            )}
-
-            {mergedAnalysis.condition && (
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Zustand</Typography>
-                <Chip label={mergedAnalysis.condition} size="small" />
-              </Grid>
-            )}
-
-            {mergedAnalysis.features && mergedAnalysis.features.length > 0 && (
+            {/* Allgemeine Attribute Tabelle */}
+            {(mergedAnalysis.brand || mergedAnalysis.condition || mergedAnalysis.features?.length > 0) && (
               <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Features ({mergedAnalysis.features.length})</Typography>
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                  {mergedAnalysis.features.map((f, i) => (
-                    <Chip key={i} label={f} size="small" variant="outlined" />
-                  ))}
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>📋 Attribute</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                  {mergedAnalysis.brand && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Marke:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.brand}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.condition && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600 }}>
+                        Zustand:
+                      </Typography>
+                      <Typography variant="body2" fontWeight={500}>{mergedAnalysis.condition}</Typography>
+                    </Box>
+                  )}
+                  {mergedAnalysis.features && mergedAnalysis.features.length > 0 && (
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ minWidth: '120px', fontWeight: 600, pt: 0.5 }}>
+                        Features:
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', flex: 1 }}>
+                        {mergedAnalysis.features.map((f, i) => (
+                          <Chip key={i} label={f} size="small" variant="outlined" />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
                 </Box>
               </Grid>
             )}
@@ -422,43 +429,24 @@ export const AIAnalysisPreview = ({
       </Grid>
 
       {/* Action Buttons */}
-      <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+      <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         <Button
           variant="outlined"
           size="large"
-          startIcon={<RefreshCw />}
-          onClick={onRegenerate}
-          color="info"
-          sx={{
-            borderWidth: 2,
-            '&:hover': {
-              borderWidth: 2,
-              bgcolor: 'rgba(25, 118, 210, 0.04)',
-            }
-          }}
+          startIcon={<XCircle />}
+          onClick={onCancel}
         >
-          Neu generieren
+          Abbrechen
         </Button>
-
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            size="large"
-            startIcon={<XCircle />}
-            onClick={onCancel}
-          >
-            Abbrechen
-          </Button>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<CheckCircle />}
-            onClick={onConfirm}
-            color="success"
-          >
-            Bestätigen & Speichern
-          </Button>
-        </Box>
+        <Button
+          variant="contained"
+          size="large"
+          startIcon={<CheckCircle />}
+          onClick={onConfirm}
+          color="success"
+        >
+          Bestätigen & Speichern
+        </Button>
       </Box>
     </Box>
   );

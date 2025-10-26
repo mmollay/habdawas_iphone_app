@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { MapPin, Calendar, Heart, Send, Package, Truck, ZoomIn, Tag, Ruler, Weight, Box as BoxIcon, Palette, Sparkles, Grid3x3, Hash, Share2, X, ChevronLeft, ChevronRight, MessageCircle, ArrowUp, Phone, Pencil, Trash2, Check, Image as ImageIcon, ShieldCheck, XCircle } from 'lucide-react';
+import { MapPin, Calendar, Heart, Send, Package, Truck, ZoomIn, Tag, Ruler, Weight, Box as BoxIcon, Palette, Sparkles, Grid3x3, Hash, Share2, X, ChevronLeft, ChevronRight, MessageCircle, ArrowUp, Phone, Pencil, Trash2, Check, Image as ImageIcon, ShieldCheck, XCircle, Car, Fuel, Zap, CalendarCheck } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { Item, supabase, Profile, PickupAddress } from '../../lib/supabase';
 import { getRelativeTimeString } from '../../utils/dateUtils';
@@ -39,9 +39,6 @@ import { useHandPreference } from '../../contexts/HandPreferenceContext';
 import { useItemView } from '../../hooks/useItemView';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { usePermissions } from '../../hooks/usePermissions';
-import { useCategory } from '../../hooks/useCategories';
-import { getCategoryName } from '../../utils/categories';
-import { useItemAttributes, getAttributeValue, getAttributeLabel } from '../../hooks/useItemAttributes';
 import { InlineTextField } from './InlineEdit/InlineTextField';
 import { InlineSelect } from './InlineEdit/InlineSelect';
 import { InlineChipList } from './InlineEdit/InlineChipList';
@@ -50,6 +47,8 @@ import { FloatingActionBar } from './InlineEdit/FloatingActionBar';
 import { Modal } from '../Common/Modal';
 import { OnboardingTooltip } from '../Common/OnboardingTooltip';
 import { SellerProfile } from './SellerProfile';
+import { CategoryDropdown } from '../CategoryDropdown';
+import { CategorySelection, getFinalCategoryId } from '../../types/categories';
 
 export const ItemDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -77,6 +76,8 @@ export const ItemDetailPage = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [itemImages, setItemImages] = useState<string[]>([]);
+  const [categoryPath, setCategoryPath] = useState<string>('');
+  const [categorySelection, setCategorySelection] = useState<CategorySelection>({});
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [draftData, setDraftData] = useState<any>({});
@@ -102,12 +103,6 @@ export const ItemDetailPage = () => {
     debounceMs: 1500,
   });
 
-  // Load category hierarchy
-  const { category: itemCategory, path: categoryPath } = useCategory(item?.category_id);
-
-  // Load item attributes
-  const { attributes: itemAttributes, loading: attributesLoading } = useItemAttributes(item?.id);
-
   const allItems = (location.state as { allItems?: Item[] })?.allItems || [];
   const currentIndex = allItems.findIndex(i => i.id === id);
   const hasPrevious = currentIndex > 0;
@@ -123,6 +118,47 @@ export const ItemDetailPage = () => {
     }
   };
 
+  // Helper function to load CategorySelection from category_id
+  const loadCategorySelection = async (categoryId: string): Promise<CategorySelection> => {
+    const selection: CategorySelection = {};
+    const categoryNames: string[] = [];
+
+    // Load the category and traverse up to root
+    let currentId: string | null = categoryId;
+    const categoryMap = new Map<number, string>(); // level -> id
+
+    while (currentId) {
+      const { data: categoryData } = await supabase
+        .from('categories')
+        .select('id, translations, parent_id, level')
+        .eq('id', currentId)
+        .maybeSingle();
+
+      if (!categoryData) break;
+
+      // Store category ID at its level
+      categoryMap.set(categoryData.level, categoryData.id);
+
+      // Build breadcrumb path (for display)
+      const currentName = categoryData.translations?.de?.name || 'Unbekannt';
+      categoryNames.unshift(currentName);
+
+      // Move to parent
+      currentId = categoryData.parent_id;
+    }
+
+    // Build CategorySelection object from the map
+    if (categoryMap.has(1)) selection.level1 = categoryMap.get(1)!;
+    if (categoryMap.has(2)) selection.level2 = categoryMap.get(2)!;
+    if (categoryMap.has(3)) selection.level3 = categoryMap.get(3)!;
+    if (categoryMap.has(4)) selection.level4 = categoryMap.get(4)!;
+
+    // Set categoryPath for display
+    setCategoryPath(categoryNames.join(' › '));
+
+    return selection;
+  };
+
   const navigateToItem = useCallback(async (direction: 'prev' | 'next') => {
     const targetItem = direction === 'prev' && hasPrevious
       ? allItems[currentIndex - 1]
@@ -135,6 +171,15 @@ export const ItemDetailPage = () => {
     setItem(targetItem);
     setCurrentImageIndex(0);
     window.scrollTo(0, 0);
+
+    // Load category hierarchy for target item
+    if (targetItem.category_id) {
+      const selection = await loadCategorySelection(targetItem.category_id);
+      setCategorySelection(selection);
+    } else {
+      setCategoryPath('');
+      setCategorySelection({});
+    }
 
     // Load additional images for target item
     const { data: imagesData } = await supabase
@@ -241,13 +286,48 @@ export const ItemDetailPage = () => {
         return;
       }
 
+      // 🚗 DEBUG: Log vehicle attributes on load
+      if (data.vehicle_brand || data.vehicle_year || data.vehicle_mileage) {
+        console.log('[Vehicle Attributes] Loaded from database:', {
+          vehicle_brand: data.vehicle_brand,
+          vehicle_year: data.vehicle_year,
+          vehicle_mileage: data.vehicle_mileage,
+          vehicle_fuel_type: data.vehicle_fuel_type,
+          vehicle_color: data.vehicle_color,
+          vehicle_power_kw: data.vehicle_power_kw,
+          vehicle_first_registration: data.vehicle_first_registration,
+          vehicle_tuv_until: data.vehicle_tuv_until,
+        });
+      } else {
+        console.log('[Vehicle Attributes] No vehicle attributes found in loaded item');
+      }
+
       setItem(data);
+
+      // Load category hierarchy if category_id exists
+      let loadedCategorySelection: CategorySelection = {};
+      if (data.category_id) {
+        loadedCategorySelection = await loadCategorySelection(data.category_id);
+        setCategorySelection(loadedCategorySelection);
+      } else {
+        setCategoryPath('');
+        setCategorySelection({});
+      }
 
       // Enable edit mode for drafts or if there are unsaved draft changes
       if (user && user.id === data.user_id) {
         if (data.status === 'draft') {
           if (data.draft_data) {
-            setDraftData(data.draft_data);
+            // Use draft_data.category if it exists and is valid CategorySelection, otherwise use loadedCategorySelection
+            const draftCategory = data.draft_data.category;
+            const categoryToUse = (draftCategory && typeof draftCategory === 'object' && !Array.isArray(draftCategory))
+              ? draftCategory
+              : loadedCategorySelection;
+
+            setDraftData({
+              ...data.draft_data,
+              category: categoryToUse,
+            });
           }
           setIsEditMode(true);
           setHasUnsavedChanges(true);
@@ -268,7 +348,16 @@ export const ItemDetailPage = () => {
             }, 800);
           }
         } else if (data.has_draft && data.draft_data) {
-          setDraftData(data.draft_data);
+          // Use draft_data.category if it exists and is valid CategorySelection, otherwise use loadedCategorySelection
+          const draftCategory = data.draft_data.category;
+          const categoryToUse = (draftCategory && typeof draftCategory === 'object' && !Array.isArray(draftCategory))
+            ? draftCategory
+            : loadedCategorySelection;
+
+          setDraftData({
+            ...data.draft_data,
+            category: categoryToUse,
+          });
           setHasUnsavedChanges(true);
           setIsEditMode(true);
         }
@@ -341,7 +430,7 @@ export const ItemDetailPage = () => {
           price: item.price,
           price_negotiable: item.price_negotiable || false,
           is_free: item.is_free || false,
-          category: item.category || '',
+          category: categorySelection, // Use CategorySelection instead of string
           brand: item.brand || '',
           condition: item.condition || '',
           size: item.size || '',
@@ -375,10 +464,20 @@ export const ItemDetailPage = () => {
 
     setIsPublishing(true);
     try {
-      const { images, ...validDraftData } = draftData;
+      const { images, category, ...validDraftData } = draftData;
+
+      // Extract category_id from CategorySelection if present
+      let categoryId = item.category_id; // Default to current category
+      if (category && typeof category === 'object') {
+        const finalCategoryId = getFinalCategoryId(category as CategorySelection);
+        if (finalCategoryId) {
+          categoryId = finalCategoryId;
+        }
+      }
 
       const updateData: any = {
         ...validDraftData,
+        category_id: categoryId,
         status: item.status === 'draft' ? 'published' : item.status,
         has_draft: false,
         draft_data: null,
@@ -708,17 +807,10 @@ export const ItemDetailPage = () => {
               </Box>
             )}
 
-            {item.category && (
+            {categoryPath && (
               <Box className="print-detail-row">
                 <Box className="print-detail-label">📦 Kategorie:</Box>
-                <Box className="print-detail-value">{item.category}</Box>
-              </Box>
-            )}
-
-            {item.subcategory && (
-              <Box className="print-detail-row">
-                <Box className="print-detail-label">📑 Unterkategorie:</Box>
-                <Box className="print-detail-value">{item.subcategory}</Box>
+                <Box className="print-detail-value">{categoryPath}</Box>
               </Box>
             )}
 
@@ -1878,8 +1970,8 @@ export const ItemDetailPage = () => {
               />
 
               {(
-                categoryPath.length > 0 || itemAttributes.length > 0 ||
-                item.category || item.subcategory ||
+                categoryPath ||
+                item.brand || item.condition ||
                 item.size || item.weight || item.dimensions_length ||
                 item.material || item.colors?.length || item.style ||
                 item.features?.length || item.accessories?.length ||
@@ -1893,7 +1985,7 @@ export const ItemDetailPage = () => {
                   </Typography>
 
                   <Box sx={{ display: 'grid', gap: 2 }}>
-                    {(categoryPath.length > 0 || item.category || item.subcategory || isEditMode) && (
+                    {(categoryPath || isEditMode) && (
                       <Box
                         sx={{
                           display: 'flex',
@@ -1912,24 +2004,11 @@ export const ItemDetailPage = () => {
                         )}
                         <Box sx={{ flex: 1 }}>
                           {isEditMode ? (
-                            <InlineSelect
-                              value={draftData.category || item.category || ''}
-                              isEditing={isEditMode} onSave={handleInlineEditSave}
+                            <CategoryDropdown
+                              value={draftData.category || categorySelection}
                               onChange={(value) => handleUpdateDraft('category', value)}
-                              options={[
-                                { value: 'Elektronik', label: 'Elektronik' },
-                                { value: 'Kleidung', label: 'Kleidung' },
-                                { value: 'Möbel', label: 'Möbel' },
-                                { value: 'Bücher', label: 'Bücher' },
-                                { value: 'Sport', label: 'Sport' },
-                                { value: 'Spielzeug', label: 'Spielzeug' },
-                                { value: 'Haushalt', label: 'Haushalt' },
-                                { value: 'Garten', label: 'Garten' },
-                                { value: 'Auto', label: 'Auto & Motorrad' },
-                                { value: 'Sonstiges', label: 'Sonstiges' },
-                              ]}
-                              placeholder="Kategorie wählen"
-                              label="Kategorie"
+                              required
+                              showBreadcrumbs
                             />
                           ) : (
                             <>
@@ -1937,63 +2016,13 @@ export const ItemDetailPage = () => {
                                 Kategorie
                               </Typography>
                               <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
-                                {categoryPath.length > 0
-                                  ? categoryPath.map(cat => getCategoryName(cat, 'de')).join(' › ')
-                                  : [item.category, item.subcategory].filter(Boolean).join(' › ')}
+                                {categoryPath}
                               </Typography>
                             </>
                           )}
                         </Box>
                       </Box>
                     )}
-
-                    {/* Dynamic Attributes from category_attributes */}
-                    {itemAttributes.length > 0 && itemAttributes.map((attr) => {
-                      const label = getAttributeLabel(attr, 'de');
-                      const value = getAttributeValue(attr);
-
-                      if (!value && !isEditMode) return null;
-
-                      return (
-                        <Box
-                          key={attr.id}
-                          sx={{
-                            display: 'flex',
-                            gap: 1.5,
-                            p: 2,
-                            bgcolor: isEditMode ? '#e8f5e9' : '#f8f9fa',
-                            borderRadius: 2,
-                            border: '1px solid',
-                            borderColor: isEditMode ? '#4caf50' : 'grey.200',
-                          }}
-                        >
-                          {!isEditMode && (
-                            <Box sx={{ mt: 0.25, color: 'info.main' }}>
-                              <Tag size={20} />
-                            </Box>
-                          )}
-                          <Box sx={{ flex: 1 }}>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{
-                                fontWeight: 600,
-                                fontSize: '0.75rem',
-                                textTransform: 'uppercase',
-                                letterSpacing: 0.8,
-                                display: 'block',
-                                mb: 0.5
-                              }}
-                            >
-                              {label}
-                            </Typography>
-                            <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
-                              {Array.isArray(value) ? value.join(', ') : String(value)}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      );
-                    })}
 
                     {/* Zustand (Condition) Box */}
                     {item.condition && (
@@ -2254,6 +2283,152 @@ export const ItemDetailPage = () => {
                               <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.95rem', color: 'text.primary', fontWeight: 500 }}>{item.serial_number}</Typography>
                             </>
                           )}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                </>
+              )}
+
+              {/* 🚗 FAHRZEUG-ATTRIBUTE SECTION - Independent block outside Produktdetails */}
+            {(
+              item.vehicle_brand || item.vehicle_year || item.vehicle_mileage ||
+              item.vehicle_fuel_type || item.vehicle_color || item.vehicle_power_kw ||
+              item.vehicle_first_registration || item.vehicle_tuv_until
+            ) && (
+                <>
+                  <Divider sx={{ my: isMobile ? 2 : 3 }} />
+
+                  <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Car size={24} style={{ color: '#1976d2' }} />
+                    Fahrzeug-Daten
+                  </Typography>
+
+                  <Box sx={{ display: 'grid', gap: 2 }}>
+                    {item.vehicle_brand && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f0f7ff', borderRadius: 2, border: '1px solid #90caf9' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}>
+                          <Car size={20} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Fahrzeugmarke
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500, textTransform: 'uppercase' }}>
+                            {item.vehicle_brand}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {item.vehicle_year && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f0f7ff', borderRadius: 2, border: '1px solid #90caf9' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}>
+                          <Calendar size={20} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Baujahr
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                            {item.vehicle_year}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {item.vehicle_fuel_type && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f0f7ff', borderRadius: 2, border: '1px solid #90caf9' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}>
+                          <Fuel size={20} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Kraftstoffart
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500, textTransform: 'capitalize' }}>
+                            {item.vehicle_fuel_type}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {item.vehicle_power_kw && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f0f7ff', borderRadius: 2, border: '1px solid #90caf9' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}>
+                          <Zap size={20} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Leistung
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                            {item.vehicle_power_kw} kW ({Math.round(item.vehicle_power_kw * 1.36)} PS)
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {item.vehicle_first_registration && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f0f7ff', borderRadius: 2, border: '1px solid #90caf9' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}>
+                          <CalendarCheck size={20} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Erstzulassung
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                            {new Date(item.vehicle_first_registration).toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {item.vehicle_color && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f0f7ff', borderRadius: 2, border: '1px solid #90caf9' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}>
+                          <Palette size={20} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Fahrzeugfarbe
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500, textTransform: 'capitalize' }}>
+                            {item.vehicle_color}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {item.vehicle_mileage && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f0f7ff', borderRadius: 2, border: '1px solid #90caf9' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}>
+                          <Ruler size={20} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            Kilometerstand
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                            {item.vehicle_mileage.toLocaleString('de-DE')} km
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {item.vehicle_tuv_until && (
+                      <Box sx={{ display: 'flex', gap: 1.5, p: 2, bgcolor: '#f0f7ff', borderRadius: 2, border: '1px solid #90caf9' }}>
+                        <Box sx={{ mt: 0.25, color: 'primary.main' }}>
+                          <ShieldCheck size={20} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 0.5 }}>
+                            TÜV bis
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                            {new Date(item.vehicle_tuv_until).toLocaleDateString('de-DE', { year: 'numeric', month: 'long' })}
+                          </Typography>
                         </Box>
                       </Box>
                     )}

@@ -131,12 +131,31 @@ export interface CategoryDropdownOption {
 
 /**
  * Category selection state
+ * IMPORTANT: IDs are strings (UUIDs), not full Category objects
  */
 export interface CategorySelection {
-  level1?: Category;  // Main category
-  level2?: Category;  // Subcategory
-  level3?: Category;  // Dynamic AI category
+  level1?: string;  // Main category ID
+  level2?: string;  // Subcategory ID
+  level3?: string;  // Sub-subcategory ID
+  level4?: string;  // Detailed category ID (most specific)
   full_path?: CategoryPathItem[];
+}
+
+/**
+ * Helper function to get the final (most specific) category ID from a CategorySelection
+ * Returns the deepest level category ID that exists.
+ * Priority: level4 > level3 > level2 > level1
+ */
+export function getFinalCategoryId(selection?: CategorySelection): string | null {
+  if (!selection) return null;
+
+  // Return the deepest level available
+  if (selection.level4) return selection.level4;
+  if (selection.level3) return selection.level3;
+  if (selection.level2) return selection.level2;
+  if (selection.level1) return selection.level1;
+
+  return null;
 }
 
 /**

@@ -31,7 +31,7 @@ import { MultiImageUpload } from '../Upload/MultiImageUpload';
 import { ItemSettingsPreview } from './ItemSettingsPreview';
 import { BasicInfoSection } from '../ItemForm/BasicInfoSection';
 import { DetailedInfoSection } from '../ItemForm/DetailedInfoSection';
-import { CategorySelection } from '../../types/categories';
+import { CategorySelection, getFinalCategoryId } from '../../types/categories';
 import { AIAnalysisPreview } from './AIAnalysisPreview';
 
 interface ImageFile {
@@ -122,7 +122,6 @@ export const ItemCreatePage = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [category, setCategory] = useState(''); // String category for BasicInfoSection
   const [categorySelection, setCategorySelection] = useState<CategorySelection | undefined>(undefined);
   const [brand, setBrand] = useState('');
   const [condition, setCondition] = useState('');
@@ -453,6 +452,627 @@ export const ItemCreatePage = () => {
           subcategory: mergedAnalysis.subcategory
         });
 
+        // 🎯 MASSIVELY EXPANDED Semantic mapping dictionary for AI terms → Database categories
+        // Covers all 298 Level 3 categories with common German terms
+        const semanticMappingL2: Record<string, string[]> = {
+          // === HAUSHALT & MÖBEL ===
+          'geschirr': ['küche', 'esszimmer'],
+          'teller': ['küche', 'esszimmer'],
+          'besteck': ['küche', 'esszimmer'],
+          'messer': ['küche', 'esszimmer'],
+          'gabel': ['küche', 'esszimmer'],
+          'tassen': ['küche', 'esszimmer'],
+          'gläser': ['küche', 'esszimmer'],
+          'kochgeschirr': ['küche', 'esszimmer'],
+          'töpfe': ['küche', 'esszimmer'],
+          'pfannen': ['küche', 'esszimmer'],
+          'küchengeräte': ['küche', 'elektronik'],
+          'mixer': ['küche', 'elektronik'],
+          'kaffeemaschine': ['küche', 'elektronik'],
+          'toaster': ['küche', 'elektronik'],
+          'mikrowelle': ['küche', 'elektronik'],
+          'sofa': ['wohnzimmer', 'wohnen', 'möbel'],
+          'couch': ['wohnzimmer', 'wohnen', 'möbel'],
+          'sessel': ['wohnzimmer', 'wohnen', 'möbel'],
+          'tisch': ['wohnzimmer', 'esszimmer', 'möbel'],
+          'stuhl': ['wohnzimmer', 'esszimmer', 'möbel'],
+          'regal': ['wohnzimmer', 'büro', 'möbel'],
+          'schrank': ['schlafzimmer', 'möbel'],
+          'kleiderschrank': ['schlafzimmer', 'möbel'],
+          'bett': ['schlafzimmer', 'möbel'],
+          'matratze': ['schlafzimmer', 'möbel'],
+          'kommode': ['schlafzimmer', 'möbel'],
+          'lampe': ['beleuchtung', 'deko'],
+          'deckenlampe': ['beleuchtung', 'deko'],
+          'stehlampe': ['beleuchtung', 'deko'],
+          'tischlampe': ['beleuchtung', 'deko'],
+          'vase': ['deko', 'wohnen'],
+          'bilderrahmen': ['deko', 'wohnen'],
+          'kerze': ['deko', 'wohnen'],
+          'teppich': ['teppiche', 'wohnen'],
+          'vorhang': ['gardinen', 'wohnen'],
+          'gardine': ['gardinen', 'wohnen'],
+
+          // === FAHRZEUGE ===
+          'auto': ['autos', 'fahrzeuge'],
+          'pkw': ['autos', 'fahrzeuge'],
+          'kleinwagen': ['autos', 'fahrzeuge'],
+          'limousine': ['autos', 'fahrzeuge'],
+          'kombi': ['autos', 'fahrzeuge'],
+          'suv': ['autos', 'fahrzeuge'],
+          'geländewagen': ['autos', 'fahrzeuge'],
+          'sportwagen': ['autos', 'fahrzeuge'],
+          'cabrio': ['autos', 'fahrzeuge'],
+          'van': ['autos', 'fahrzeuge'],
+          'motorrad': ['motorräder', 'roller', 'fahrzeuge'],
+          'bike': ['motorräder', 'roller', 'fahrzeuge'],
+          'roller': ['motorräder', 'roller', 'fahrzeuge'],
+          'moped': ['motorräder', 'roller', 'fahrzeuge'],
+          'quad': ['motorräder', 'roller', 'fahrzeuge'],
+          'transporter': ['nutzfahrzeuge', 'fahrzeuge'],
+          'lkw': ['nutzfahrzeuge', 'fahrzeuge'],
+          'anhänger': ['nutzfahrzeuge', 'fahrzeuge'],
+          'reifen': ['ersatzteile', 'zubehör', 'fahrzeuge'],
+          'felgen': ['ersatzteile', 'zubehör', 'fahrzeuge'],
+          'autoteile': ['ersatzteile', 'zubehör', 'fahrzeuge'],
+          'tuning': ['ersatzteile', 'zubehör', 'fahrzeuge'],
+          'boot': ['boote', 'wasserfahrzeuge', 'fahrzeuge'],
+          'motorboot': ['boote', 'wasserfahrzeuge', 'fahrzeuge'],
+          'segelboot': ['boote', 'wasserfahrzeuge', 'fahrzeuge'],
+          'fahrrad': ['fahrräder', 'e-bikes', 'fahrzeuge'],
+          'bike': ['fahrräder', 'e-bikes', 'fahrzeuge'],
+          'mountainbike': ['fahrräder', 'e-bikes', 'fahrzeuge'],
+          'rennrad': ['fahrräder', 'e-bikes', 'fahrzeuge'],
+          'ebike': ['fahrräder', 'e-bikes', 'fahrzeuge'],
+          'e-bike': ['fahrräder', 'e-bikes', 'fahrzeuge'],
+
+          // === ELEKTRONIK ===
+          'laptop': ['computer', 'laptops', 'elektronik'],
+          'notebook': ['computer', 'laptops', 'elektronik'],
+          'pc': ['computer', 'laptops', 'elektronik'],
+          'desktop': ['computer', 'laptops', 'elektronik'],
+          'monitor': ['computer', 'laptops', 'elektronik'],
+          'bildschirm': ['computer', 'laptops', 'elektronik'],
+          'tastatur': ['computer', 'elektronik'],
+          'maus': ['computer', 'elektronik'],
+          'drucker': ['computer', 'elektronik'],
+          'scanner': ['computer', 'elektronik'],
+          'smartphone': ['smartphones', 'tablets', 'elektronik'],
+          'handy': ['smartphones', 'tablets', 'elektronik'],
+          'iphone': ['smartphones', 'tablets', 'elektronik'],
+          'android': ['smartphones', 'tablets', 'elektronik'],
+          'tablet': ['smartphones', 'tablets', 'elektronik'],
+          'ipad': ['smartphones', 'tablets', 'elektronik'],
+          'fernseher': ['tv', 'audio', 'video', 'elektronik'],
+          'tv': ['tv', 'audio', 'video', 'elektronik'],
+          'smart-tv': ['tv', 'audio', 'video', 'elektronik'],
+          'heimkino': ['tv', 'audio', 'video', 'elektronik'],
+          'soundbar': ['tv', 'audio', 'video', 'elektronik'],
+          'lautsprecher': ['tv', 'audio', 'video', 'elektronik'],
+          'kopfhörer': ['tv', 'audio', 'video', 'elektronik'],
+          'headset': ['tv', 'audio', 'video', 'elektronik'],
+          'kamera': ['kameras', 'drohnen', 'elektronik'],
+          'digitalkamera': ['kameras', 'drohnen', 'elektronik'],
+          'spiegelreflex': ['kameras', 'drohnen', 'elektronik'],
+          'dslr': ['kameras', 'drohnen', 'elektronik'],
+          'objektiv': ['kameras', 'drohnen', 'elektronik'],
+          'drohne': ['kameras', 'drohnen', 'elektronik'],
+          'action-cam': ['kameras', 'drohnen', 'elektronik'],
+          'gopro': ['kameras', 'drohnen', 'elektronik'],
+          'konsole': ['konsolen', 'games', 'elektronik'],
+          'playstation': ['konsolen', 'games', 'elektronik'],
+          'ps4': ['konsolen', 'games', 'elektronik'],
+          'ps5': ['konsolen', 'games', 'elektronik'],
+          'xbox': ['konsolen', 'games', 'elektronik'],
+          'nintendo': ['konsolen', 'games', 'elektronik'],
+          'switch': ['konsolen', 'games', 'elektronik'],
+          'videospiele': ['konsolen', 'games', 'elektronik'],
+          'smart-home': ['smart-home', 'gadgets', 'elektronik'],
+          'alexa': ['smart-home', 'gadgets', 'elektronik'],
+          'google-home': ['smart-home', 'gadgets', 'elektronik'],
+          'smartwatch': ['smart-home', 'gadgets', 'elektronik'],
+          'fitness-tracker': ['smart-home', 'gadgets', 'elektronik'],
+          'staubsauger': ['haushalts-elektronik', 'elektronik'],
+          'roboter-staubsauger': ['haushalts-elektronik', 'elektronik'],
+          'bügeleisen': ['haushalts-elektronik', 'elektronik'],
+
+          // === MODE ===
+          'kleidung': ['damenmode', 'herrenmode', 'mode'],
+          'bekleidung': ['damenmode', 'herrenmode', 'mode'],
+          'hose': ['damenmode', 'herrenmode', 'mode'],
+          'jeans': ['damenmode', 'herrenmode', 'mode'],
+          'shirt': ['damenmode', 'herrenmode', 'mode'],
+          't-shirt': ['damenmode', 'herrenmode', 'mode'],
+          'pullover': ['damenmode', 'herrenmode', 'mode'],
+          'jacke': ['damenmode', 'herrenmode', 'mode'],
+          'mantel': ['damenmode', 'herrenmode', 'mode'],
+          'kleid': ['damenmode', 'mode'],
+          'rock': ['damenmode', 'mode'],
+          'bluse': ['damenmode', 'mode'],
+          'anzug': ['herrenmode', 'mode'],
+          'hemd': ['herrenmode', 'mode'],
+          'sakko': ['herrenmode', 'mode'],
+          'schuhe': ['schuhe', 'mode'],
+          'sneaker': ['schuhe', 'mode'],
+          'boots': ['schuhe', 'mode'],
+          'stiefel': ['schuhe', 'mode'],
+          'sandalen': ['schuhe', 'mode'],
+          'damenschuhe': ['schuhe', 'mode'],
+          'herrenschuhe': ['schuhe', 'mode'],
+          'schmuck': ['schmuck', 'uhren', 'mode'],
+          'uhr': ['schmuck', 'uhren', 'mode'],
+          'armbanduhr': ['schmuck', 'uhren', 'mode'],
+          'ring': ['schmuck', 'uhren', 'mode'],
+          'kette': ['schmuck', 'uhren', 'mode'],
+          'armband': ['schmuck', 'uhren', 'mode'],
+          'ohrringe': ['schmuck', 'uhren', 'mode'],
+          'tasche': ['taschen', 'accessoires', 'mode'],
+          'handtasche': ['taschen', 'accessoires', 'mode'],
+          'rucksack': ['taschen', 'accessoires', 'mode'],
+          'koffer': ['taschen', 'accessoires', 'mode'],
+          'gürtel': ['taschen', 'accessoires', 'mode'],
+          'sonnenbrille': ['taschen', 'accessoires', 'mode'],
+          'beauty': ['beauty', 'pflege', 'mode'],
+          'kosmetik': ['beauty', 'pflege', 'mode'],
+          'parfum': ['beauty', 'pflege', 'mode'],
+          'make-up': ['beauty', 'pflege', 'mode'],
+
+          // === KINDER ===
+          'spielzeug': ['spielzeug', 'kinder'],
+          'lego': ['spielzeug', 'kinder'],
+          'puppe': ['spielzeug', 'kinder'],
+          'kuscheltier': ['spielzeug', 'kinder'],
+          'puzzle': ['spielzeug', 'kinder'],
+          'brettspiel': ['spielzeug', 'kinder'],
+          'babyartikel': ['babyartikel', 'kinder'],
+          'babybett': ['babyartikel', 'kinder'],
+          'kinderwagen': ['kinderfahrzeuge', 'kinder'],
+          'buggy': ['kinderfahrzeuge', 'kinder'],
+          'autositz': ['kinderfahrzeuge', 'kinder'],
+          'kindersitz': ['kinderfahrzeuge', 'kinder'],
+          'laufrad': ['kinderfahrzeuge', 'kinder'],
+          'kinderkleidung': ['kinderbekleidung', 'kinder'],
+          'babykleidung': ['kinderbekleidung', 'kinder'],
+          'schulranzen': ['schulbedarf', 'kinder'],
+          'schultasche': ['schulbedarf', 'kinder'],
+          'kinderbuch': ['kinderbücher', 'kinder'],
+          'bilderbuch': ['kinderbücher', 'kinder'],
+
+          // === TIERE ===
+          'hund': ['hunde', 'tiere'],
+          'welpe': ['hunde', 'tiere'],
+          'hundefutter': ['hunde', 'tiere'],
+          'hundezubehör': ['hunde', 'tiere'],
+          'leine': ['hunde', 'tiere'],
+          'hundespielzeug': ['hunde', 'tiere'],
+          'katze': ['katzen', 'tiere'],
+          'kätzchen': ['katzen', 'tiere'],
+          'kitten': ['katzen', 'tiere'],
+          'katzenfutter': ['katzen', 'tiere'],
+          'katzenzubehör': ['katzen', 'tiere'],
+          'kratzbaum': ['katzen', 'tiere'],
+          'pferd': ['pferde', 'tiere'],
+          'pony': ['pferde', 'tiere'],
+          'reitzubehör': ['pferde', 'tiere'],
+          'sattel': ['pferde', 'tiere'],
+          'reitbekleidung': ['pferde', 'tiere'],
+          'kaninchen': ['kleintiere', 'tiere'],
+          'meerschweinchen': ['kleintiere', 'tiere'],
+          'hamster': ['kleintiere', 'tiere'],
+          'vogel': ['kleintiere', 'tiere'],
+          'käfig': ['kleintiere', 'tiere'],
+          'aquarium': ['aquaristik', 'terraristik', 'tiere'],
+          'fisch': ['aquaristik', 'terraristik', 'tiere'],
+          'terrarium': ['aquaristik', 'terraristik', 'tiere'],
+
+          // === FREIZEIT & SPORT ===
+          'camping': ['camping', 'outdoor', 'freizeit'],
+          'zelt': ['camping', 'outdoor', 'freizeit'],
+          'schlafsack': ['camping', 'outdoor', 'freizeit'],
+          'isomatte': ['camping', 'outdoor', 'freizeit'],
+          'wandern': ['camping', 'outdoor', 'freizeit'],
+          'rucksack': ['camping', 'outdoor', 'freizeit'],
+          'fitness': ['fitness', 'training', 'sport'],
+          'fitnessgerät': ['fitness', 'training', 'sport'],
+          'hantel': ['fitness', 'training', 'sport'],
+          'laufband': ['fitness', 'training', 'sport'],
+          'hometrainer': ['fitness', 'training', 'sport'],
+          'yoga': ['fitness', 'training', 'sport'],
+          'yogamatte': ['fitness', 'training', 'sport'],
+          'sportbekleidung': ['fitness', 'training', 'sport'],
+          'musikinstrument': ['musikinstrumente', 'freizeit'],
+          'gitarre': ['musikinstrumente', 'freizeit'],
+          'e-gitarre': ['musikinstrumente', 'freizeit'],
+          'keyboard': ['musikinstrumente', 'freizeit'],
+          'klavier': ['musikinstrumente', 'freizeit'],
+          'schlagzeug': ['musikinstrumente', 'freizeit'],
+          'dj': ['musikinstrumente', 'freizeit'],
+          'modellbau': ['modellbau', 'freizeit'],
+          'rc-modell': ['modellbau', 'freizeit'],
+          'modellbahn': ['modellbau', 'freizeit'],
+          'buch': ['bücher', 'comics', 'freizeit'],
+          'roman': ['bücher', 'comics', 'freizeit'],
+          'sachbuch': ['bücher', 'comics', 'freizeit'],
+          'kochbuch': ['bücher', 'comics', 'freizeit'],
+          'comic': ['bücher', 'comics', 'freizeit'],
+          'manga': ['bücher', 'comics', 'freizeit'],
+          'hörbuch': ['bücher', 'comics', 'freizeit'],
+          'sammeln': ['sammeln', 'raritäten', 'freizeit'],
+          'münzen': ['sammeln', 'raritäten', 'freizeit'],
+          'briefmarken': ['sammeln', 'raritäten', 'freizeit'],
+          'sammelkarten': ['sammeln', 'raritäten', 'freizeit'],
+
+          // === IMMOBILIEN ===
+          'haus': ['häuser', 'immobilien'],
+          'einfamilienhaus': ['häuser', 'immobilien'],
+          'doppelhaus': ['häuser', 'immobilien'],
+          'reihenhaus': ['häuser', 'immobilien'],
+          'villa': ['häuser', 'immobilien'],
+          'wohnung': ['wohnungen', 'immobilien'],
+          'eigentumswohnung': ['wohnungen', 'immobilien'],
+          'mietwohnung': ['miete', 'vermietung', 'immobilien'],
+          'zimmer': ['miete', 'vermietung', 'immobilien'],
+          'grundstück': ['grundstücke', 'immobilien'],
+          'baugrundstück': ['grundstücke', 'immobilien'],
+          'ackerland': ['grundstücke', 'immobilien'],
+          'gewerbe': ['gewerbeimmobilien', 'immobilien'],
+          'büro': ['gewerbeimmobilien', 'immobilien'],
+          'lager': ['gewerbeimmobilien', 'immobilien'],
+
+          // === LANDWIRTSCHAFT ===
+          'traktor': ['traktoren', 'landmaschinen', 'landwirtschaft'],
+          'mähdrescher': ['traktoren', 'landmaschinen', 'landwirtschaft'],
+          'landmaschine': ['traktoren', 'landmaschinen', 'landwirtschaft'],
+          'gabelstapler': ['traktoren', 'landmaschinen', 'landwirtschaft'],
+          'motorsäge': ['forst', 'gartenbedarf', 'landwirtschaft'],
+          'rasenmäher': ['forst', 'gartenbedarf', 'landwirtschaft'],
+          'häcksler': ['forst', 'gartenbedarf', 'landwirtschaft'],
+          'gewächshaus': ['forst', 'gartenbedarf', 'landwirtschaft'],
+          'rinder': ['nutztiere', 'landwirtschaft'],
+          'schweine': ['nutztiere', 'landwirtschaft'],
+          'schafe': ['nutztiere', 'landwirtschaft'],
+          'geflügel': ['nutztiere', 'landwirtschaft'],
+          'bienen': ['nutztiere', 'landwirtschaft'],
+          'saatgut': ['saatgut', 'pflanzen', 'landwirtschaft'],
+          'pflanzen': ['saatgut', 'pflanzen', 'landwirtschaft'],
+          'obstbaum': ['saatgut', 'pflanzen', 'landwirtschaft'],
+          'zimmerpflanze': ['saatgut', 'pflanzen', 'landwirtschaft'],
+          'brennholz': ['brennholz', 'rohstoffe', 'landwirtschaft'],
+          'pellets': ['brennholz', 'rohstoffe', 'landwirtschaft'],
+          'holz': ['brennholz', 'rohstoffe', 'landwirtschaft'],
+
+          // === INDUSTRIE & GEWERBE ===
+          'werkzeug': ['maschinen', 'werkzeuge', 'industrie'],
+          'werkzeugmaschine': ['maschinen', 'werkzeuge', 'industrie'],
+          'bohrmaschine': ['maschinen', 'werkzeuge', 'industrie'],
+          'säge': ['maschinen', 'werkzeuge', 'industrie'],
+          'kompressor': ['maschinen', 'werkzeuge', 'industrie'],
+          'generator': ['maschinen', 'werkzeuge', 'industrie'],
+          'büromöbel': ['büroeinrichtung', 'industrie'],
+          'schreibtisch': ['büroeinrichtung', 'industrie'],
+          'bürostuhl': ['büroeinrichtung', 'industrie'],
+          'aktenschrank': ['büroeinrichtung', 'industrie'],
+          'gastronomie': ['gastronomiebedarf', 'industrie'],
+          'kühlschrank': ['gastronomiebedarf', 'industrie'],
+          'gastro': ['gastronomiebedarf', 'industrie'],
+          'baumaterial': ['baumaterial', 'industrie'],
+          'ziegel': ['baumaterial', 'industrie'],
+          'zement': ['baumaterial', 'industrie'],
+          'dämmstoffe': ['baumaterial', 'industrie'],
+          'fenster': ['baumaterial', 'industrie'],
+          'tür': ['baumaterial', 'industrie'],
+          'kabel': ['elektrotechnik', 'industrie'],
+          'leitungen': ['elektrotechnik', 'industrie'],
+          'regal': ['lager', 'transport', 'industrie'],
+          'palette': ['lager', 'transport', 'industrie'],
+          'europalette': ['lager', 'transport', 'industrie'],
+
+          // === DIGITALE PRODUKTE ===
+          'software': ['software', 'apps', 'digital'],
+          'windows': ['software', 'apps', 'digital'],
+          'office': ['software', 'apps', 'digital'],
+          'photoshop': ['software', 'apps', 'digital'],
+          'app': ['software', 'apps', 'digital'],
+          'antivirus': ['software', 'apps', 'digital'],
+          'domain': ['domains', 'webseiten', 'digital'],
+          'webseite': ['domains', 'webseiten', 'digital'],
+          'website': ['domains', 'webseiten', 'digital'],
+          'template': ['domains', 'webseiten', 'digital'],
+          'nft': ['nfts', 'digitale-kunst', 'digital'],
+          'digitale-kunst': ['nfts', 'digitale-kunst', 'digital'],
+          '3d-modell': ['nfts', 'digitale-kunst', 'digital'],
+          'stockfoto': ['nfts', 'digitale-kunst', 'digital'],
+          'online-kurs': ['online-kurse', 'digital'],
+          'kurs': ['online-kurse', 'digital'],
+          'webinar': ['online-kurse', 'digital'],
+          'chatgpt': ['ai-prompts', 'datenmodelle', 'digital'],
+          'midjourney': ['ai-prompts', 'datenmodelle', 'digital'],
+          'ai-prompt': ['ai-prompts', 'datenmodelle', 'digital'],
+          'webentwicklung': ['remote-dienstleistungen', 'digital'],
+          'grafikdesign': ['remote-dienstleistungen', 'digital'],
+          'texterstellung': ['remote-dienstleistungen', 'digital'],
+          'seo': ['remote-dienstleistungen', 'digital'],
+        };
+
+        const semanticMappingL3: Record<string, string[]> = {
+          // === HAUSHALT LEVEL 3 ===
+          'geschirr': ['geschirr-besteck', 'geschirr'],
+          'teller': ['geschirr-besteck', 'teller'],
+          'besteck': ['geschirr-besteck', 'besteck'],
+          'messer': ['geschirr-besteck', 'besteck'],
+          'gabel': ['geschirr-besteck', 'besteck'],
+          'löffel': ['geschirr-besteck', 'besteck'],
+          'tassen': ['tassen-glaeser', 'tasse'],
+          'becher': ['tassen-glaeser', 'tasse'],
+          'gläser': ['tassen-glaeser', 'glas'],
+          'weinglas': ['tassen-glaeser', 'glas'],
+          'töpfe': ['toepfe-pfannen', 'topf'],
+          'pfannen': ['toepfe-pfannen', 'pfanne'],
+
+          // === FAHRZEUGE LEVEL 3 ===
+          'kleinwagen': ['kleinwagen', 'city'],
+          'city-car': ['kleinwagen', 'city'],
+          'limousine': ['limousinen-kombis', 'limousine'],
+          'kombi': ['limousinen-kombis', 'kombi'],
+          'suv': ['suv-gelaendewagen', 'suv'],
+          'geländewagen': ['suv-gelaendewagen', 'jeep'],
+          'sportwagen': ['sportwagen-cabrios', 'sport'],
+          'cabrio': ['sportwagen-cabrios', 'cabrio'],
+          'van': ['vans-kleinbusse', 'van'],
+          'minivan': ['vans-kleinbusse', 'klein'],
+          'motorrad': ['motorraeder', 'bike'],
+          'chopper': ['motorraeder', 'chopper'],
+          'roller': ['roller-mopeds', 'roller'],
+          'moped': ['roller-mopeds', 'moped'],
+          'quad': ['quads-atvs', 'quad'],
+          'atv': ['quads-atvs', 'atv'],
+          'lkw': ['lkw', 'truck'],
+          'truck': ['lkw', 'truck'],
+          'reifen': ['reifen-felgen', 'reifen'],
+          'felgen': ['reifen-felgen', 'felgen'],
+          'motorboot': ['motorboote', 'motor'],
+          'segelboot': ['segelboote', 'segel'],
+          'schlauchboot': ['schlauchboote', 'schlauch'],
+          'citybike': ['citybikes', 'city'],
+          'mountainbike': ['mountainbikes', 'mtb'],
+          'rennrad': ['rennraeder', 'renn'],
+          'ebike': ['e-bikes', 'elektro'],
+          'kinderfahrrad': ['kinderfahrraeder', 'kinder'],
+
+          // === ELEKTRONIK LEVEL 3 ===
+          'notebook': ['notebooks', 'laptop'],
+          'laptop': ['notebooks', 'laptop'],
+          'ultrabook': ['notebooks', 'ultra'],
+          'desktop': ['desktop-pcs', 'pc'],
+          'gaming-pc': ['desktop-pcs', 'gaming'],
+          'workstation': ['desktop-pcs', 'work'],
+          'monitor': ['monitore', 'display'],
+          'bildschirm': ['monitore', 'screen'],
+          'gaming-monitor': ['monitore', 'gaming'],
+          'grafikkarte': ['pc-komponenten', 'grafik'],
+          'prozessor': ['pc-komponenten', 'cpu'],
+          'mainboard': ['pc-komponenten', 'main'],
+          'ram': ['pc-komponenten', 'ram'],
+          'ssd': ['pc-komponenten', 'ssd'],
+          'drucker': ['drucker-scanner', 'druck'],
+          'scanner': ['drucker-scanner', 'scan'],
+          'iphone': ['smartphones', 'iphone'],
+          'samsung': ['smartphones', 'samsung'],
+          'android': ['smartphones', 'android'],
+          'ipad': ['tablets', 'ipad'],
+          'android-tablet': ['tablets', 'android'],
+          'smart-tv': ['fernseher', 'smart'],
+          'oled': ['fernseher', 'oled'],
+          'qled': ['fernseher', 'qled'],
+          'soundbar': ['heimkino-soundsysteme', 'sound'],
+          'heimkino': ['heimkino-soundsysteme', 'heimkino'],
+          'receiver': ['heimkino-soundsysteme', 'receiver'],
+          'bluetooth-kopfhörer': ['kopfhoerer', 'bluetooth'],
+          'in-ear': ['kopfhoerer', 'in-ear'],
+          'over-ear': ['kopfhoerer', 'over-ear'],
+          'bluetooth-lautsprecher': ['lautsprecher', 'bluetooth'],
+          'boxen': ['lautsprecher', 'box'],
+          'spiegelreflex': ['digitalkameras', 'dslr'],
+          'systemkamera': ['digitalkameras', 'system'],
+          'objektiv': ['objektive', 'objektiv'],
+          'tele': ['objektive', 'tele'],
+          'weitwinkel': ['objektive', 'weit'],
+          'drohne': ['drohnen', 'quadcopter'],
+          'quadcopter': ['drohnen', 'quadcopter'],
+          'gopro': ['action-cams', 'action'],
+          'action-cam': ['action-cams', 'action'],
+          'playstation': ['spielekonsolen', 'ps'],
+          'ps4': ['spielekonsolen', 'ps4'],
+          'ps5': ['spielekonsolen', 'ps5'],
+          'xbox': ['spielekonsolen', 'xbox'],
+          'nintendo': ['spielekonsolen', 'switch'],
+          'switch': ['spielekonsolen', 'switch'],
+          'videospiele': ['videospiele', 'game'],
+          'ps5-spiele': ['videospiele', 'ps5'],
+          'alexa': ['smart-home-systeme', 'alexa'],
+          'google-home': ['smart-home-systeme', 'google'],
+          'smart-home': ['smart-home-systeme', 'smart'],
+          'überwachungskamera': ['sicherheit-ueberwachung', 'kamera'],
+          'alarmanlage': ['sicherheit-ueberwachung', 'alarm'],
+          'smartwatch': ['wearables', 'watch'],
+          'fitness-tracker': ['wearables', 'fitness'],
+          'staubsauger': ['staubsauger', 'saug'],
+          'saugroboter': ['staubsauger', 'roboter'],
+
+          // === MODE LEVEL 3 ===
+          'damenschuhe': ['damenschuhe', 'damen'],
+          'pumps': ['damenschuhe', 'pumps'],
+          'herrenschuhe': ['herrenschuhe', 'herren'],
+          'business-schuhe': ['herrenschuhe', 'business'],
+          'sneaker': ['sportschuhe', 'sneaker'],
+          'laufschuhe': ['sportschuhe', 'lauf'],
+          'kinderschuhe': ['kinderschuhe', 'kinder'],
+          'armbanduhr': ['armbanduhren', 'uhr'],
+          'smartwatch': ['armbanduhren', 'smart'],
+          'ring': ['ringe', 'ring'],
+          'verlobungsring': ['ringe', 'verlobung'],
+          'kette': ['ketten', 'hals'],
+          'halskette': ['ketten', 'hals'],
+          'armband': ['armbaender', 'arm'],
+          'ohrringe': ['ohrringe', 'ohr'],
+          'handtasche': ['handtaschen', 'hand'],
+          'clutch': ['handtaschen', 'clutch'],
+          'rucksack': ['rucksaecke', 'ruck'],
+          'wanderrucksack': ['rucksaecke', 'wander'],
+          'koffer': ['koffer-reisegepaeck', 'koffer'],
+          'trolley': ['koffer-reisegepaeck', 'trolley'],
+          'gürtel': ['guertel', 'gürtel'],
+          'ledergürtel': ['guertel', 'leder'],
+          'sonnenbrille': ['sonnenbrillen', 'sonnen'],
+          'hautpflege': ['hautpflege', 'haut'],
+          'creme': ['hautpflege', 'creme'],
+          'make-up': ['make-up', 'makeup'],
+          'lippenstift': ['make-up', 'lippe'],
+          'parfum': ['parfum', 'duft'],
+          'eau-de-toilette': ['parfum', 'eau'],
+
+          // === KINDER LEVEL 3 ===
+          'babybett': ['babybetten-wiegen', 'bett'],
+          'wiege': ['babybetten-wiegen', 'wiege'],
+          'wickelkommode': ['wickelkommoden', 'wickel'],
+          'babyphone': ['babyphones', 'phone'],
+          'stillkissen': ['stillen-fuettern', 'still'],
+          'flasche': ['stillen-fuettern', 'flasche'],
+          'babykleidung': ['babykleidung', 'baby'],
+          'strampler': ['babykleidung', 'strampler'],
+          'mädchenkleidung': ['maedchenkleidung', 'mädchen'],
+          'jungenkleidung': ['jungenkleidung', 'jungen'],
+          'kinderwagen': ['kinderwagen-buggys', 'wagen'],
+          'buggy': ['kinderwagen-buggys', 'buggy'],
+          'autositz': ['autositze', 'sitz'],
+          'kindersitz': ['autositze', 'kinder'],
+          'laufrad': ['laufraeder', 'lauf'],
+          'kinderroller': ['kinderroller', 'roller'],
+          'schulranzen': ['schulranzen', 'ranzen'],
+          'federmäppchen': ['schreibwaren', 'mäppchen'],
+          'bilderbuch': ['bilderbuecher', 'bild'],
+          'vorlesebuch': ['vorlesebuecher', 'vorlese'],
+
+          // === TIERE LEVEL 3 ===
+          'welpe': ['hunde-welpen', 'welpe'],
+          'hund': ['hunde-welpen', 'hund'],
+          'leine': ['hundezubehoer', 'leine'],
+          'halsband': ['hundezubehoer', 'hals'],
+          'hundefutter': ['hundefutter', 'futter'],
+          'trockenfutter': ['hundefutter', 'trocken'],
+          'hundespielzeug': ['hundespielzeug', 'spiel'],
+          'ball': ['hundespielzeug', 'ball'],
+          'kätzchen': ['katzen-kitten', 'kitten'],
+          'katze': ['katzen-kitten', 'katze'],
+          'kratzbaum': ['katzenzubehoer', 'kratz'],
+          'katzenklo': ['katzenzubehoer', 'klo'],
+          'katzenfutter': ['katzenfutter', 'futter'],
+          'nassfutter': ['katzenfutter', 'nass'],
+          'pferd': ['pferde-ponys', 'pferd'],
+          'pony': ['pferde-ponys', 'pony'],
+          'sattel': ['reitzubehoer', 'sattel'],
+          'trense': ['reitzubehoer', 'trense'],
+          'reithelm': ['reitbekleidung', 'helm'],
+          'reitstiefel': ['reitbekleidung', 'stiefel'],
+          'kaninchen': ['kaninchen-meerschweinchen', 'kaninchen'],
+          'meerschweinchen': ['kaninchen-meerschweinchen', 'meer'],
+          'hamster': ['hamster-maeuse', 'hamster'],
+          'maus': ['hamster-maeuse', 'maus'],
+          'wellensittich': ['voegel', 'wellen'],
+          'papagei': ['voegel', 'papagei'],
+          'käfig': ['kaefige-gehege', 'käfig'],
+          'voliere': ['kaefige-gehege', 'voliere'],
+          'aquarium': ['aquarien', 'aquarium'],
+          'zierfisch': ['fische', 'zier'],
+          'terrarium': ['terrarien', 'terra'],
+          'schlange': ['reptilien', 'schlange'],
+
+          // === FREIZEIT LEVEL 3 ===
+          'zelt': ['zelte', 'zelt'],
+          'campingzelt': ['zelte', 'camping'],
+          'schlafsack': ['schlafsaecke', 'schlaf'],
+          'isomatte': ['wandern-trekking', 'iso'],
+          'rucksack': ['wandern-trekking', 'ruck'],
+          'campingtisch': ['campingmoebel', 'tisch'],
+          'campingstuhl': ['campingmoebel', 'stuhl'],
+          'hantel': ['fitnessgeraete', 'hantel'],
+          'kurzhantel': ['fitnessgeraete', 'kurz'],
+          'laufband': ['fitnessgeraete', 'lauf'],
+          'crosstrainer': ['fitnessgeraete', 'cross'],
+          'yogamatte': ['yoga-pilates', 'yoga'],
+          'pilates-ball': ['yoga-pilates', 'pilates'],
+          'e-gitarre': ['gitarren', 'gitarre'],
+          'akustikgitarre': ['gitarren', 'akustik'],
+          'keyboard': ['keyboards-pianos', 'keyboard'],
+          'e-piano': ['keyboards-pianos', 'piano'],
+          'schlagzeug': ['schlagzeug', 'drum'],
+          'e-drum': ['schlagzeug', 'elektronik'],
+          'dj-controller': ['dj-equipment', 'controller'],
+          'plattenspieler': ['dj-equipment', 'platten'],
+          'rc-auto': ['rc-modelle', 'auto'],
+          'rc-helikopter': ['rc-modelle', 'heli'],
+          'modellbahn': ['modellbahn', 'bahn'],
+          'h0': ['modellbahn', 'h0'],
+          'roman': ['romane', 'roman'],
+          'krimi': ['romane', 'krimi'],
+          'sachbuch': ['sachbuecher', 'sach'],
+          'biografie': ['sachbuecher', 'bio'],
+          'kochbuch': ['kochbuecher', 'koch'],
+          'rezepte': ['kochbuecher', 'rezept'],
+          'comic': ['comics-manga', 'comic'],
+          'manga': ['comics-manga', 'manga'],
+          'münzen': ['muenzen', 'münze'],
+          'euromünzen': ['muenzen', 'euro'],
+          'briefmarken': ['briefmarken', 'marke'],
+          'sammelkarten': ['sammelkarten', 'karte'],
+          'pokemon': ['sammelkarten', 'pokemon'],
+
+          // === INDUSTRIE LEVEL 3 ===
+          'bohrmaschine': ['elektrowerkzeuge', 'bohr'],
+          'akkuschrauber': ['elektrowerkzeuge', 'akku'],
+          'winkelschleifer': ['elektrowerkzeuge', 'winkel'],
+          'schraubendreher': ['handwerkzeuge', 'schraub'],
+          'zange': ['handwerkzeuge', 'zange'],
+          'kompressor': ['kompressoren', 'kompressor'],
+          'druckluftkompressor': ['kompressoren', 'druck'],
+          'schreibtisch': ['schreibtische-buero', 'schreib'],
+          'höhenverstellbar': ['schreibtische-buero', 'höhen'],
+          'bürostuhl': ['buerostuehle', 'stuhl'],
+          'chefsessel': ['buerostuehle', 'chef'],
+          'europalette': ['paletten', 'palette'],
+          'gitterbox': ['paletten', 'gitter'],
+
+          // === DIGITALE PRODUKTE LEVEL 3 ===
+          'windows': ['betriebssysteme', 'windows'],
+          'macos': ['betriebssysteme', 'mac'],
+          'linux': ['betriebssysteme', 'linux'],
+          'office': ['office-software', 'office'],
+          'word': ['office-software', 'word'],
+          'excel': ['office-software', 'excel'],
+          'photoshop': ['grafik-software', 'photo'],
+          'illustrator': ['grafik-software', 'illustrator'],
+          'premiere': ['video-audio-software', 'premiere'],
+          'final-cut': ['video-audio-software', 'final'],
+          'antivirus': ['sicherheitssoftware', 'anti'],
+          'firewall': ['sicherheitssoftware', 'fire'],
+          'ios-app': ['mobile-apps', 'ios'],
+          'android-app': ['mobile-apps', 'android'],
+          'domain': ['domains', 'domain'],
+          'de-domain': ['domains', 'de'],
+          'wordpress': ['webseiten-templates', 'wordpress'],
+          'shopify': ['webseiten-templates', 'shop'],
+          'nft': ['nft-kunst', 'nft'],
+          'crypto-art': ['nft-kunst', 'crypto'],
+          '3d-modell': ['3d-modelle', '3d'],
+          'blender': ['3d-modelle', 'blender'],
+          'stockfoto': ['stockfotos', 'stock'],
+          'foto': ['stockfotos', 'foto'],
+          'chatgpt': ['chatgpt-prompts', 'gpt'],
+          'gpt-4': ['chatgpt-prompts', 'gpt-4'],
+          'midjourney': ['midjourney-prompts', 'mid'],
+          'stable-diffusion': ['ai-modelle', 'stable'],
+        };
+
         // Fetch all categories to find matches
         const { data: allCategories, error: categoriesError } = await supabase
           .from('categories')
@@ -475,19 +1095,60 @@ export const ItemCreatePage = () => {
 
             // Try to find level 2 subcategory if AI provided one
             if (mergedAnalysis.subcategory) {
-              const level2 = allCategories.find(c =>
+              const subcategoryLower = mergedAnalysis.subcategory.toLowerCase();
+
+              // STEP 1: Try direct match
+              let level2 = allCategories.find(c =>
                 c.level === 2 &&
                 c.parent_id === level1.id && (
-                  c.translations?.de?.name?.toLowerCase().includes(mergedAnalysis.subcategory.toLowerCase()) ||
-                  c.translations?.en?.name?.toLowerCase().includes(mergedAnalysis.subcategory.toLowerCase()) ||
-                  c.slug.toLowerCase().includes(mergedAnalysis.subcategory.toLowerCase())
+                  c.translations?.de?.name?.toLowerCase().includes(subcategoryLower) ||
+                  c.translations?.en?.name?.toLowerCase().includes(subcategoryLower) ||
+                  c.slug.toLowerCase().includes(subcategoryLower)
                 )
               );
+
+              // STEP 2: If direct match fails, try semantic mapping
+              if (!level2 && semanticMappingL2[subcategoryLower]) {
+                console.log('🔄 Trying semantic mapping for subcategory:', subcategoryLower, '→', semanticMappingL2[subcategoryLower]);
+
+                const semanticTerms = semanticMappingL2[subcategoryLower];
+                level2 = allCategories.find(c =>
+                  c.level === 2 &&
+                  c.parent_id === level1.id &&
+                  semanticTerms.some(term =>
+                    c.translations?.de?.name?.toLowerCase().includes(term) ||
+                    c.slug.toLowerCase().includes(term)
+                  )
+                );
+              }
 
               if (level2) {
                 mappedCategorySelection.level2 = level2;
                 mappedCategoryId = level2.id;
                 console.log('✅ Found level 2 category:', level2.translations?.de?.name || level2.slug);
+
+                // 🎯 NEW: Try to find Level 3 based on subcategory
+                if (semanticMappingL3[subcategoryLower]) {
+                  console.log('🔄 Trying semantic mapping for level 3:', subcategoryLower, '→', semanticMappingL3[subcategoryLower]);
+
+                  const level3SemanticTerms = semanticMappingL3[subcategoryLower];
+                  const level3 = allCategories.find(c =>
+                    c.level === 3 &&
+                    c.parent_id === level2.id &&
+                    level3SemanticTerms.some(term =>
+                      c.translations?.de?.name?.toLowerCase().includes(term) ||
+                      c.slug.toLowerCase().includes(term)
+                    )
+                  );
+
+                  if (level3) {
+                    mappedCategorySelection.level3 = level3;
+                    mappedCategoryId = level3.id;
+                    console.log('✅ Found level 3 category via semantic mapping:', level3.translations?.de?.name || level3.slug);
+                  }
+                }
+              } else {
+                console.log('⚠️ No level 2 match found for subcategory:', subcategoryLower);
               }
             }
 
@@ -514,10 +1175,41 @@ export const ItemCreatePage = () => {
               }
             }
 
+            // Try to find Level 3 category from title/description
+            if (mappedCategorySelection.level2) {
+              const titleAndDesc = `${mergedAnalysis.title} ${mergedAnalysis.description}`.toLowerCase();
+              const level3Options = allCategories.filter(c =>
+                c.level === 3 &&
+                c.parent_id === mappedCategorySelection.level2.id
+              );
+
+              // Try to find best matching level 3 category
+              const level3 = level3Options.find(c => {
+                const categoryName = c.translations?.de?.name?.toLowerCase() || '';
+                const categorySlug = c.slug.toLowerCase();
+
+                // Check for matches in title/description
+                return titleAndDesc.includes(categoryName) ||
+                       titleAndDesc.includes(categorySlug) ||
+                       // Special keywords for common categories
+                       (categorySlug.includes('geschirr') && titleAndDesc.includes('geschirr')) ||
+                       (categorySlug.includes('besteck') && titleAndDesc.includes('besteck')) ||
+                       (categorySlug.includes('teller') && titleAndDesc.includes('teller')) ||
+                       (categorySlug.includes('tassen') && titleAndDesc.includes('tasse')) ||
+                       (categorySlug.includes('glaeser') && titleAndDesc.includes('glas'));
+              });
+
+              if (level3) {
+                mappedCategorySelection.level3 = level3;
+                mappedCategoryId = level3.id;
+                console.log('✅ Inferred level 3 from title/description:', level3.translations?.de?.name || level3.slug);
+              }
+            }
+
             // Set final category ID
             if (!mappedCategoryId) {
-              mappedCategoryId = level1.id;
-              console.log('⚠️ Using Level 1 category (no Level 2 found)');
+              mappedCategoryId = mappedCategorySelection.level2?.id || level1.id;
+              console.log('⚠️ Using Level', mappedCategorySelection.level2 ? '2' : '1', 'category (no deeper level found)');
             }
           } else {
             console.warn('❌ No matching category found for:', mergedAnalysis.category);
@@ -528,8 +1220,12 @@ export const ItemCreatePage = () => {
       // Store mapped category_id in mergedAnalysis for publish
       mergedAnalysis.category_id = mappedCategoryId;
 
-      // NOTE: We stop at Level 2 categories. Further classification happens via attributes/filters
-      console.log('📂 Category mapping complete - stopping at Level 2 (attributes will be used for filtering)');
+      console.log('📂 Category mapping complete:', {
+        level1: mappedCategorySelection.level1?.translations?.de?.name,
+        level2: mappedCategorySelection.level2?.translations?.de?.name,
+        level3: mappedCategorySelection.level3?.translations?.de?.name,
+        finalCategoryId: mappedCategoryId
+      });
 
       // Load category hierarchy for preview display
       if (mappedCategoryId) {
@@ -614,25 +1310,6 @@ export const ItemCreatePage = () => {
 
     if (!itemTitle || !itemDescription || !itemPrice) return;
 
-    // Build complete data object combining AI data and manual form data
-    const manualFormData: Partial<AnalysisResult> = analysisData ? {} : {
-      condition,
-      brand,
-      size,
-      weight,
-      material,
-      colors,
-      style,
-      serialNumber,
-      dimensions: {
-        length: dimensionsLength,
-        width: dimensionsWidth,
-        height: dimensionsHeight,
-      }
-    };
-
-    const completeDataToUse = analysisData || (Object.keys(manualFormData).length > 0 ? manualFormData as AnalysisResult : null);
-
     if (!user.email_confirmed_at) {
       setError('Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.');
       return;
@@ -687,46 +1364,28 @@ export const ItemCreatePage = () => {
 
       const countryCode = countryCodeMap[selectedAddress?.country || getDefaultCountry()] || 'DE';
       const primaryImageUrl = uploadedImageUrls[images.findIndex(img => img.isPrimary)] || uploadedImageUrls[0];
+      const dataToUse = analysisData || analysis;
 
       // IMPORTANT: Extract Gemini tokens BEFORE insert
-      const geminiInputTokens = completeDataToUse?.tokenUsage?.inputTokens || 0;
-      const geminiOutputTokens = completeDataToUse?.tokenUsage?.outputTokens || 0;
+      const geminiInputTokens = dataToUse?.tokenUsage?.inputTokens || 0;
+      const geminiOutputTokens = dataToUse?.tokenUsage?.outputTokens || 0;
       const totalGeminiTokens = geminiInputTokens + geminiOutputTokens;
 
       console.log('[Item Insert] Gemini Tokens:', {
         input: geminiInputTokens,
         output: geminiOutputTokens,
         total: totalGeminiTokens,
-        hasTokenUsage: !!completeDataToUse?.tokenUsage
+        hasTokenUsage: !!dataToUse?.tokenUsage
       });
 
       // Determine category_id: from AI analysis or from manual selection
-      let categoryId = completeDataToUse?.category_id || categorySelection?.level3?.id || categorySelection?.level2?.id || categorySelection?.level1?.id;
-
-      // If no categoryId but we have a category string from BasicInfoSection, look it up
-      if (!categoryId && category) {
-        console.log('Looking up category ID from string:', category);
-        const { data: categoryData, error: catLookupError } = await supabase
-          .from('categories')
-          .select('id')
-          .ilike('translations->de->>name', `%${category}%`)
-          .order('level', { ascending: true })
-          .limit(1)
-          .single();
-
-        if (!catLookupError && categoryData) {
-          categoryId = categoryData.id;
-          console.log('✅ Found category ID:', categoryId);
-        } else {
-          console.log('❌ Category lookup failed:', catLookupError);
-        }
-      }
+      let categoryId = dataToUse?.category_id || getFinalCategoryId(categorySelection);
 
       // If AI returned text categories instead of category_id, map them to the hierarchical system
-      if (!categoryId && completeDataToUse?.category) {
+      if (!categoryId && dataToUse?.category) {
         console.log('Mapping AI text categories to hierarchical system:', {
-          category: completeDataToUse.category,
-          subcategory: completeDataToUse.subcategory
+          category: dataToUse.category,
+          subcategory: dataToUse.subcategory
         });
 
         // Fetch all categories to find matches
@@ -739,9 +1398,9 @@ export const ItemCreatePage = () => {
         // Find level 1 category by matching translated name
         const level1 = allCategories?.find(c =>
           c.level === 1 && (
-            c.translations?.de?.name?.toLowerCase().includes(completeDataToUse.category.toLowerCase()) ||
-            c.translations?.en?.name?.toLowerCase().includes(completeDataToUse.category.toLowerCase()) ||
-            c.slug.toLowerCase().includes(completeDataToUse.category.toLowerCase())
+            c.translations?.de?.name?.toLowerCase().includes(dataToUse.category.toLowerCase()) ||
+            c.translations?.en?.name?.toLowerCase().includes(dataToUse.category.toLowerCase()) ||
+            c.slug.toLowerCase().includes(dataToUse.category.toLowerCase())
           )
         );
 
@@ -750,13 +1409,13 @@ export const ItemCreatePage = () => {
         let level2 = null;
 
         // Try to find level 2 subcategory if AI provided one
-        if (level1 && completeDataToUse.subcategory) {
+        if (level1 && dataToUse.subcategory) {
           level2 = allCategories?.find(c =>
             c.level === 2 &&
             c.parent_id === level1.id && (
-              c.translations?.de?.name?.toLowerCase().includes(completeDataToUse.subcategory.toLowerCase()) ||
-              c.translations?.en?.name?.toLowerCase().includes(completeDataToUse.subcategory.toLowerCase()) ||
-              c.slug.toLowerCase().includes(completeDataToUse.subcategory.toLowerCase())
+              c.translations?.de?.name?.toLowerCase().includes(dataToUse.subcategory.toLowerCase()) ||
+              c.translations?.en?.name?.toLowerCase().includes(dataToUse.subcategory.toLowerCase()) ||
+              c.slug.toLowerCase().includes(dataToUse.subcategory.toLowerCase())
             )
           );
 
@@ -790,13 +1449,45 @@ export const ItemCreatePage = () => {
           }
         }
 
-        // Set category_id with preference: Level 2 > Level 1
+        // Try to find Level 3 category from title/description
+        let level3 = null;
         if (level2) {
+          const titleAndDesc = `${itemTitle} ${itemDescription}`.toLowerCase();
+          const level3Options = allCategories?.filter(c =>
+            c.level === 3 &&
+            c.parent_id === level2.id
+          ) || [];
+
+          level3 = level3Options.find(c => {
+            const categoryName = c.translations?.de?.name?.toLowerCase() || '';
+            const categorySlug = c.slug.toLowerCase();
+
+            // Check for matches in title/description
+            return titleAndDesc.includes(categoryName) ||
+                   titleAndDesc.includes(categorySlug) ||
+                   // Special keywords for common categories
+                   (categorySlug.includes('geschirr') && titleAndDesc.includes('geschirr')) ||
+                   (categorySlug.includes('besteck') && titleAndDesc.includes('besteck')) ||
+                   (categorySlug.includes('teller') && titleAndDesc.includes('teller')) ||
+                   (categorySlug.includes('tassen') && titleAndDesc.includes('tasse')) ||
+                   (categorySlug.includes('glaeser') && titleAndDesc.includes('glas'));
+          });
+
+          if (level3) {
+            console.log('✅ Inferred level 3 category from title/description:', level3);
+          }
+        }
+
+        // Set category_id with preference: Level 3 > Level 2 > Level 1
+        if (level3) {
+          categoryId = level3.id;
+          console.log('✅ Using Level 3 category:', categoryId);
+        } else if (level2) {
           categoryId = level2.id;
           console.log('✅ Using Level 2 category:', categoryId);
         } else if (level1) {
           categoryId = level1.id;
-          console.log('⚠️ Using Level 1 category (no Level 2 found):', categoryId);
+          console.log('⚠️ Using Level 1 category (no Level 2/3 found):', categoryId);
         }
       }
 
@@ -817,6 +1508,20 @@ export const ItemCreatePage = () => {
         throw new Error('Die ausgewählte Kategorie ist ungültig. Bitte wähle eine andere Kategorie.');
       }
 
+      // 🚗 DEBUG: Log vehicle attributes before insert
+      if (dataToUse?.vehicle_brand || dataToUse?.vehicle_year || dataToUse?.vehicle_mileage) {
+        console.log('[Vehicle Attributes] Preparing to insert:', {
+          vehicle_brand: dataToUse?.vehicle_brand,
+          vehicle_year: dataToUse?.vehicle_year,
+          vehicle_mileage: dataToUse?.vehicle_mileage,
+          vehicle_fuel_type: dataToUse?.vehicle_fuel_type,
+          vehicle_color: dataToUse?.vehicle_color,
+          vehicle_power_kw: dataToUse?.vehicle_power_kw,
+          vehicle_first_registration: dataToUse?.vehicle_first_registration,
+          vehicle_tuv_until: dataToUse?.vehicle_tuv_until,
+        });
+      }
+
       const { data: itemData, error: insertError } = await supabase
         .from('items')
         .insert({
@@ -826,28 +1531,28 @@ export const ItemCreatePage = () => {
           price: itemPrice,
           image_url: primaryImageUrl,
           status: publishImmediately ? 'published' : 'draft',
-          ai_generated: analysisData !== undefined || analysis !== null,
-          category_id: categoryId,
-          condition: completeDataToUse?.condition,
-          brand: completeDataToUse?.brand,
-          size: completeDataToUse?.size,
-          weight: completeDataToUse?.weight,
-          dimensions_length: completeDataToUse?.dimensions?.length,
-          dimensions_width: completeDataToUse?.dimensions?.width,
-          dimensions_height: completeDataToUse?.dimensions?.height,
-          material: completeDataToUse?.material,
-          colors: completeDataToUse?.colors,
-          style: completeDataToUse?.style,
-          serial_number: completeDataToUse?.serialNumber,
-          features: completeDataToUse?.features,
-          accessories: completeDataToUse?.accessories,
-          tags: completeDataToUse?.tags,
+          ai_generated: dataToUse !== null,
+          category_id: dataToUse?.category_id || categoryId,
+          condition: dataToUse?.condition,
+          brand: dataToUse?.brand,
+          size: dataToUse?.size,
+          weight: dataToUse?.weight,
+          dimensions_length: dataToUse?.dimensions?.length,
+          dimensions_width: dataToUse?.dimensions?.width,
+          dimensions_height: dataToUse?.dimensions?.height,
+          material: dataToUse?.material,
+          colors: dataToUse?.colors,
+          style: dataToUse?.style,
+          serial_number: dataToUse?.serialNumber,
+          features: dataToUse?.features,
+          accessories: dataToUse?.accessories,
+          tags: dataToUse?.tags,
           postal_code: selectedAddress?.postal_code,
           location: selectedAddress?.city,
-          estimated_weight_kg: completeDataToUse?.estimated_weight_kg,
-          package_dimensions: completeDataToUse?.package_dimensions,
-          ai_shipping_domestic: completeDataToUse?.ai_shipping_domestic,
-          ai_shipping_international: completeDataToUse?.ai_shipping_international,
+          estimated_weight_kg: dataToUse?.estimated_weight_kg,
+          package_dimensions: dataToUse?.package_dimensions,
+          ai_shipping_domestic: dataToUse?.ai_shipping_domestic,
+          ai_shipping_international: dataToUse?.ai_shipping_international,
           selected_address_id: selectedShippingAddress || null,
           shipping_from_country: countryCode,
           snapshot_shipping_enabled: shippingEnabled,
@@ -865,6 +1570,15 @@ export const ItemCreatePage = () => {
           snapshot_pickup_city: selectedAddress?.city,
           snapshot_pickup_country: selectedAddress?.country,
           snapshot_location_description: sellerProfile?.location_description || null,
+          // 🚗 Vehicle attributes
+          vehicle_brand: dataToUse?.vehicle_brand,
+          vehicle_year: dataToUse?.vehicle_year,
+          vehicle_mileage: dataToUse?.vehicle_mileage,
+          vehicle_fuel_type: dataToUse?.vehicle_fuel_type,
+          vehicle_color: dataToUse?.vehicle_color,
+          vehicle_power_kw: dataToUse?.vehicle_power_kw,
+          vehicle_first_registration: dataToUse?.vehicle_first_registration,
+          vehicle_tuv_until: dataToUse?.vehicle_tuv_until,
           // CRITICAL FIX: Store Gemini tokens at insert time (will be updated by deduct_credits_for_ai if needed)
           gemini_input_tokens: geminiInputTokens,
           gemini_output_tokens: geminiOutputTokens,
@@ -876,7 +1590,7 @@ export const ItemCreatePage = () => {
       if (insertError) {
         console.error('Item insert error:', insertError);
         console.error('Insert data:', {
-          category_id: categoryId,
+          category_id: dataToUse?.category_id || categoryId,
           title: itemTitle,
           price: itemPrice,
           status: publishImmediately ? 'published' : 'draft'
@@ -885,6 +1599,22 @@ export const ItemCreatePage = () => {
       }
 
       console.log('Item created:', itemData);
+
+      // 🚗 DEBUG: Log vehicle attributes after insert
+      if (itemData && (itemData.vehicle_brand || itemData.vehicle_year || itemData.vehicle_mileage)) {
+        console.log('[Vehicle Attributes] Successfully inserted:', {
+          vehicle_brand: itemData.vehicle_brand,
+          vehicle_year: itemData.vehicle_year,
+          vehicle_mileage: itemData.vehicle_mileage,
+          vehicle_fuel_type: itemData.vehicle_fuel_type,
+          vehicle_color: itemData.vehicle_color,
+          vehicle_power_kw: itemData.vehicle_power_kw,
+          vehicle_first_registration: itemData.vehicle_first_registration,
+          vehicle_tuv_until: itemData.vehicle_tuv_until,
+        });
+      } else if (itemData) {
+        console.log('[Vehicle Attributes] No vehicle attributes in returned item data');
+      }
 
       if (uploadedImageUrls.length > 0 && itemData) {
         const itemImages = uploadedImageUrls.map((url, index) => ({
@@ -904,7 +1634,7 @@ export const ItemCreatePage = () => {
       }
 
       // Save vehicle attributes if present
-      if (itemData && completeDataToUse && categoryId === 'f5fb69d5-e054-47e8-a72e-dc05fc3620bf') {  // Autos category ID
+      if (itemData && dataToUse && categoryId === 'f5fb69d5-e054-47e8-a72e-dc05fc3620bf') {  // Autos category ID
         console.log('[Vehicle Attributes] Saving vehicle attributes...');
         const { data: categoryAttributes } = await supabase
           .from('category_attributes')
@@ -916,60 +1646,60 @@ export const ItemCreatePage = () => {
           const itemAttributes = [];
 
           // Map vehicle_* fields to item_attributes
-          if (completeDataToUse.vehicle_brand && attributeMap.has('brand')) {
+          if (dataToUse.vehicle_brand && attributeMap.has('brand')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('brand'),
-              value_text: completeDataToUse.vehicle_brand
+              value_text: dataToUse.vehicle_brand
             });
           }
-          if (completeDataToUse.vehicle_year && attributeMap.has('year')) {
+          if (dataToUse.vehicle_year && attributeMap.has('year')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('year'),
-              value_number: completeDataToUse.vehicle_year
+              value_number: dataToUse.vehicle_year
             });
           }
-          if (completeDataToUse.vehicle_mileage && attributeMap.has('mileage')) {
+          if (dataToUse.vehicle_mileage && attributeMap.has('mileage')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('mileage'),
-              value_number: completeDataToUse.vehicle_mileage
+              value_number: dataToUse.vehicle_mileage
             });
           }
-          if (completeDataToUse.vehicle_fuel_type && attributeMap.has('fuel_type')) {
+          if (dataToUse.vehicle_fuel_type && attributeMap.has('fuel_type')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('fuel_type'),
-              value_text: completeDataToUse.vehicle_fuel_type
+              value_text: dataToUse.vehicle_fuel_type
             });
           }
-          if (completeDataToUse.vehicle_color && attributeMap.has('color')) {
+          if (dataToUse.vehicle_color && attributeMap.has('color')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('color'),
-              value_text: completeDataToUse.vehicle_color
+              value_text: dataToUse.vehicle_color
             });
           }
-          if (completeDataToUse.vehicle_power_kw && attributeMap.has('power_kw')) {
+          if (dataToUse.vehicle_power_kw && attributeMap.has('power_kw')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('power_kw'),
-              value_number: completeDataToUse.vehicle_power_kw
+              value_number: dataToUse.vehicle_power_kw
             });
           }
-          if (completeDataToUse.vehicle_first_registration && attributeMap.has('first_registration')) {
+          if (dataToUse.vehicle_first_registration && attributeMap.has('first_registration')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('first_registration'),
-              value_date: completeDataToUse.vehicle_first_registration
+              value_date: dataToUse.vehicle_first_registration
             });
           }
-          if (completeDataToUse.vehicle_tuv_until && attributeMap.has('tuv_until')) {
+          if (dataToUse.vehicle_tuv_until && attributeMap.has('tuv_until')) {
             itemAttributes.push({
               item_id: itemData.id,
               attribute_id: attributeMap.get('tuv_until'),
-              value_date: completeDataToUse.vehicle_tuv_until
+              value_date: dataToUse.vehicle_tuv_until
             });
           }
 
@@ -987,89 +1717,11 @@ export const ItemCreatePage = () => {
         }
       }
 
-      // 🔥 CRITICAL: Save general attributes to item_attributes for ALL categories (so they appear in filters!)
-      if (itemData && completeDataToUse && categoryId) {
-        console.log('[General Attributes] Saving general attributes for filters...');
-
-        // Fetch both category-specific AND global filterable attributes
-        const { data: allCategoryAttributes } = await supabase
-          .from('category_attributes')
-          .select('id, attribute_key, is_global')
-          .or(`category_id.eq.${categoryId},is_global.eq.true`)
-          .eq('is_filterable', true);
-
-        if (allCategoryAttributes && allCategoryAttributes.length > 0) {
-          const attributeMap = new Map(allCategoryAttributes.map(attr => [attr.attribute_key, attr.id]));
-          const generalItemAttributes = [];
-
-          console.log('[General Attributes] Available filterable attributes:', Array.from(attributeMap.keys()));
-
-          // Map general fields to item_attributes
-          if (completeDataToUse.condition && attributeMap.has('condition')) {
-            generalItemAttributes.push({
-              item_id: itemData.id,
-              attribute_id: attributeMap.get('condition'),
-              value_text: completeDataToUse.condition
-            });
-            console.log('[General Attributes] Adding condition:', completeDataToUse.condition);
-          }
-
-          if (completeDataToUse.brand && (attributeMap.has('brand') || attributeMap.has('brand_global'))) {
-            const brandAttributeId = attributeMap.get('brand') || attributeMap.get('brand_global');
-            generalItemAttributes.push({
-              item_id: itemData.id,
-              attribute_id: brandAttributeId,
-              value_text: completeDataToUse.brand
-            });
-            console.log('[General Attributes] Adding brand:', completeDataToUse.brand);
-          }
-
-          if (completeDataToUse.material && attributeMap.has('material')) {
-            generalItemAttributes.push({
-              item_id: itemData.id,
-              attribute_id: attributeMap.get('material'),
-              value_text: completeDataToUse.material
-            });
-            console.log('[General Attributes] Adding material:', completeDataToUse.material);
-          }
-
-          // Colors - handle array
-          if (completeDataToUse.colors && Array.isArray(completeDataToUse.colors) && attributeMap.has('color')) {
-            // Save first color (or could save all separately)
-            const colorValue = completeDataToUse.colors[0];
-            if (colorValue) {
-              generalItemAttributes.push({
-                item_id: itemData.id,
-                attribute_id: attributeMap.get('color'),
-                value_text: colorValue
-              });
-              console.log('[General Attributes] Adding color:', colorValue);
-            }
-          }
-
-          if (generalItemAttributes.length > 0) {
-            const { error: generalAttributesError } = await supabase
-              .from('item_attributes')
-              .insert(generalItemAttributes);
-
-            if (generalAttributesError) {
-              console.error('[General Attributes] Error saving attributes:', generalAttributesError);
-            } else {
-              console.log('[General Attributes] ✅ Saved', generalItemAttributes.length, 'attributes to item_attributes');
-            }
-          } else {
-            console.log('[General Attributes] ⚠️ No matching attributes found to save');
-          }
-        } else {
-          console.log('[General Attributes] ⚠️ No filterable category attributes found for category:', categoryId);
-        }
-      }
-
       // Handle credit deduction based on listing type
       console.log('[Credit Check] Processing credit deduction...', {
         creditSource: creditCheck.source,
         geminiTokens: totalGeminiTokens,
-        aiGenerated: analysisData !== undefined || analysis !== null
+        aiGenerated: dataToUse !== null
       });
 
       // CRITICAL FIX: Deduct credits for AI usage REGARDLESS of credit source
@@ -1119,7 +1771,7 @@ export const ItemCreatePage = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 3, pb: 10 }}>
+    <Container maxWidth="md" sx={{ py: 4, pb: 12 }}>
       {/* AI Analysis Preview Modal */}
       {showPreview && previewData && (
         <AIAnalysisPreview
@@ -1134,14 +1786,6 @@ export const ItemCreatePage = () => {
           onCancel={() => {
             setShowPreview(false);
             setPreviewData(null);
-          }}
-          onRegenerate={async () => {
-            // Close preview and regenerate analysis
-            setShowPreview(false);
-            setPreviewData(null);
-            setAnalysis(null);
-            // Trigger AI generation again
-            await handleAIGenerate();
           }}
         />
       )}
@@ -1224,19 +1868,18 @@ export const ItemCreatePage = () => {
         <Collapse in={showAiHint}>
           <Alert
             severity="info"
-            icon={<Sparkles size={18} />}
+            icon={<Sparkles size={20} />}
             action={
               <IconButton
                 size="small"
                 onClick={() => setShowAiHint(false)}
                 sx={{ color: 'inherit' }}
               >
-                <X size={16} />
+                <X size={18} />
               </IconButton>
             }
             sx={{
-              mb: 2.5,
-              py: 1.5,
+              mb: 3,
               backgroundColor: 'rgba(16, 185, 129, 0.08)',
               borderColor: '#10b981',
               border: '1px solid',
@@ -1246,14 +1889,14 @@ export const ItemCreatePage = () => {
             }}
           >
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: '#047857', fontSize: '0.9rem' }}>
-                💡 Willkommen! Dein erster Artikel
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: '#047857' }}>
+                💡 Willkommen! Ihr erster Artikel
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 0.75, lineHeight: 1.5 }}>
-                Lade einfach Fotos hoch - der KI-Assistent analysiert die Bilder und schlägt Titel, Beschreibung, Preis und Details vor.
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
+                Laden Sie einfach Fotos hoch - unser KI-Assistent analysiert die Bilder automatisch und schlägt Titel, Beschreibung, Preis und weitere Details vor.
               </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.75rem' }}>
-                KI-Einstellungen unter <strong>Profil → Einstellungen → KI-Assistent</strong>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                Sie können die KI-Einstellungen jederzeit unter <strong>Profil → Einstellungen → KI-Assistent</strong> anpassen.
               </Typography>
             </Box>
           </Alert>
@@ -1484,28 +2127,27 @@ export const ItemCreatePage = () => {
       )}
 
       {workflowStep === 'manual' && (
-        <Paper sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
-          <Box sx={{ p: 2.5 }}>
-            <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2.5, fontSize: '1.125rem' }}>
+        <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 3 }}>
               Artikelinformationen
             </Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <Accordion defaultExpanded elevation={0} sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
                 <AccordionSummary
-                  expandIcon={<ChevronDown size={18} />}
+                  expandIcon={<ChevronDown size={20} />}
                   sx={{
-                    minHeight: '48px',
                     bgcolor: 'rgba(25, 118, 210, 0.04)',
                     '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.08)' }
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-                    <Info size={18} color="#1976d2" />
-                    <Typography fontWeight={600} sx={{ fontSize: '0.95rem' }}>Grundinformationen</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Info size={20} color="#1976d2" />
+                    <Typography fontWeight={600}>Grundinformationen</Typography>
                   </Box>
                 </AccordionSummary>
-                <AccordionDetails sx={{ p: 2.5 }}>
+                <AccordionDetails sx={{ p: 3 }}>
                   <BasicInfoSection
                     title={title}
                     description={description}
@@ -1521,7 +2163,7 @@ export const ItemCreatePage = () => {
                     onTitleChange={setTitle}
                     onDescriptionChange={setDescription}
                     onPriceChange={setPrice}
-                    onCategoryChange={setCategory}
+                    onCategoryChange={setCategorySelection}
                     onBrandChange={setBrand}
                     onConditionChange={setCondition}
                     onTagsChange={setTags}
@@ -1537,19 +2179,18 @@ export const ItemCreatePage = () => {
 
               <Accordion elevation={0} sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
                 <AccordionSummary
-                  expandIcon={<ChevronDown size={18} />}
+                  expandIcon={<ChevronDown size={20} />}
                   sx={{
-                    minHeight: '48px',
                     bgcolor: 'rgba(156, 39, 176, 0.04)',
                     '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.08)' }
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-                    <Package size={18} color="#9c27b0" />
-                    <Typography fontWeight={600} sx={{ fontSize: '0.95rem' }}>Details (Optional)</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Package size={20} color="#9c27b0" />
+                    <Typography fontWeight={600}>Details (Optional)</Typography>
                   </Box>
                 </AccordionSummary>
-                <AccordionDetails sx={{ p: 2.5 }}>
+                <AccordionDetails sx={{ p: 3 }}>
                   <DetailedInfoSection
                     size={size}
                     weight={weight}
@@ -1578,8 +2219,8 @@ export const ItemCreatePage = () => {
             </Box>
           </Box>
 
-          <Box sx={{ p: 2.5, pt: 0 }}>
-            <Box sx={{ mb: 1.5, p: 1.25, bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(25, 118, 210, 0.2)' }}>
+          <Box sx={{ p: 3, pt: 0 }}>
+            <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(25, 118, 210, 0.2)' }}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -1590,10 +2231,10 @@ export const ItemCreatePage = () => {
                 }
                 label={
                   <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       Gleich veröffentlichen
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                    <Typography variant="caption" color="text.secondary">
                       Inserat direkt online stellen (sonst als Entwurf speichern)
                     </Typography>
                   </Box>
@@ -1602,19 +2243,20 @@ export const ItemCreatePage = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
+            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
               <Button
                 fullWidth
                 variant="outlined"
+                size="large"
                 onClick={handleAIGenerate}
                 disabled={analyzing}
-                startIcon={analyzing ? <CircularProgress size={16} color="inherit" /> : <Sparkles size={16} />}
+                startIcon={analyzing ? <CircularProgress size={18} color="inherit" /> : <Sparkles size={18} />}
                 sx={{
-                  py: 1.25,
+                  py: 1.5,
                   textTransform: 'none',
-                  fontSize: '0.9rem',
+                  fontSize: '0.95rem',
                   fontWeight: 500,
-                  borderRadius: 1.5,
+                  borderRadius: 2,
                 }}
               >
                 {analyzing ? 'Generiere mit KI...' : 'Mit KI erzeugen'}
@@ -1623,15 +2265,16 @@ export const ItemCreatePage = () => {
               <Button
                 fullWidth
                 variant="contained"
+                size="large"
                 onClick={() => publishItem()}
                 disabled={uploading || !title || !description || !price}
-                startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <Save size={16} />}
+                startIcon={uploading ? <CircularProgress size={18} color="inherit" /> : <Save size={18} />}
                 sx={{
-                  py: 1.25,
+                  py: 1.5,
                   textTransform: 'none',
-                  fontSize: '0.9rem',
+                  fontSize: '0.95rem',
                   fontWeight: 600,
-                  borderRadius: 1.5,
+                  borderRadius: 2,
                 }}
               >
                 {uploading ? 'Speichere...' : (publishImmediately ? 'Veröffentlichen' : 'Als Entwurf speichern')}

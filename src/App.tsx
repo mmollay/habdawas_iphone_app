@@ -29,7 +29,7 @@ import {
   Tabs,
   Badge,
 } from '@mui/material';
-import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2 } from 'lucide-react';
+import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2, FolderTree } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { HandPreferenceProvider, useHandPreference } from './contexts/HandPreferenceContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
@@ -75,6 +75,7 @@ const ResetPasswordPage = lazy(() => import('./components/Auth/ResetPasswordPage
 const OAuthCallbackPage = lazy(() => import('./components/Auth/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
 const FilterCountsTest = lazy(() => import('./components/Test/FilterCountsTest').then(m => ({ default: m.FilterCountsTest })));
 const AdvancedFilterSidebarTest = lazy(() => import('./components/Test/AdvancedFilterSidebarTest').then(m => ({ default: m.AdvancedFilterSidebarTest })));
+const CategoryTreePage = lazy(() => import('./components/CategoryTreePage'));
 
 const theme = createTheme({
   palette: {
@@ -1229,6 +1230,25 @@ const MainContent = () => {
             >
               <Container maxWidth="xl" sx={{ maxWidth: '1400px !important' }}>
                 <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <IconButton
+                      onClick={() => navigate('/categories')}
+                      sx={{
+                        color: 'text.primary',
+                        border: '1.5px solid',
+                        borderColor: 'rgba(0, 0, 0, 0.12)',
+                        borderRadius: 2,
+                        width: 40,
+                        height: 40,
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          bgcolor: 'rgba(25, 118, 210, 0.08)',
+                        }
+                      }}
+                      title="Kategorien"
+                    >
+                      <FolderTree size={20} />
+                    </IconButton>
                   <Tabs
                     value={showFavorites ? 2 : showMyItems ? 1 : 0}
                     onChange={(_, value) => {
@@ -1512,6 +1532,7 @@ const MainContent = () => {
                     }
                   />
                 </Tabs>
+                  </Box>
 
                 {/* Listing Info & Community-Topf Display - Material Design 3 */}
                 {creditInfo && (
@@ -2223,6 +2244,7 @@ function App() {
                       <Route path="/tokens/buy" element={<CreditPurchasePage />} />
                       <Route path="/tokens/success" element={<TokenSuccessPage />} />
                       <Route path="/admin" element={<AdminPage />} />
+                      <Route path="/categories" element={<CategoryTreePage />} />
                       <Route path="/test/filter-counts" element={<FilterCountsTest />} />
                       <Route path="/test/filter-sidebar" element={<AdvancedFilterSidebarTest />} />
                       <Route path="/auth/callback" element={<OAuthCallbackPage />} />
