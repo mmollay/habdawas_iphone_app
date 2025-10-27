@@ -1626,6 +1626,91 @@ const MainContent = () => {
 
           <Container maxWidth="xl" sx={{ py: 3, maxWidth: '1400px !important' }}>
 
+            {/* Breadcrumb für gefilterte Kategorien */}
+            {selectedCategories.length > 0 && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  py: 1.5,
+                  px: isMobile ? 1.5 : 2,
+                  borderRadius: 2,
+                  backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                  mb: 3,
+                  overflow: 'auto',
+                  border: '1px solid rgba(25, 118, 210, 0.12)',
+                  '&::-webkit-scrollbar': {
+                    height: '4px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                    borderRadius: '4px',
+                  },
+                }}
+              >
+                <Home
+                  size={isMobile ? 18 : 20}
+                  color="currentColor"
+                  style={{ color: 'rgba(0, 0, 0, 0.6)', flexShrink: 0 }}
+                />
+                {selectedCategories.map((categoryId) => {
+                  const category = getCategoryById(categoryId);
+                  if (!category) return null;
+
+                  // Build breadcrumb path
+                  const path: any[] = [];
+                  let current = category;
+                  while (current) {
+                    path.unshift(current);
+                    current = current.parent_id ? getCategoryById(current.parent_id) : null;
+                  }
+
+                  return (
+                    <Box
+                      key={categoryId}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        flexShrink: 0
+                      }}
+                    >
+                      {path.map((cat, index) => (
+                        <Box
+                          key={cat.id}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            flexShrink: 0
+                          }}
+                        >
+                          <ChevronRight
+                            size={isMobile ? 16 : 18}
+                            color="currentColor"
+                            style={{ color: 'rgba(0, 0, 0, 0.38)', margin: '0 2px' }}
+                          />
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: index === path.length - 1 ? 'primary.main' : 'text.secondary',
+                              fontWeight: index === path.length - 1 ? 700 : 500,
+                              fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                              whiteSpace: 'nowrap',
+                              letterSpacing: '0.01em',
+                            }}
+                          >
+                            {cat.translations?.de?.name || cat.slug}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+
             {items.length > 0 && (
               <Box
                 sx={{
@@ -1759,90 +1844,6 @@ const MainContent = () => {
                     />
                   )}
                 </Box>
-
-                {/* Breadcrumb für gefilterte Kategorien */}
-                {selectedCategories.length > 0 && (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      py: 1,
-                      px: isMobile ? 0 : 2,
-                      borderRadius: 2,
-                      backgroundColor: 'rgba(25, 118, 210, 0.04)',
-                      mb: 2,
-                      overflow: 'auto',
-                      '&::-webkit-scrollbar': {
-                        height: '4px',
-                      },
-                      '&::-webkit-scrollbar-thumb': {
-                        backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                        borderRadius: '4px',
-                      },
-                    }}
-                  >
-                    <Home
-                      size={isMobile ? 18 : 20}
-                      color="currentColor"
-                      style={{ color: 'rgba(0, 0, 0, 0.6)', flexShrink: 0 }}
-                    />
-                    {selectedCategories.map((categoryId) => {
-                      const category = getCategoryById(categoryId);
-                      if (!category) return null;
-
-                      // Build breadcrumb path
-                      const path: any[] = [];
-                      let current = category;
-                      while (current) {
-                        path.unshift(current);
-                        current = current.parent_id ? getCategoryById(current.parent_id) : null;
-                      }
-
-                      return (
-                        <Box
-                          key={categoryId}
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            flexShrink: 0
-                          }}
-                        >
-                          {path.map((cat, index) => (
-                            <Box
-                              key={cat.id}
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.5,
-                                flexShrink: 0
-                              }}
-                            >
-                              <ChevronRight
-                                size={isMobile ? 16 : 18}
-                                color="currentColor"
-                                style={{ color: 'rgba(0, 0, 0, 0.38)', margin: '0 2px' }}
-                              />
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: index === path.length - 1 ? 'primary.main' : 'text.secondary',
-                                  fontWeight: index === path.length - 1 ? 700 : 500,
-                                  fontSize: isMobile ? '0.8125rem' : '0.875rem',
-                                  whiteSpace: 'nowrap',
-                                  letterSpacing: '0.01em',
-                                }}
-                              >
-                                {cat.translations?.de?.name || cat.slug}
-                              </Typography>
-                            </Box>
-                          ))}
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                )}
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography
