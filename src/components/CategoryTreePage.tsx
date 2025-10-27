@@ -10,6 +10,8 @@ import {
   FormControlLabel,
   Divider,
   Button,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
@@ -27,6 +29,8 @@ const CategoryTreePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { checkCredit } = useCreditCheck();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [searchQuery, setSearchQuery] = useState('');
   const [showUsageCount, setShowUsageCount] = useState(true);
   const [expandAll, setExpandAll] = useState(false);
@@ -228,53 +232,58 @@ const CategoryTreePage: React.FC = () => {
         </Container>
       </Paper>
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: isMobile ? 0 : 4, px: isMobile ? 0 : 3 }}>
       {/* Header */}
       <Box
         sx={{
-          mb: 4,
-          pb: 3,
-          borderBottom: '2px solid',
+          mb: isMobile ? 0 : 4,
+          pb: isMobile ? 2 : 3,
+          borderBottom: isMobile ? 'none' : '2px solid',
           borderColor: 'divider',
-          background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
-          borderRadius: 2,
-          p: 3
+          background: isMobile ? 'none' : 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+          borderRadius: isMobile ? 0 : 2,
+          p: isMobile ? 2 : 3
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1.5 : 2, mb: isMobile ? 0 : 2 }}>
           <Box
             sx={{
-              p: 1.5,
-              borderRadius: 2,
+              p: isMobile ? 1 : 1.5,
+              borderRadius: isMobile ? 1.5 : 2,
               backgroundColor: 'primary.main',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
+              boxShadow: isMobile ? 'none' : '0 4px 12px rgba(25, 118, 210, 0.3)'
             }}
           >
-            <AccountTreeIcon sx={{ fontSize: 32, color: 'white' }} />
+            <AccountTreeIcon sx={{ fontSize: isMobile ? 24 : 32, color: 'white' }} />
           </Box>
           <Box>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
+            <Typography variant={isMobile ? 'h5' : 'h4'} component="h1" sx={{ fontWeight: 700, mb: isMobile ? 0 : 0.5 }}>
               Kategorien
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-              Übersicht über alle verfügbaren Kategorien
-            </Typography>
+            {!isMobile && (
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Übersicht über alle verfügbaren Kategorien
+              </Typography>
+            )}
           </Box>
         </Box>
       </Box>
 
+      {isMobile && <Divider />}
+
       {/* Controls */}
-      <Paper
-        elevation={2}
+      <Box
         sx={{
-          p: 3,
-          mb: 3,
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider'
+          p: isMobile ? 2 : 3,
+          mb: isMobile ? 0 : 3,
+          borderRadius: isMobile ? 0 : 2,
+          border: isMobile ? 'none' : '1px solid',
+          borderColor: 'divider',
+          bgcolor: isMobile ? 'transparent' : 'background.paper',
+          boxShadow: isMobile ? 'none' : 2
         }}
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
@@ -340,10 +349,12 @@ const CategoryTreePage: React.FC = () => {
             </Button>
           </Box>
         </Box>
-      </Paper>
+      </Box>
+
+      {isMobile && <Divider />}
 
       {/* Category Tree */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: isMobile ? 0 : 4, p: isMobile ? 2 : 0 }}>
         <CategoryTree
           searchQuery={searchQuery}
           showUsageCount={showUsageCount}
@@ -353,15 +364,17 @@ const CategoryTreePage: React.FC = () => {
         />
       </Box>
 
+      {isMobile && <Divider />}
+
       {/* Info Box */}
-      <Paper
-        elevation={2}
+      <Box
         sx={{
-          p: 3,
-          background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(255, 255, 255, 1) 100%)',
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'primary.light'
+          p: isMobile ? 2 : 3,
+          background: isMobile ? 'transparent' : 'linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(255, 255, 255, 1) 100%)',
+          borderRadius: isMobile ? 0 : 2,
+          border: isMobile ? 'none' : '1px solid',
+          borderColor: 'primary.light',
+          boxShadow: isMobile ? 'none' : 2
         }}
       >
         <Typography variant="h6" sx={{ mb: 2.5, fontWeight: 700, color: 'primary.main' }}>
@@ -443,28 +456,30 @@ const CategoryTreePage: React.FC = () => {
         </Box>
 
         {/* Diskreter Export-Button am Ende */}
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="text"
-            size="small"
-            startIcon={<DownloadIcon />}
-            onClick={handleExportTree}
-            sx={{
-              fontSize: '0.75rem',
-              color: 'text.disabled',
-              opacity: 0.4,
-              textTransform: 'none',
-              '&:hover': {
-                opacity: 0.8,
-                color: 'primary.main',
-                backgroundColor: 'rgba(25, 118, 210, 0.04)'
-              }
-            }}
-          >
-            Struktur exportieren
-          </Button>
-        </Box>
-      </Paper>
+        {!isMobile && (
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              variant="text"
+              size="small"
+              startIcon={<DownloadIcon />}
+              onClick={handleExportTree}
+              sx={{
+                fontSize: '0.75rem',
+                color: 'text.disabled',
+                opacity: 0.4,
+                textTransform: 'none',
+                '&:hover': {
+                  opacity: 0.8,
+                  color: 'primary.main',
+                  backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                }
+              }}
+            >
+              Struktur exportieren
+            </Button>
+          </Box>
+        )}
+      </Box>
       </Container>
     </>
   );

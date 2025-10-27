@@ -4,6 +4,20 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.24] - 2025-10-27
+
+### Changed
+- 📱 **Kategorien-Seite für Mobile optimiert**
+  - **CategoryTreePage.tsx**: Kompaktes, randloses Layout auf Smartphones
+  - Container nutzt volle Breite (px: 0) und hat kein Padding (py: 0)
+  - Paper-Komponenten durch borderlose Boxen ersetzt
+  - Trennlinien (Divider) statt Segement-Boxen zwischen Bereichen
+  - Header kompakter: kleineres Icon (24px statt 32px), h5 statt h4
+  - Subtitle wird auf Mobile ausgeblendet
+  - Keine Schatten, Rahmen oder Hintergründe auf Mobile
+  - Export-Button wird auf Mobile ausgeblendet
+  - Desktop-Layout bleibt unverändert mit Paper-Boxen und Gradienten
+
 ## [1.15.23] - 2025-10-27
 
 ### Fixed
