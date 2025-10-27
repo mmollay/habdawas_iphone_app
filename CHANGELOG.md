@@ -4,6 +4,21 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.31] - 2025-10-27
+
+### Changed
+- 📱 **Mobile Navigation: Nur Icons mit Badges - Ultra-kompakt!**
+  - **MainNavigation.tsx**: Mobile Tabs zeigen nur noch Icons (20px) ohne Text
+  - "Alle" Tab: Nur Globe/Category-Icon mit Dropdown
+  - "Meine" Tab: Nur User-Icon mit Badge (top-right positioniert)
+  - "Favorit" Tab: Nur Heart-Icon mit Badge (top-right positioniert)
+  - Badges positioniert als absolute Overlay (top: 4px, right: 4px)
+  - Kategorien-Button ohne Gap (gap: 0) für nahtlosen Übergang
+  - Maximale Platzersparnis - ca. 40% mehr Platz für Content!
+  - Modern, clean, wie Instagram/TikTok/Twitter
+  - Desktop bleibt unverändert mit Text + Icons
+  - Änderungen nach habdawas kopiert
+
 ## [1.15.30] - 2025-10-27
 
 ### Changed
