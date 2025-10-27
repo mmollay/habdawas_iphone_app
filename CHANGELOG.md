@@ -4,6 +4,17 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.16] - 2025-10-27
+
+### Changed
+- 📱 **Mobile-Navigation professionell überarbeitet**
+  - `src/components/Common/MainNavigation.tsx:140-245`: Neue separate Category Dropdown Row für Mobile
+  - Kategorie-Auswahl in eigene Zeile ausgelagert mit IconButton + Select
+  - Tabs vereinfacht ohne Dropdown im "Alle" Tab
+  - Touch-Targets auf 48px Höhe erhöht für bessere Bedienbarkeit
+  - Tabs auf `fullWidth` Variant umgestellt für mobile Ansicht
+  - Klarere visuelle Hierarchie und professionelleres Layout
+
 ## [1.15.15] - 2025-10-27
 
 ### Fixed

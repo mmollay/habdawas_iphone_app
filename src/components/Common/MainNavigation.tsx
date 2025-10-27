@@ -6,6 +6,7 @@ import { useCategories } from '../../hooks/useCategories';
 import { useCommunityStats } from '../../hooks/useCommunityStats';
 import { getCategoryName } from '../../utils/categories';
 import { getCategoryIconBySlug } from '../../utils/categoryIcons';
+import { useFavoritesContext } from '../../contexts/FavoritesContext';
 
 interface MainNavigationProps {
   // Tab selection
@@ -38,7 +39,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
   onCategoryChange,
   allItemsCount,
   myItemsCount,
-  favoritesCount,
+  favoritesCount: favoritesCountProp,
   creditInfo,
 }) => {
   const navigate = useNavigate();
@@ -46,6 +47,10 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { categories, categoryTree } = useCategories();
   const { stats: communityStats } = useCommunityStats();
+  const { getFavoritesCount } = useFavoritesContext();
+
+  // Use real-time count from context instead of prop
+  const favoritesCount = getFavoritesCount();
 
   // Calculate total_usage_count for each category (including children)
   const categoriesWithCounts = React.useMemo(() => {
@@ -93,49 +98,210 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
     return categories.find(c => c.id === id);
   };
 
-  return (
-    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 3, justifyContent: 'space-between', width: '100%' }}>
-      {/* Kategorien Button & Tabs */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <IconButton
-          onClick={() => navigate('/categories')}
-          sx={{
-            color: 'text.primary',
-            border: '1.5px solid',
-            borderColor: 'rgba(0, 0, 0, 0.12)',
-            borderRadius: 2,
-            width: 40,
-            height: 40,
-            '&:hover': {
-              borderColor: 'primary.main',
-              bgcolor: 'rgba(25, 118, 210, 0.08)',
+  // Display only top-level categories in dropdown
+  const displayCategories = React.useMemo(() => {
+    return categoryTree;
+  }, [categoryTree]);
+
+  // Get subcategories when a category is selected
+  const selectedCategory = React.useMemo(() => {
+    if (selectedCategories.length === 1) {
+      const selectedId = selectedCategories[0];
+
+      // First check if it's a top-level category
+      const topLevel = categoryTree.find(cat => cat.id === selectedId);
+      if (topLevel) return topLevel;
+
+      // If not, find the parent category (for subcategories)
+      for (const cat of categoryTree) {
+        if (cat.children) {
+          const findInChildren = (children: any[]): any => {
+            for (const child of children) {
+              if (child.id === selectedId) return cat; // Return parent
+              if (child.children) {
+                const found = findInChildren(child.children);
+                if (found) return found;
+              }
             }
-          }}
-          title="Kategorien"
-        >
-          <FolderTree size={20} />
-        </IconButton>
+            return null;
+          };
+          const found = findInChildren(cat.children);
+          if (found) return found;
+        }
+      }
+    }
+    return null;
+  }, [selectedCategories, categoryTree]);
+
+  const subcategories = selectedCategory?.children || [];
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
+      {/* Category Dropdown Row (Mobile Only) */}
+      {isMobile && (
+        <Box sx={{
+          display: 'flex',
+          gap: 1,
+          px: 2,
+          py: 1.5,
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}>
+          <IconButton
+            onClick={() => navigate('/categories')}
+            sx={{
+              color: 'text.primary',
+              border: '1.5px solid',
+              borderColor: 'rgba(0, 0, 0, 0.12)',
+              borderRadius: 2,
+              width: 40,
+              height: 40,
+              flexShrink: 0,
+              '&:hover': {
+                borderColor: 'primary.main',
+                bgcolor: 'rgba(25, 118, 210, 0.08)',
+              }
+            }}
+            title="Kategorien Übersicht"
+          >
+            <FolderTree size={20} />
+          </IconButton>
+          <Select
+            value={selectedCategory ? selectedCategory.id : 'all'}
+            onChange={(e) => {
+              const value = e.target.value;
+              onCategoryChange(value === 'all' ? null : value);
+            }}
+            size="small"
+            fullWidth
+            MenuProps={{
+              PaperProps: {
+                style: {
+                  maxHeight: '70vh',
+                },
+              },
+            }}
+            sx={{
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+              },
+            }}
+            renderValue={(value) => {
+              if (value === 'all') {
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Globe size={18} />
+                    <span>Alle Kategorien</span>
+                  </Box>
+                );
+              }
+              const category = getCategoryById(value);
+              if (!category) return 'Alle';
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {getCategoryIcon(value)}
+                  <span>{getCategoryName(category, 'de')}</span>
+                </Box>
+              );
+            }}
+          >
+            <MenuItem value="all">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                <Globe size={18} />
+                <span>Alle Kategorien</span>
+              </Box>
+            </MenuItem>
+            {displayCategories.map(category => (
+              <MenuItem
+                key={category.id}
+                value={category.id}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    {getCategoryIcon(category.id)}
+                    <span>
+                      {getCategoryName(category, 'de')}
+                    </span>
+                  </Box>
+                  <Chip
+                    label={getCategoryCount(category.id)}
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: '0.6875rem',
+                      fontWeight: 600,
+                    }}
+                  />
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
+      )}
+
+      {/* Main Navigation Row */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: isMobile ? 0 : 1.5,
+        justifyContent: 'space-between',
+        width: '100%',
+        mx: isMobile ? -2 : 0,
+        px: isMobile ? 2 : 0,
+      }}>
+        {/* Kategorien Button & Tabs */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        {/* Desktop Category Button */}
+        {!isMobile && (
+          <IconButton
+            onClick={() => navigate('/categories')}
+            sx={{
+              color: 'text.primary',
+              border: '1.5px solid',
+              borderColor: 'rgba(0, 0, 0, 0.12)',
+              borderRadius: 2,
+              width: 40,
+              height: 40,
+              flexShrink: 0,
+              '&:hover': {
+                borderColor: 'primary.main',
+                bgcolor: 'rgba(25, 118, 210, 0.08)',
+              }
+            }}
+            title="Kategorien Übersicht"
+          >
+            <FolderTree size={20} />
+          </IconButton>
+        )}
         <Tabs
           value={selectedTab}
           onChange={(_, value) => onTabChange(value)}
-          variant={isMobile ? 'scrollable' : 'standard'}
-          scrollButtons={isMobile ? 'auto' : false}
-          allowScrollButtonsMobile
+          variant={isMobile ? 'fullWidth' : 'standard'}
           sx={{
-            minHeight: isMobile ? 44 : 52,
-            flex: isMobile ? 'none' : 1,
+            minHeight: isMobile ? 48 : 48,
+            flex: 1,
             '& .MuiTabs-indicator': {
-              height: 2,
-              borderRadius: '2px 2px 0 0',
+              height: 3,
+              borderRadius: '3px 3px 0 0',
+            },
+            '& .MuiTabs-flexContainer': {
+              gap: 0,
+              height: isMobile ? 48 : 48,
             },
             '& .MuiTab-root': {
-              minHeight: isMobile ? 44 : 52,
+              minHeight: isMobile ? 48 : 48,
               textTransform: 'none',
               fontSize: isMobile ? '0.8125rem' : '0.875rem',
               fontWeight: 600,
-              minWidth: isMobile ? 'auto' : 100,
-              px: isMobile ? 1.5 : 2.5,
-              py: isMobile ? 0.75 : 1,
+              minWidth: isMobile ? 'auto' : 90,
+              px: isMobile ? 1 : 2,
+              py: 1,
               color: 'text.secondary',
               transition: 'all 0.2s ease',
               '&:hover': {
@@ -149,75 +315,15 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
             }
           }}
         >
-          <Tab
-            icon={isMobile ? undefined : (selectedCategories.length === 1 ? getCategoryIcon(selectedCategories[0]) : <Globe size={16} />)}
-            iconPosition="start"
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                {isMobile ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {selectedCategories.length === 1 ? getCategoryIcon(selectedCategories[0]) : <Globe size={16} />}
-                    <Select
-                      value={selectedCategories.length === 1 ? selectedCategories[0] : 'all'}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        const value = e.target.value;
-                        onCategoryChange(value === 'all' ? null : value);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      size="small"
-                      variant="standard"
-                      MenuProps={{
-                        PaperProps: {
-                          style: {
-                            maxHeight: 'none',
-                          },
-                        },
-                      }}
-                      sx={{
-                        fontSize: '0.8125rem',
-                        fontWeight: 600,
-                        color: 'inherit',
-                        '&:before': { display: 'none' },
-                        '&:after': { display: 'none' },
-                        '& .MuiSelect-select': {
-                          padding: 0,
-                          paddingRight: '20px !important',
-                          display: 'flex',
-                          alignItems: 'center',
-                        },
-                        '& .MuiSelect-icon': {
-                          right: -2,
-                        },
-                      }}
-                      renderValue={(value) => {
-                        if (value === 'all') return 'Alle';
-                        const cat = categories.find(c => c.id === value);
-                        return cat ? getCategoryName(cat, 'de') : value;
-                      }}
-                    >
-                      <MenuItem value="all">
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Globe size={16} />
-                          <span>Alle</span>
-                        </Box>
-                      </MenuItem>
-                      {categoryTree.map(category => (
-                        <MenuItem key={category.id} value={category.id}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {getCategoryIcon(category.id)}
-                              <span>{getCategoryName(category, 'de')}</span>
-                            </Box>
-                            <span style={{ opacity: 0.6 }}>{getCategoryCount(category.id)}</span>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </Box>
-                ) : (
+          {/* Desktop: Alle Tab with Dropdown */}
+          {!isMobile && (
+            <Tab
+              icon={<Globe size={16} />}
+              iconPosition="start"
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                   <Select
-                    value={selectedCategories.length === 1 ? selectedCategories[0] : 'all'}
+                    value={selectedCategory ? selectedCategory.id : 'all'}
                     onChange={(e) => {
                       e.stopPropagation();
                       const value = e.target.value;
@@ -229,7 +335,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                     MenuProps={{
                       PaperProps: {
                         style: {
-                          maxHeight: 'none',
+                          maxHeight: '70vh',
                         },
                       },
                     }}
@@ -250,9 +356,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                       },
                     }}
                     renderValue={(value) => {
-                      if (value === 'all') return 'Alle';
-                      const cat = categories.find(c => c.id === value);
-                      return cat ? getCategoryName(cat, 'de') : value;
+                      return 'Alle';
                     }}
                   >
                     <MenuItem value="all">
@@ -261,22 +365,40 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                         <span>Alle</span>
                       </Box>
                     </MenuItem>
-                    {categoryTree.map(category => (
-                      <MenuItem key={category.id} value={category.id}>
+                    {displayCategories.map(category => (
+                      <MenuItem
+                        key={category.id}
+                        value={category.id}
+                      >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {getCategoryIcon(category.id)}
-                            <span>{getCategoryName(category, 'de')}</span>
+                            <span>
+                              {getCategoryName(category, 'de')}
+                            </span>
                           </Box>
-                          <span style={{ opacity: 0.6 }}>{getCategoryCount(category.id)}</span>
+                          <span style={{ opacity: 0.6, fontSize: '0.875rem' }}>
+                            {getCategoryCount(category.id)}
+                          </span>
                         </Box>
                       </MenuItem>
                     ))}
                   </Select>
-                )}
-              </Box>
-            }
-          />
+                </Box>
+              }
+            />
+          )}
+          {/* Mobile: Simple Alle Tab */}
+          {isMobile && (
+            <Tab
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Globe size={18} />
+                  <span>Alle</span>
+                </Box>
+              }
+            />
+          )}
           <Tab
             icon={isMobile ? undefined : <User size={16} />}
             iconPosition="start"
@@ -296,12 +418,12 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                       bgcolor: 'primary.main',
                       color: 'white',
                       borderRadius: 2.5,
-                      px: 0.75,
+                      px: isMobile ? 0.5 : 0.75,
                       py: 0.125,
-                      fontSize: '0.6875rem',
+                      fontSize: isMobile ? '0.625rem' : '0.6875rem',
                       fontWeight: 600,
-                      minWidth: 20,
-                      height: 18,
+                      minWidth: isMobile ? 16 : 20,
+                      height: isMobile ? 16 : 18,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -322,7 +444,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                 {isMobile ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Heart size={16} />
-                    <span>Favoriten</span>
+                    <span>Favorit</span>
                   </Box>
                 ) : (
                   <span>Favoriten</span>
@@ -333,12 +455,12 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                       bgcolor: 'error.main',
                       color: 'white',
                       borderRadius: 2.5,
-                      px: 0.75,
+                      px: isMobile ? 0.5 : 0.75,
                       py: 0.125,
-                      fontSize: '0.6875rem',
+                      fontSize: isMobile ? '0.625rem' : '0.6875rem',
                       fontWeight: 600,
-                      minWidth: 20,
-                      height: 18,
+                      minWidth: isMobile ? 16 : 20,
+                      height: isMobile ? 16 : 18,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -354,17 +476,13 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
         </Tabs>
       </Box>
 
-      {/* Community Stats */}
-      {creditInfo && (
+      {/* Community Stats - Hide on Mobile */}
+      {creditInfo && !isMobile && (
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
             gap: 1,
-            px: isMobile ? 2 : 0,
-            py: isMobile ? 1.25 : 0,
-            borderTop: isMobile ? '1px solid' : 'none',
-            borderColor: 'divider',
             flexWrap: 'wrap',
           }}
         >
@@ -428,6 +546,134 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
             </span>
           )}
         </Box>
+      )}
+      </Box>
+
+      {/* Subcategories - Chips for Desktop, Dropdown for Mobile */}
+      {subcategories.length > 0 && (
+        <>
+          {/* Desktop: Chips */}
+          {!isMobile && (
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1,
+                px: 2,
+                py: 1.5,
+                borderTop: '1px solid',
+                borderColor: 'divider',
+                overflowX: 'auto',
+                '&::-webkit-scrollbar': {
+                  height: 6,
+                },
+                '&::-webkit-scrollbar-track': {
+                  bgcolor: 'transparent',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  bgcolor: 'rgba(0, 0, 0, 0.2)',
+                  borderRadius: 3,
+                },
+              }}
+            >
+              {subcategories.map((subcat: any) => {
+                const count = getCategoryCount(subcat.id);
+                return (
+                  <Chip
+                    key={subcat.id}
+                    icon={getCategoryIcon(subcat.id)}
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <span>{getCategoryName(subcat, 'de')}</span>
+                        {count > 0 && (
+                          <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>({count})</span>
+                        )}
+                      </Box>
+                    }
+                    onClick={() => onCategoryChange(subcat.id)}
+                    sx={{
+                      height: 32,
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '& .MuiChip-icon': {
+                        fontSize: 16,
+                        marginLeft: 1,
+                      },
+                      '&:hover': {
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        borderColor: 'primary.main',
+                        transform: 'translateY(-1px)',
+                        boxShadow: 1,
+                        '& .MuiChip-icon': {
+                          color: 'white',
+                        },
+                      },
+                    }}
+                  />
+                );
+              })}
+            </Box>
+          )}
+
+          {/* Mobile: Dropdown */}
+          {isMobile && (
+            <Box
+              sx={{
+                px: 2,
+                py: 1.5,
+                borderTop: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Select
+                value=""
+                displayEmpty
+                fullWidth
+                size="small"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    onCategoryChange(e.target.value);
+                  }
+                }}
+                sx={{
+                  fontSize: '0.875rem',
+                  '& .MuiSelect-select': {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  },
+                }}
+                renderValue={() => (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+                    <span>Unterkategorie wählen...</span>
+                  </Box>
+                )}
+              >
+                {subcategories.map((subcat: any) => {
+                  const count = getCategoryCount(subcat.id);
+                  return (
+                    <MenuItem key={subcat.id} value={subcat.id}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {getCategoryIcon(subcat.id)}
+                          <span>{getCategoryName(subcat, 'de')}</span>
+                        </Box>
+                        {count > 0 && (
+                          <span style={{ opacity: 0.6 }}>({count})</span>
+                        )}
+                      </Box>
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </Box>
+          )}
+        </>
       )}
     </Box>
   );
