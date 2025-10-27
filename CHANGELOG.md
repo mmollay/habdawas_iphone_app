@@ -4,6 +4,17 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.26] - 2025-10-27
+
+### Changed
+- 🔍 **Mobile Suchfeld optimiert**
+  - **Header.tsx**: Auto-Focus beim Öffnen des Suchfelds
+  - Bessere vertikale Ausrichtung mit gleichen Abständen oben/unten (py: 1.5)
+  - Zartere Gestaltung: Hellerer Hintergrund (#fafafa) und subtilere Border
+  - useRef für DOM-Manipulation und automatische Fokussierung
+  - setTimeout mit 100ms für stabilen Focus nach Render
+  - Änderungen automatisch nach habdawas kopiert
+
 ## [1.15.25] - 2025-10-27
 
 ### Changed

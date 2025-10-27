@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Box, Button, IconButton, TextField, InputAdornment, useMediaQuery, useTheme, Badge, Avatar, Menu, MenuItem, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
 import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp, Calendar, FolderTree } from 'lucide-react';
@@ -74,10 +74,22 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
     communityPotBalance?: number;
   } | null>(null);
 
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
+
   // Save mobile search expanded state to localStorage
   useEffect(() => {
     localStorage.setItem('mobileSearchExpanded', String(mobileSearchExpanded));
-  }, [mobileSearchExpanded]);
+
+    // Auto-focus when opening mobile search
+    if (mobileSearchExpanded && isMobile) {
+      setTimeout(() => {
+        const input = mobileSearchRef.current?.querySelector('input');
+        if (input) {
+          input.focus();
+        }
+      }, 100);
+    }
+  }, [mobileSearchExpanded, isMobile]);
 
   useEffect(() => {
     if (user) {
@@ -339,12 +351,12 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
       {/* Mobile Search Bar - Collapsible */}
       {showSearch && onSearchChange && isMobile && mobileSearchExpanded && (
         <Box
+          ref={mobileSearchRef}
           sx={{
             px: 2,
-            pb: 2,
-            pt: 0,
-            bgcolor: '#f7f7f7',
-            borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+            py: 1.5,
+            bgcolor: '#fafafa',
+            borderTop: '1px solid rgba(0, 0, 0, 0.05)',
           }}
         >
           <SearchAutocomplete
