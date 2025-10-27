@@ -18,6 +18,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Export-Button wird auf Mobile ausgeblendet
   - Desktop-Layout bleibt unverändert mit Paper-Boxen und Gradienten
 
+### Added
+- 🔍 **Mobile Suchfeld im Header ein-/ausklappbar**
+  - **Header.tsx**: Suchfeld jetzt im Header statt unterhalb der Navigation
+  - Lupen-Icon zum Ein-/Ausklappen des Suchfelds auf Mobile
+  - Einstellung wird in localStorage gespeichert und bleibt nach Reload erhalten
+  - Suchfeld klappt direkt unter Header aus (borderTop als Trenner)
+  - Button zeigt aktiven Zustand mit blauem Hintergrund
+  - **App.tsx**: Altes mobiles Suchfeld unterhalb Navigation entfernt
+  - Desktop-Layout unverändert (Suchfeld bleibt in Mitte des Headers)
+
 ## [1.15.23] - 2025-10-27
 
 ### Fixed

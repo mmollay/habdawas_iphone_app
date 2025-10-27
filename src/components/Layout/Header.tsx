@@ -60,6 +60,11 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
   const [myItemsCount, setMyItemsCount] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mobileSearchExpanded, setMobileSearchExpanded] = useState(() => {
+    // Load from localStorage
+    const saved = localStorage.getItem('mobileSearchExpanded');
+    return saved === 'true';
+  });
   const [creditInfo, setCreditInfo] = useState<{
     canCreate: boolean;
     source?: string;
@@ -68,6 +73,11 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
     personalCredits?: number;
     communityPotBalance?: number;
   } | null>(null);
+
+  // Save mobile search expanded state to localStorage
+  useEffect(() => {
+    localStorage.setItem('mobileSearchExpanded', String(mobileSearchExpanded));
+  }, [mobileSearchExpanded]);
 
   useEffect(() => {
     if (user) {
@@ -168,6 +178,18 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
         )}
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, ml: 'auto' }}>
+          {/* Mobile Search Toggle */}
+          {showSearch && onSearchChange && isMobile && (
+            <IconButton
+              onClick={() => setMobileSearchExpanded(!mobileSearchExpanded)}
+              sx={{
+                color: 'text.primary',
+                bgcolor: mobileSearchExpanded ? 'rgba(25, 118, 210, 0.1)' : 'transparent'
+              }}
+            >
+              <Search size={22} />
+            </IconButton>
+          )}
           {customButtons ? (
             customButtons
           ) : (
@@ -313,6 +335,27 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
           )}
         </Box>
       </Toolbar>
+
+      {/* Mobile Search Bar - Collapsible */}
+      {showSearch && onSearchChange && isMobile && mobileSearchExpanded && (
+        <Box
+          sx={{
+            px: 2,
+            pb: 2,
+            pt: 0,
+            bgcolor: '#f7f7f7',
+            borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+          }}
+        >
+          <SearchAutocomplete
+            fullWidth
+            value={searchQuery}
+            onChange={onSearchChange}
+            onSearch={onSearch || onSearchChange}
+            placeholder="Suche nach Produkten, Kategorien, Marken..."
+          />
+        </Box>
+      )}
 
       <Menu
         anchorEl={anchorEl}

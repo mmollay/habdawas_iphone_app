@@ -1266,22 +1266,6 @@ const MainContent = () => {
         )
       ) : (
         <>
-          {isMobile && (
-            <Paper elevation={1} sx={{ borderRadius: '0 !important', pt: 2, pb: 0, px: 2, bgcolor: 'white' }}>
-              <SearchAutocomplete
-                fullWidth
-                value={searchQuery}
-                onChange={setSearchQuery}
-                onSearch={(query, type) => {
-                  setSearchQuery(query);
-                  setActiveSearchQuery(query);
-                  setSearchType(type || 'manual');
-                  updateURL({ search: query || null });
-                }}
-              />
-            </Paper>
-          )}
-
           {user && (
             <Paper
               elevation={0}
