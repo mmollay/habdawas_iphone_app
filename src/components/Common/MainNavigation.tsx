@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Box, IconButton, Tabs, Tab, Chip, useMediaQuery, useTheme, Select, MenuItem, TextField, InputAdornment } from '@mui/material';
-import { FolderTree, Globe, User, Heart, Coins, Search } from 'lucide-react';
+import { Box, IconButton, Tabs, Tab, Chip, useMediaQuery, useTheme, Select, MenuItem } from '@mui/material';
+import { FolderTree, Globe, User, Heart, Coins } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../../hooks/useCategories';
 import { useCommunityStats } from '../../hooks/useCommunityStats';
@@ -49,9 +49,6 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
   const { stats: communityStats } = useCommunityStats();
   const { getFavoritesCount } = useFavoritesContext();
 
-  // Search state for category dropdown
-  const [categorySearch, setCategorySearch] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Use real-time count from context instead of prop
   const favoritesCount = getFavoritesCount();
@@ -109,32 +106,11 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
         const count = getCategoryCount(cat.id);
         if (count === 0) return false;
 
-        // Filter by search term
-        if (categorySearch) {
-          const categoryName = getCategoryName(cat, 'de').toLowerCase();
-          const searchLower = categorySearch.toLowerCase();
-
-          // Check if category or any child matches
-          const matches = categoryName.includes(searchLower);
-          const hasMatchingChild = cat.children?.some((child: any) =>
-            getCategoryName(child, 'de').toLowerCase().includes(searchLower) &&
-            getCategoryCount(child.id) > 0
-          );
-
-          if (!matches && !hasMatchingChild) return false;
-        }
-
         // Filter children
         if (cat.children && cat.children.length > 0) {
           cat.children = cat.children.filter((child: any) => {
             const childCount = getCategoryCount(child.id);
-            if (childCount === 0) return false;
-
-            if (categorySearch) {
-              const childName = getCategoryName(child, 'de').toLowerCase();
-              return childName.includes(categorySearch.toLowerCase());
-            }
-            return true;
+            return childCount > 0;
           });
         }
 
@@ -143,7 +119,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
     };
 
     return filterCategoriesWithItems(categoryTree);
-  }, [categoryTree, categoriesWithCounts, categorySearch]);
+  }, [categoryTree, categoriesWithCounts]);
 
   // Get subcategories when a category is selected
   const selectedCategory = React.useMemo(() => {
@@ -212,15 +188,9 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
           <Select
             value={selectedCategory ? selectedCategory.id : 'all'}
             onChange={(e) => {
+              console.log('🔄 Category Select onChange:', e.target.value);
               const value = e.target.value;
               onCategoryChange(value === 'all' ? null : value);
-              setCategorySearch(''); // Reset search after selection
-              setDropdownOpen(false);
-            }}
-            onOpen={() => setDropdownOpen(true)}
-            onClose={() => {
-              setDropdownOpen(false);
-              setCategorySearch('');
             }}
             size="small"
             fullWidth
@@ -259,34 +229,6 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               );
             }}
           >
-            {/* Search Field */}
-            <Box sx={{ px: 2, py: 1, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Kategorie suchen..."
-                value={categorySearch}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  setCategorySearch(e.target.value);
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search size={16} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    fontSize: '0.8125rem',
-                  },
-                }}
-              />
-            </Box>
-
             <MenuItem value="all">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
                 <Globe size={18} />
@@ -294,48 +236,19 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               </Box>
             </MenuItem>
             {displayCategories.map(category => (
-              <React.Fragment key={category.id}>
-                <MenuItem value={category.id}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      {getCategoryIcon(category.id)}
-                      <span>
-                        {getCategoryName(category, 'de')}
-                      </span>
-                    </Box>
-                    <Chip
-                      label={getCategoryCount(category.id)}
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                      }}
-                    />
+              <MenuItem key={category.id} value={category.id}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    {getCategoryIcon(category.id)}
+                    <span>
+                      {getCategoryName(category, 'de')}
+                    </span>
                   </Box>
-                </MenuItem>
-                {/* Show subcategories directly in dropdown */}
-                {category.children && category.children.length > 0 && category.children.map((subcat: any) => {
-                  const count = getCategoryCount(subcat.id);
-                  return (
-                    <MenuItem
-                      key={subcat.id}
-                      value={subcat.id}
-                      sx={{ pl: 4 }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontSize: '0.875rem' }}>
-                          {getCategoryIcon(subcat.id)}
-                          <span>{getCategoryName(subcat, 'de')}</span>
-                        </Box>
-                        {count > 0 && (
-                          <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>({count})</span>
-                        )}
-                      </Box>
-                    </MenuItem>
-                  );
-                })}
-              </React.Fragment>
+                  <span style={{ opacity: 0.6, fontSize: '0.75rem', fontWeight: 600 }}>
+                    {getCategoryCount(category.id)}
+                  </span>
+                </Box>
+              </MenuItem>
             ))}
           </Select>
         </Box>

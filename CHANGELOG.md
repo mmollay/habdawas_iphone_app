@@ -4,6 +4,22 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.23] - 2025-10-27
+
+### Fixed
+- 🐛 **Mobile Kategorien-Dropdown funktioniert jetzt**
+  - **MainNavigation.tsx**: Unterkategorien aus Mobile-Dropdown entfernt
+  - Problem: React.Fragment mit verschachtelten Unterkategorien führte zu `menuitem` statt `option` Rolle
+  - Lösung: Nur Hauptkategorien im Mobile-Dropdown anzeigen (wie Desktop)
+  - onChange-Event wird jetzt korrekt ausgelöst
+  - Dropdown schließt sich nach Auswahl automatisch
+  - Kategoriefilter funktioniert einwandfrei
+
+### Changed
+- 🎨 **"Favoriten" → "Favorit" Label vereinheitlicht**
+  - **MainNavigation.tsx**: Tab zeigt jetzt "Favorit" (Singular) statt "Favoriten"
+  - Konsistentere Benennung mit "Meine" und "Alle" Tabs
+
 ## [1.15.22] - 2025-10-27
 
 ### Changed

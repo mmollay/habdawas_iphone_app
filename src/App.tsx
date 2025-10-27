@@ -1293,7 +1293,7 @@ const MainContent = () => {
                 mb: 0
               }}
             >
-              <Container maxWidth="xl" sx={{ maxWidth: '1400px !important', px: isMobile ? 1 : undefined }}>
+              <Container maxWidth="xl" sx={{ maxWidth: '1400px !important', px: isMobile ? 0 : undefined }}>
                 <MainNavigation
                   selectedTab={showFavorites ? 2 : showMyItems ? 1 : 0}
                   onTabChange={(value) => {
