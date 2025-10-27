@@ -1,15 +1,37 @@
 import { Box, Container, Typography, Link, Stack } from '@mui/material';
-import { Heart } from 'lucide-react';
+import { Heart, Download } from 'lucide-react';
 import { APP_VERSION, APP_NAME } from '../../version';
 import { useNavigate } from 'react-router-dom';
+import { exportAltTexts } from '../../utils/altTextExport';
+import { useState } from 'react';
 
 export const Footer = () => {
   const navigate = useNavigate();
+  const [isExporting, setIsExporting] = useState(false);
+  const [showExportButton, setShowExportButton] = useState(false);
 
   const handleNavigation = (path: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     navigate(path);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleVersionDoubleClick = () => {
+    setShowExportButton(prev => !prev);
+  };
+
+  const handleExportAltTexts = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isExporting) return;
+
+    setIsExporting(true);
+    try {
+      await exportAltTexts();
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -26,7 +48,18 @@ export const Footer = () => {
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.813rem' }}>
               © {new Date().getFullYear()} {APP_NAME}
             </Typography>
-            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: 'text.disabled', opacity: 0.5 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                fontSize: '0.7rem',
+                color: 'text.disabled',
+                opacity: 0.5,
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onDoubleClick={handleVersionDoubleClick}
+              title="Doppelklick für Admin-Funktionen"
+            >
               v{APP_VERSION}
             </Typography>
           </Stack>
@@ -88,25 +121,52 @@ export const Footer = () => {
             </Link>
           </Stack>
 
-          <Stack direction="row" spacing={0.5} alignItems="center">
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.813rem' }}>
-              Mit
-            </Typography>
-            <Heart size={12} fill="red" color="red" />
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.813rem' }}>
-              von
-            </Typography>
-            <Link
-              href="https://www.ssi.at"
-              target="_blank"
-              rel="noopener noreferrer"
-              underline="hover"
-              color="primary"
-              fontWeight={600}
-              sx={{ fontSize: '0.813rem' }}
-            >
-              SSI
-            </Link>
+          <Stack direction="row" spacing={{ xs: 1.5, sm: 2 }} alignItems="center">
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.813rem' }}>
+                Mit
+              </Typography>
+              <Heart size={12} fill="red" color="red" />
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.813rem' }}>
+                von
+              </Typography>
+              <Link
+                href="https://www.ssi.at"
+                target="_blank"
+                rel="noopener noreferrer"
+                underline="hover"
+                color="primary"
+                fontWeight={600}
+                sx={{ fontSize: '0.813rem' }}
+              >
+                SSI
+              </Link>
+            </Stack>
+
+            {/* Diskrete Export-Funktion - nur sichtbar nach Doppelklick auf Version */}
+            {showExportButton && (
+              <Link
+                href="#"
+                onClick={handleExportAltTexts}
+                underline="none"
+                sx={{
+                  fontSize: '0.75rem',
+                  color: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  transition: 'opacity 0.2s ease',
+                  '&:hover': {
+                    opacity: 0.7
+                  },
+                  cursor: isExporting ? 'wait' : 'pointer'
+                }}
+                title="Alt-Text Export"
+              >
+                <Download size={14} />
+                {isExporting ? 'Exportiere...' : 'Alt-Texte'}
+              </Link>
+            )}
           </Stack>
         </Stack>
       </Container>

@@ -19,6 +19,8 @@ interface CategoryTreeProps {
   searchQuery?: string;
   showUsageCount?: boolean;
   expandAll?: boolean;
+  showOnlyWithItems?: boolean;
+  onCategoryClick?: (categorySlug: string) => void;
   onExport?: () => void;
 }
 
@@ -26,6 +28,8 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
   searchQuery = '',
   showUsageCount = true,
   expandAll = false,
+  showOnlyWithItems = false,
+  onCategoryClick,
 }) => {
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +133,22 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
       }
     });
 
+    // Third pass: Calculate total usage count (including descendants)
+    const calculateTotalUsageCount = (category: CategoryWithChildren): number => {
+      let total = category.usage_count || 0;
+
+      if (category.children && category.children.length > 0) {
+        category.children.forEach(child => {
+          total += calculateTotalUsageCount(child);
+        });
+      }
+
+      category.total_usage_count = total;
+      return total;
+    };
+
+    rootCategories.forEach(cat => calculateTotalUsageCount(cat));
+
     return rootCategories;
   };
 
@@ -161,6 +181,23 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
     return false;
   };
 
+  const hasItemsInTree = (category: CategoryWithChildren): boolean => {
+    // Use pre-calculated total_usage_count if available
+    return (category.total_usage_count ?? 0) > 0;
+  };
+
+  const shouldShowCategory = (category: CategoryWithChildren): boolean => {
+    // First check if it matches search
+    if (!hasMatchingDescendant(category)) return false;
+
+    // If filter is active, check if category or descendants have items
+    if (showOnlyWithItems) {
+      return hasItemsInTree(category);
+    }
+
+    return true;
+  };
+
   const handleToggle = (categoryId: string) => {
     setExpandedCategories(prev => {
       const newSet = new Set(prev);
@@ -174,7 +211,7 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
   };
 
   const renderCategory = (category: CategoryWithChildren, depth: number = 0): React.ReactNode => {
-    if (!hasMatchingDescendant(category)) return null;
+    if (!shouldShowCategory(category)) return null;
 
     const name = getCategoryName(category);
     const isExpanded = expandedCategories.has(category.id);
@@ -229,7 +266,10 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
 
               <Typography
                 variant={depth === 0 ? 'subtitle1' : 'body2'}
-                sx={{ fontWeight: depth === 0 ? 600 : 500, flexGrow: 1 }}
+                sx={{
+                  fontWeight: depth === 0 ? 600 : 500,
+                  flexGrow: 1,
+                }}
               >
                 {name}
               </Typography>
@@ -246,15 +286,36 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                   }}
                 />
 
-                {showUsageCount && category.usage_count > 0 && (
+                {showUsageCount && (category.total_usage_count ?? 0) > 0 && (
                   <Chip
-                    label={`${category.usage_count}`}
+                    label={`${category.total_usage_count}`}
                     size="small"
                     color="primary"
                     variant="outlined"
                     sx={{
                       fontSize: '0.65rem',
                       height: 20,
+                    }}
+                  />
+                )}
+
+                {onCategoryClick && (category.total_usage_count ?? 0) > 0 && (
+                  <Chip
+                    label="Anzeigen"
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCategoryClick(category.slug);
+                    }}
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: 20,
+                      cursor: 'pointer',
+                      backgroundColor: 'primary.main',
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: 'primary.dark',
+                      }
                     }}
                   />
                 )}

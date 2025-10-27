@@ -50,6 +50,7 @@ export interface Category {
  */
 export interface CategoryWithChildren extends Category {
   children?: CategoryWithChildren[];
+  total_usage_count?: number;  // Sum of usage_count from this category and all descendants
 }
 
 /**

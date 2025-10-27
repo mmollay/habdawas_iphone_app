@@ -25,6 +25,12 @@ const CategoryTreePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUsageCount, setShowUsageCount] = useState(true);
   const [expandAll, setExpandAll] = useState(false);
+  const [showOnlyWithItems, setShowOnlyWithItems] = useState(false);
+
+  const handleCategoryClick = (categorySlug: string) => {
+    // Navigate to items page with category filter
+    navigate(`/?categories=${categorySlug}`);
+  };
 
   const handleExportTree = async () => {
     try {
@@ -194,43 +200,40 @@ const CategoryTreePage: React.FC = () => {
 
           {/* Options */}
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={showUsageCount}
-                  onChange={(e) => setShowUsageCount(e.target.checked)}
-                />
-              }
-              label="Anzahl Inserate anzeigen"
-            />
-
-            <Box sx={{ display: 'flex', gap: 1.5 }}>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleExportTree}
-                size="medium"
-                sx={{
-                  fontWeight: 600,
-                }}
-              >
-                Als TXT exportieren
-              </Button>
-
-              <Button
-                variant={expandAll ? 'contained' : 'outlined'}
-                startIcon={expandAll ? <CollapseAllIcon /> : <ExpandAllIcon />}
-                onClick={() => setExpandAll(!expandAll)}
-                size="medium"
-                sx={{
-                  minWidth: 180,
-                  fontWeight: 600,
-                  boxShadow: expandAll ? 2 : 0
-                }}
-              >
-                {expandAll ? 'Alle einklappen' : 'Alle ausklappen'}
-              </Button>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={showUsageCount}
+                    onChange={(e) => setShowUsageCount(e.target.checked)}
+                  />
+                }
+                label="Anzahl Inserate anzeigen"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={showOnlyWithItems}
+                    onChange={(e) => setShowOnlyWithItems(e.target.checked)}
+                  />
+                }
+                label="Nur Kategorien mit Inseraten"
+              />
             </Box>
+
+            <Button
+              variant={expandAll ? 'contained' : 'outlined'}
+              startIcon={expandAll ? <CollapseAllIcon /> : <ExpandAllIcon />}
+              onClick={() => setExpandAll(!expandAll)}
+              size="medium"
+              sx={{
+                minWidth: 180,
+                fontWeight: 600,
+                boxShadow: expandAll ? 2 : 0
+              }}
+            >
+              {expandAll ? 'Alle einklappen' : 'Alle ausklappen'}
+            </Button>
           </Box>
         </Box>
       </Paper>
@@ -241,6 +244,8 @@ const CategoryTreePage: React.FC = () => {
           searchQuery={searchQuery}
           showUsageCount={showUsageCount}
           expandAll={expandAll}
+          showOnlyWithItems={showOnlyWithItems}
+          onCategoryClick={handleCategoryClick}
         />
       </Box>
 
@@ -331,6 +336,29 @@ const CategoryTreePage: React.FC = () => {
               <Typography variant="caption" color="text.secondary">Spezifikation</Typography>
             </Box>
           </Box>
+        </Box>
+
+        {/* Diskreter Export-Button am Ende */}
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportTree}
+            sx={{
+              fontSize: '0.75rem',
+              color: 'text.disabled',
+              opacity: 0.4,
+              textTransform: 'none',
+              '&:hover': {
+                opacity: 0.8,
+                color: 'primary.main',
+                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+              }
+            }}
+          >
+            Struktur exportieren
+          </Button>
         </Box>
       </Paper>
     </Container>

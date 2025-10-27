@@ -29,7 +29,7 @@ import {
   Tabs,
   Badge,
 } from '@mui/material';
-import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2, FolderTree } from 'lucide-react';
+import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, ChevronRight, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2, FolderTree } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { HandPreferenceProvider, useHandPreference } from './contexts/HandPreferenceContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
@@ -1056,12 +1056,22 @@ const MainContent = () => {
       const sort = (params.get('sort') as any) || 'newest';
       const minPrice = parseInt(params.get('minPrice') || '0');
       const maxPrice = parseInt(params.get('maxPrice') || '10000');
+
+      // Get categories parameter (comma-separated slugs)
       const categoriesParam = params.get('categories') ? params.get('categories')!.split(',') : [];
+
       const view = params.get('view');
       const seller = params.get('seller');
       const filtersParam = params.get('filters');
 
       // Convert slugs to UUIDs (support both for backward compatibility)
+      // IMPORTANT: If we have category slugs but categories aren't loaded yet, skip this update
+      // The effect will re-run when categories are loaded
+      if (categoriesParam.length > 0 && categoriesLoading) {
+        console.log('⏳ Categories still loading, waiting...');
+        return;
+      }
+
       let hasUUIDs = false;
       const categoryIds = categoriesParam.map(item => {
         // Check if it's a UUID (contains dashes in UUID format)
@@ -1074,9 +1084,9 @@ const MainContent = () => {
         } else {
           // It's a slug, convert to UUID
           const category = getCategoryBySlug(item);
-          return category?.id || item; // Fallback to original if not found
+          return category?.id || null;
         }
-      }).filter(Boolean);
+      }).filter(Boolean) as string[];
 
       // If UUIDs were found in URL, automatically correct the URL to use slugs
       // But only if categories are loaded
@@ -1749,6 +1759,90 @@ const MainContent = () => {
                     />
                   )}
                 </Box>
+
+                {/* Breadcrumb für gefilterte Kategorien */}
+                {selectedCategories.length > 0 && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      py: 1,
+                      px: isMobile ? 0 : 2,
+                      borderRadius: 2,
+                      backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                      mb: 2,
+                      overflow: 'auto',
+                      '&::-webkit-scrollbar': {
+                        height: '4px',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                        borderRadius: '4px',
+                      },
+                    }}
+                  >
+                    <Home
+                      size={isMobile ? 18 : 20}
+                      color="currentColor"
+                      style={{ color: 'rgba(0, 0, 0, 0.6)', flexShrink: 0 }}
+                    />
+                    {selectedCategories.map((categoryId) => {
+                      const category = getCategoryById(categoryId);
+                      if (!category) return null;
+
+                      // Build breadcrumb path
+                      const path: any[] = [];
+                      let current = category;
+                      while (current) {
+                        path.unshift(current);
+                        current = current.parent_id ? getCategoryById(current.parent_id) : null;
+                      }
+
+                      return (
+                        <Box
+                          key={categoryId}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            flexShrink: 0
+                          }}
+                        >
+                          {path.map((cat, index) => (
+                            <Box
+                              key={cat.id}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                flexShrink: 0
+                              }}
+                            >
+                              <ChevronRight
+                                size={isMobile ? 16 : 18}
+                                color="currentColor"
+                                style={{ color: 'rgba(0, 0, 0, 0.38)', margin: '0 2px' }}
+                              />
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: index === path.length - 1 ? 'primary.main' : 'text.secondary',
+                                  fontWeight: index === path.length - 1 ? 700 : 500,
+                                  fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                                  whiteSpace: 'nowrap',
+                                  letterSpacing: '0.01em',
+                                }}
+                              >
+                                {cat.translations?.de?.name || cat.slug}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography
