@@ -12,6 +12,7 @@ import {
   Paper,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { supabase } from '../../lib/supabase';
 import { CategoryWithChildren } from '../../types/categories';
 import { getCategoryIconBySlug } from '../../utils/categoryIcons';
@@ -229,40 +230,50 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
     };
 
     return (
-      <Box key={category.id} sx={{ mb: depth === 0 ? 1.5 : 0 }}>
+      <Box key={category.id}>
         <Accordion
           expanded={isExpanded}
           onChange={hasChildren ? () => handleToggle(category.id) : undefined}
+          elevation={0}
           sx={{
-            backgroundColor: depth === 0 ? 'background.paper' : 'background.default',
-            boxShadow: depth === 0 ? 1 : 0,
+            backgroundColor: 'transparent',
+            border: 'none',
+            boxShadow: 'none !important',
             '&:before': { display: 'none' },
-            mb: depth > 0 ? 0.5 : 0,
+            '&.Mui-expanded': {
+              margin: 0,
+            },
+            borderBottom: depth === 0 ? '1px solid' : 'none',
+            borderColor: 'divider',
           }}
-          disableGutters={depth > 0}
+          disableGutters
         >
           <AccordionSummary
             expandIcon={hasChildren ? <ExpandMoreIcon /> : null}
             sx={{
-              pl: 2 + depth * 2,
-              pr: 2,
-              minHeight: 48,
+              pl: 2 + depth * 2.5,
+              pr: 1.5,
+              py: 0.75,
+              minHeight: 44,
               '&.Mui-expanded': {
-                minHeight: 48,
+                minHeight: 44,
               },
               borderLeft: depth > 0 ? `3px solid ${getLevelColor(category.level)}` : 'none',
-              '&:hover': { backgroundColor: 'action.hover' },
+              '&:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.04)',
+              },
+              transition: 'background-color 0.2s ease',
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
               <Box sx={{
                 color: getLevelColor(category.level),
                 display: 'flex',
                 alignItems: 'center',
-                minWidth: 24,
+                minWidth: 20,
                 justifyContent: 'center'
               }}>
-                {getCategoryIconBySlug(category.slug, 20)}
+                {getCategoryIconBySlug(category.slug, 18)}
               </Box>
 
               <Typography
@@ -270,65 +281,56 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                 sx={{
                   fontWeight: depth === 0 ? 600 : 500,
                   flexGrow: 1,
+                  fontSize: depth === 0 ? '0.95rem' : '0.875rem',
                 }}
               >
                 {name}
               </Typography>
 
               <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
-                <Chip
-                  label={`L${category.level}`}
-                  size="small"
-                  sx={{
-                    backgroundColor: getLevelColor(category.level),
-                    color: 'white',
-                    fontSize: '0.65rem',
-                    height: 20,
-                  }}
-                />
-
                 {showUsageCount && (category.total_usage_count ?? 0) > 0 && (
                   <Chip
                     label={`${category.total_usage_count}`}
                     size="small"
-                    color="primary"
-                    variant="outlined"
                     sx={{
-                      fontSize: '0.65rem',
-                      height: 20,
+                      backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                      color: 'primary.main',
+                      fontSize: '0.7rem',
+                      height: 22,
+                      fontWeight: 600,
+                      border: '1px solid',
+                      borderColor: 'rgba(25, 118, 210, 0.2)',
                     }}
                   />
                 )}
 
-                {/* Klarer Chip zum Navigieren - KEIN Button wegen Nesting-Warnung */}
+                {/* Icon-Button zum Navigieren */}
                 {onCategoryClick && (category.total_usage_count ?? 0) > 0 && (
-                  <Chip
-                    label="Anzeigen"
-                    variant="outlined"
-                    size="small"
+                  <Box
                     onClick={(e) => {
                       e.stopPropagation();
                       onCategoryClick(category.slug);
                     }}
                     sx={{
-                      fontSize: '0.75rem',
-                      height: 24,
-                      minWidth: 80,
-                      borderColor: 'primary.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(25, 118, 210, 0.08)',
                       color: 'primary.main',
-                      fontWeight: 600,
                       cursor: 'pointer',
+                      transition: 'all 0.2s ease',
                       '&:hover': {
                         backgroundColor: 'primary.main',
                         color: 'white',
-                        borderColor: 'primary.dark',
-                        '& .MuiChip-label': {
-                          color: 'white',
-                        },
+                        transform: 'scale(1.1)',
                       },
-                      transition: 'all 0.2s ease',
                     }}
-                  />
+                  >
+                    <ArrowForwardIcon sx={{ fontSize: 16 }} />
+                  </Box>
                 )}
               </Box>
             </Box>

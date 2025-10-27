@@ -4,6 +4,24 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.27] - 2025-10-27
+
+### Changed
+- 🎨 **Kategorien-Seite: M3 Google Style Redesign - Ultra-Kompakt**
+  - **CategoryTree.tsx**: Vollständig randloses, modernes Design
+  - Segments/Boxen entfernt - nur noch Dividers zwischen Kategorien
+  - L1/L2/L3/L4 Chips komplett entfernt für cleanen Look
+  - "Anzeigen"-Text durch Icon-Button (→) ersetzt - platzsparend & modern
+  - ArrowForwardIcon für Navigation statt Text-Chip
+  - Hover-Effekte verbessert: Icon-Button wird blau & skaliert
+  - **Ultra-kompakt**: minHeight 44px (statt 56px)
+  - **Engere Abstände**: py: 0.75, gap: 1, Icons: 18px
+  - Padding optimiert: depth * 2.5 statt 3 für bessere Hierarchie
+  - Text kompakter: fontSize angepasst (0.95rem/0.875rem)
+  - Zählbadge moderner gestaltet: subtiler Hintergrund & Border
+  - Keine Schatten mehr - flaches, aufgeräumtes M3-Design
+  - Änderungen nach habdawas kopiert
+
 ## [1.15.26] - 2025-10-27
 
 ### Changed
