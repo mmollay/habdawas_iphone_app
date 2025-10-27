@@ -4,6 +4,15 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.22] - 2025-10-27
+
+### Changed
+- 📱 **Mobile Container Padding optimiert**
+  - **App.tsx**: Container hat jetzt `px: isMobile ? 1 : undefined` (8px)
+  - Navigation geht näher an den Bildschirmrand
+  - Minimales Padding für Touch-Bedienbarkeit beibehalten
+  - Fix: Dropdown-Menü ist jetzt wieder korrekt klickbar
+
 ## [1.15.21] - 2025-10-27
 
 ### Changed

@@ -544,7 +544,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                     <span>Favorit</span>
                   </Box>
                 ) : (
-                  <span>Favoriten</span>
+                  <span>Favorit</span>
                 )}
                 {favoritesCount > 0 && (
                   <Box
