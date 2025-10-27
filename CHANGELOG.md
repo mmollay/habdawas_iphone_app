@@ -4,6 +4,23 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.30] - 2025-10-27
+
+### Changed
+- 🎨 **Kategorien-Seite: Ultra-kompakt für maximale Übersicht**
+  - **CategoryTree.tsx**: Höhe weiter reduziert (minHeight 36px statt 44px)
+  - Alle Borders zwischen Kategorien entfernt - vollständig randlos
+  - Engere Abstände: py: 0.5, gap: 0.75, pl: 1.5
+  - Icons kleiner: 16px (statt 18px) für kompakteres Design
+  - Text kleiner: 0.875rem / 0.8125rem mit lineHeight 1.4
+  - Badges kompakter: height 20px, fontSize 0.65rem
+  - Navigation-Button kleiner: 24x24px mit Icon 14px
+  - Depth-Padding optimiert: depth * 2 statt 2.5
+  - BorderLeft dünner: 2px statt 3px für subtilere Hierarchie
+  - ExpandIcon kleiner: fontSize 20px
+  - Mehr Kategorien auf einmal sichtbar - optimale Übersicht!
+  - Änderungen nach habdawas kopiert
+
 ## [1.15.29] - 2025-10-27
 
 ### Changed

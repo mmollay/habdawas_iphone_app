@@ -243,37 +243,35 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
             '&.Mui-expanded': {
               margin: 0,
             },
-            borderBottom: depth === 0 ? '1px solid' : 'none',
-            borderColor: 'divider',
           }}
           disableGutters
         >
           <AccordionSummary
-            expandIcon={hasChildren ? <ExpandMoreIcon /> : null}
+            expandIcon={hasChildren ? <ExpandMoreIcon sx={{ fontSize: 20 }} /> : null}
             sx={{
-              pl: 2 + depth * 2.5,
-              pr: 1.5,
-              py: 0.75,
-              minHeight: 44,
+              pl: 1.5 + depth * 2,
+              pr: 1,
+              py: 0.5,
+              minHeight: 36,
               '&.Mui-expanded': {
-                minHeight: 44,
+                minHeight: 36,
               },
-              borderLeft: depth > 0 ? `3px solid ${getLevelColor(category.level)}` : 'none',
+              borderLeft: depth > 0 ? `2px solid ${getLevelColor(category.level)}` : 'none',
               '&:hover': {
                 backgroundColor: 'rgba(25, 118, 210, 0.04)',
               },
               transition: 'background-color 0.2s ease',
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, width: '100%' }}>
               <Box sx={{
                 color: getLevelColor(category.level),
                 display: 'flex',
                 alignItems: 'center',
-                minWidth: 20,
+                minWidth: 18,
                 justifyContent: 'center'
               }}>
-                {getCategoryIconBySlug(category.slug, 18)}
+                {getCategoryIconBySlug(category.slug, 16)}
               </Box>
 
               <Typography
@@ -281,13 +279,14 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                 sx={{
                   fontWeight: depth === 0 ? 600 : 500,
                   flexGrow: 1,
-                  fontSize: depth === 0 ? '0.95rem' : '0.875rem',
+                  fontSize: depth === 0 ? '0.875rem' : '0.8125rem',
+                  lineHeight: 1.4,
                 }}
               >
                 {name}
               </Typography>
 
-              <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                 {showUsageCount && (category.total_usage_count ?? 0) > 0 && (
                   <Chip
                     label={`${category.total_usage_count}`}
@@ -295,11 +294,14 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                     sx={{
                       backgroundColor: 'rgba(25, 118, 210, 0.08)',
                       color: 'primary.main',
-                      fontSize: '0.7rem',
-                      height: 22,
+                      fontSize: '0.65rem',
+                      height: 20,
                       fontWeight: 600,
                       border: '1px solid',
                       borderColor: 'rgba(25, 118, 210, 0.2)',
+                      '& .MuiChip-label': {
+                        px: 0.75,
+                      },
                     }}
                   />
                 )}
@@ -315,8 +317,8 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: 28,
-                      height: 28,
+                      width: 24,
+                      height: 24,
                       borderRadius: '50%',
                       backgroundColor: 'rgba(25, 118, 210, 0.08)',
                       color: 'primary.main',
@@ -329,7 +331,7 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                       },
                     }}
                   >
-                    <ArrowForwardIcon sx={{ fontSize: 16 }} />
+                    <ArrowForwardIcon sx={{ fontSize: 14 }} />
                   </Box>
                 )}
               </Box>
