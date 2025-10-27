@@ -4,6 +4,15 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.18] - 2025-10-27
+
+### Added
+- 🔍 **Category Dropdown Verbesserungen**
+  - **Suchfunktion**: Integriertes Suchfeld zum schnellen Finden von Kategorien
+  - **Smart Filtering**: Zeigt nur Kategorien mit vorhandenen Inseraten an
+  - **Live-Anzahl**: Haupt- und Unterkategorien mit Item-Counts
+  - **Bessere UX**: Sticky Suchfeld, Reset nach Auswahl
+
 ## [1.15.17] - 2025-10-27
 
 ### Changed

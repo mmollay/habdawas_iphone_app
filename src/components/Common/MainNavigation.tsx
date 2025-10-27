@@ -1,6 +1,6 @@
-import React from 'react';
-import { Box, IconButton, Tabs, Tab, Chip, useMediaQuery, useTheme, Select, MenuItem } from '@mui/material';
-import { FolderTree, Globe, User, Heart, Coins } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Box, IconButton, Tabs, Tab, Chip, useMediaQuery, useTheme, Select, MenuItem, TextField, InputAdornment } from '@mui/material';
+import { FolderTree, Globe, User, Heart, Coins, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../../hooks/useCategories';
 import { useCommunityStats } from '../../hooks/useCommunityStats';
@@ -48,6 +48,10 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
   const { categories, categoryTree } = useCategories();
   const { stats: communityStats } = useCommunityStats();
   const { getFavoritesCount } = useFavoritesContext();
+
+  // Search state for category dropdown
+  const [categorySearch, setCategorySearch] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Use real-time count from context instead of prop
   const favoritesCount = getFavoritesCount();
@@ -98,10 +102,48 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
     return categories.find(c => c.id === id);
   };
 
-  // Display only top-level categories in dropdown
-  const displayCategories = React.useMemo(() => {
-    return categoryTree;
-  }, [categoryTree]);
+  // Filter categories: only show those with items AND match search
+  const displayCategories = useMemo(() => {
+    const filterCategoriesWithItems = (cats: any[]): any[] => {
+      return cats.filter(cat => {
+        const count = getCategoryCount(cat.id);
+        if (count === 0) return false;
+
+        // Filter by search term
+        if (categorySearch) {
+          const categoryName = getCategoryName(cat, 'de').toLowerCase();
+          const searchLower = categorySearch.toLowerCase();
+
+          // Check if category or any child matches
+          const matches = categoryName.includes(searchLower);
+          const hasMatchingChild = cat.children?.some((child: any) =>
+            getCategoryName(child, 'de').toLowerCase().includes(searchLower) &&
+            getCategoryCount(child.id) > 0
+          );
+
+          if (!matches && !hasMatchingChild) return false;
+        }
+
+        // Filter children
+        if (cat.children && cat.children.length > 0) {
+          cat.children = cat.children.filter((child: any) => {
+            const childCount = getCategoryCount(child.id);
+            if (childCount === 0) return false;
+
+            if (categorySearch) {
+              const childName = getCategoryName(child, 'de').toLowerCase();
+              return childName.includes(categorySearch.toLowerCase());
+            }
+            return true;
+          });
+        }
+
+        return true;
+      });
+    };
+
+    return filterCategoriesWithItems(categoryTree);
+  }, [categoryTree, categoriesWithCounts, categorySearch]);
 
   // Get subcategories when a category is selected
   const selectedCategory = React.useMemo(() => {
@@ -172,6 +214,13 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
             onChange={(e) => {
               const value = e.target.value;
               onCategoryChange(value === 'all' ? null : value);
+              setCategorySearch(''); // Reset search after selection
+              setDropdownOpen(false);
+            }}
+            onOpen={() => setDropdownOpen(true)}
+            onClose={() => {
+              setDropdownOpen(false);
+              setCategorySearch('');
             }}
             size="small"
             fullWidth
@@ -210,6 +259,34 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               );
             }}
           >
+            {/* Search Field */}
+            <Box sx={{ px: 2, py: 1, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Kategorie suchen..."
+                value={categorySearch}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  setCategorySearch(e.target.value);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={16} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    fontSize: '0.8125rem',
+                  },
+                }}
+              />
+            </Box>
+
             <MenuItem value="all">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
                 <Globe size={18} />
