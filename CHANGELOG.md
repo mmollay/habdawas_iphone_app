@@ -4,6 +4,22 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.17] - 2025-10-27
+
+### Changed
+- 🎨 **Mobile UI Optimierungen**
+  - **MainNavigation.tsx**:
+    - `borderRadius: 0` für IconButton (cleaner look)
+    - Subcategories direkt ins Haupt-Dropdown integriert (kein zweites Dropdown mehr)
+    - Mobile: Nur EINE Dropdown-Zeile, deutlich übersichtlicher
+  - **AdvancedFilterSidebar.tsx**:
+    - Header: Kleinere Icons (18px), reduziertes Padding (1.5)
+    - Content: Kompaktere Spacing (0.75), kleinere Schrift (0.8125rem)
+    - Accordion: minHeight 40px, optimierte Margins
+    - Checkboxen: Reduzierte Paddings (0.25)
+    - Footer: Kleinere Buttons, "Reset" statt "Zurücksetzen"
+    - **~30% kompakter** bei gleicher Funktionalität
+
 ## [1.15.16] - 2025-10-27
 
 ### Changed

@@ -154,7 +154,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               color: 'text.primary',
               border: '1.5px solid',
               borderColor: 'rgba(0, 0, 0, 0.12)',
-              borderRadius: 2,
+              borderRadius: 0,
               width: 40,
               height: 40,
               flexShrink: 0,
@@ -217,28 +217,48 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               </Box>
             </MenuItem>
             {displayCategories.map(category => (
-              <MenuItem
-                key={category.id}
-                value={category.id}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    {getCategoryIcon(category.id)}
-                    <span>
-                      {getCategoryName(category, 'de')}
-                    </span>
+              <React.Fragment key={category.id}>
+                <MenuItem value={category.id}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      {getCategoryIcon(category.id)}
+                      <span>
+                        {getCategoryName(category, 'de')}
+                      </span>
+                    </Box>
+                    <Chip
+                      label={getCategoryCount(category.id)}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                      }}
+                    />
                   </Box>
-                  <Chip
-                    label={getCategoryCount(category.id)}
-                    size="small"
-                    sx={{
-                      height: 20,
-                      fontSize: '0.6875rem',
-                      fontWeight: 600,
-                    }}
-                  />
-                </Box>
-              </MenuItem>
+                </MenuItem>
+                {/* Show subcategories directly in dropdown */}
+                {category.children && category.children.length > 0 && category.children.map((subcat: any) => {
+                  const count = getCategoryCount(subcat.id);
+                  return (
+                    <MenuItem
+                      key={subcat.id}
+                      value={subcat.id}
+                      sx={{ pl: 4 }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontSize: '0.875rem' }}>
+                          {getCategoryIcon(subcat.id)}
+                          <span>{getCategoryName(subcat, 'de')}</span>
+                        </Box>
+                        {count > 0 && (
+                          <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>({count})</span>
+                        )}
+                      </Box>
+                    </MenuItem>
+                  );
+                })}
+              </React.Fragment>
             ))}
           </Select>
         </Box>
@@ -620,59 +640,6 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
             </Box>
           )}
 
-          {/* Mobile: Dropdown */}
-          {isMobile && (
-            <Box
-              sx={{
-                px: 2,
-                py: 1.5,
-                borderTop: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
-              <Select
-                value=""
-                displayEmpty
-                fullWidth
-                size="small"
-                onChange={(e) => {
-                  if (e.target.value) {
-                    onCategoryChange(e.target.value);
-                  }
-                }}
-                sx={{
-                  fontSize: '0.875rem',
-                  '& .MuiSelect-select': {
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                  },
-                }}
-                renderValue={() => (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
-                    <span>Unterkategorie wählen...</span>
-                  </Box>
-                )}
-              >
-                {subcategories.map((subcat: any) => {
-                  const count = getCategoryCount(subcat.id);
-                  return (
-                    <MenuItem key={subcat.id} value={subcat.id}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {getCategoryIcon(subcat.id)}
-                          <span>{getCategoryName(subcat, 'de')}</span>
-                        </Box>
-                        {count > 0 && (
-                          <span style={{ opacity: 0.6 }}>({count})</span>
-                        )}
-                      </Box>
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </Box>
-          )}
         </>
       )}
     </Box>

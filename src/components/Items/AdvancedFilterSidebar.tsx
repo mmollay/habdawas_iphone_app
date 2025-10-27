@@ -11,65 +11,47 @@ import {
   Checkbox,
   Slider,
   IconButton,
-  Divider,
-  Chip,
   Badge,
-  Skeleton,
-  Alert,
-  CircularProgress,
 } from '@mui/material';
 import { ChevronDown, X, RotateCcw, SlidersHorizontal } from 'lucide-react';
-import { useFilterCounts } from '../../hooks/useFilterCounts';
-import { useCategories } from '../../hooks/useCategories';
-import { getCategoryName } from '../../utils/categories';
 import { getConditionLabel } from '../../utils/translations';
-
-interface FilterValue {
-  value: string | number;
-  count: number;
-}
-
-interface Filter {
-  label: string;
-  type?: string;
-  values: FilterValue[];
-}
-
-interface AdvancedFilterSidebarProps {
-  open: boolean;
-  onClose: () => void;
-  categoryId?: string;
-  onFilterChange: (filters: SelectedFilters) => void;
-  selectedFilters: SelectedFilters;
-}
 
 export interface SelectedFilters {
   [key: string]: (string | number)[];
   priceRange?: [number, number];
 }
 
+interface AdvancedFilterSidebarProps {
+  open: boolean;
+  onClose: () => void;
+  onFilterChange: (filters: SelectedFilters) => void;
+  selectedFilters: SelectedFilters;
+  totalItems?: number;
+}
+
+// Statische Filter-Definitionen
+const CONDITIONS = [
+  { value: 'new', label: 'Neu' },
+  { value: 'like_new', label: 'Wie neu' },
+  { value: 'very_good', label: 'Sehr gut' },
+  { value: 'good', label: 'Gut' },
+  { value: 'acceptable', label: 'Akzeptabel' },
+];
+
 export const AdvancedFilterSidebar = ({
   open,
   onClose,
-  categoryId,
   onFilterChange,
   selectedFilters,
+  totalItems = 0,
 }: AdvancedFilterSidebarProps) => {
   const [localFilters, setLocalFilters] = useState<SelectedFilters>(selectedFilters);
-  const { data, loading, isRefreshing, error } = useFilterCounts(categoryId, open, localFilters);
-  const { categories, getChildrenOf } = useCategories({ lang: 'de' });
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
-  const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set(['price', 'subcategories']));
+  const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set(['price', 'condition']));
 
-  // Get item count for a subcategory from filter data
-  const getSubcategoryCount = (subcatId: string): number => {
-    // If data has subcategory_counts, use that
-    if (data?.subcategory_counts && data.subcategory_counts[subcatId]) {
-      return data.subcategory_counts[subcatId];
-    }
-    // Fallback: return 0 if no data
-    return 0;
-  };
+  // Sync local filters with external filters when they change
+  useEffect(() => {
+    setLocalFilters(selectedFilters);
+  }, [selectedFilters]);
 
   const handleToggleFilter = (filterKey: string, value: string | number) => {
     setLocalFilters(prev => {
@@ -103,7 +85,6 @@ export const AdvancedFilterSidebar = ({
 
   const handleResetFilters = () => {
     const resetFilters: SelectedFilters = {};
-    // Don't set priceRange - let it be undefined to show all prices
     setLocalFilters(resetFilters);
     onFilterChange(resetFilters);
   };
@@ -125,7 +106,7 @@ export const AdvancedFilterSidebar = ({
     Object.entries(localFilters).forEach(([key, values]) => {
       if (key === 'priceRange') {
         const [min, max] = values as [number, number];
-        if (data?.price_range && (min !== data.price_range.min || max !== data.price_range.max)) {
+        if (min > 0 || max < 10000) {
           count++;
         }
       } else if (Array.isArray(values) && values.length > 0) {
@@ -151,261 +132,245 @@ export const AdvancedFilterSidebar = ({
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {/* Header */}
-        <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SlidersHorizontal size={20} />
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Box sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <SlidersHorizontal size={18} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9375rem' }}>
               Filter
             </Typography>
             {activeCount > 0 && (
-              <Badge badgeContent={activeCount} color="primary" />
-            )}
-            {isRefreshing && (
-              <CircularProgress size={16} sx={{ ml: 0.5 }} />
+              <Badge badgeContent={activeCount} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.625rem', height: 16, minWidth: 16 } }} />
             )}
           </Box>
-          <IconButton onClick={onClose} size="small">
-            <X size={20} />
+          <IconButton onClick={onClose} size="small" sx={{ p: 0.5 }}>
+            <X size={18} />
           </IconButton>
         </Box>
 
         {/* Content */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
-          {loading && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Skeleton variant="rectangular" height={60} />
-              <Skeleton variant="rectangular" height={60} />
-              <Skeleton variant="rectangular" height={60} />
-            </Box>
-          )}
+        <Box sx={{ flex: 1, overflow: 'auto', p: 0.75 }}>
+          {/* Total Items */}
+          <Box sx={{ mb: 0.75, p: 1, bgcolor: 'primary.50', borderRadius: 0.5 }}>
+            <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+              {totalItems} {totalItems === 1 ? 'Artikel' : 'Artikel'}
+            </Typography>
+          </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          {!loading && !error && data && (
-            <>
-              {/* Total Items */}
-              <Box sx={{ mb: 0.5, p: 0.75, bgcolor: 'primary.50', borderRadius: 1 }}>
-                <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-                  {data.total_items} {data.total_items === 1 ? 'Artikel' : 'Artikel'} gefunden
-                </Typography>
+          {/* Price Range */}
+          <Accordion
+            expanded={expandedAccordions.has('price')}
+            onChange={() => toggleAccordion('price')}
+            sx={{ mb: 0.5, boxShadow: 'none', '&:before': { display: 'none' } }}
+          >
+            <AccordionSummary
+              expandIcon={<ChevronDown size={16} />}
+              sx={{
+                minHeight: 40,
+                '& .MuiAccordionSummary-content': { my: 0.75 }
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+                💰 Preis
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ pt: 0, pb: 1 }}>
+              <Box sx={{ px: 0.5 }}>
+                <Slider
+                  value={localFilters.priceRange || [0, 10000]}
+                  onChange={handlePriceChange}
+                  valueLabelDisplay="auto"
+                  min={0}
+                  max={10000}
+                  valueLabelFormat={(value) => `€${value}`}
+                  size="small"
+                />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6875rem' }}>
+                    €{localFilters.priceRange?.[0] || 0}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6875rem' }}>
+                    €{localFilters.priceRange?.[1] || 10000}
+                  </Typography>
+                </Box>
               </Box>
+            </AccordionDetails>
+          </Accordion>
 
-              {/* Price Range */}
-              {data.price_range && (
-                <Accordion
-                  expanded={expandedAccordions.has('price')}
-                  onChange={() => toggleAccordion('price')}
-                  sx={{ mb: 0.25, boxShadow: 'none', '&:before': { display: 'none' } }}
-                >
-                  <AccordionSummary expandIcon={<ChevronDown size={18} />} sx={{ minHeight: 36, py: 0, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-                      💰 Preis
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ p: 0, '&.MuiAccordionDetails-root': { p: 0 } }}>
-                    <Box sx={{ px: 1.5, pt: 0.5, pb: 0.5 }}>
-                      <Slider
-                        value={localFilters.priceRange || priceRange}
-                        onChange={handlePriceChange}
-                        valueLabelDisplay="auto"
-                        min={data.price_range.min}
-                        max={data.price_range.max}
-                        valueLabelFormat={(value) => `€${value}`}
-                        sx={{ my: 0 }}
-                        size="small"
-                      />
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.25 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                          €{localFilters.priceRange?.[0] || data.price_range.min}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                          €{localFilters.priceRange?.[1] || data.price_range.max}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </AccordionDetails>
-                </Accordion>
-              )}
+          {/* Condition */}
+          <Accordion
+            expanded={expandedAccordions.has('condition')}
+            onChange={() => toggleAccordion('condition')}
+            sx={{ mb: 0.5, boxShadow: 'none', '&:before': { display: 'none' } }}
+          >
+            <AccordionSummary
+              expandIcon={<ChevronDown size={16} />}
+              sx={{
+                minHeight: 40,
+                '& .MuiAccordionSummary-content': { my: 0.75 }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flex: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+                  ✨ Zustand
+                </Typography>
+                {localFilters.condition && localFilters.condition.length > 0 && (
+                  <Badge
+                    badgeContent={localFilters.condition.length}
+                    color="primary"
+                    sx={{ '& .MuiBadge-badge': { fontSize: '0.625rem', height: 16, minWidth: 16 } }}
+                  />
+                )}
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 0, pt: 0 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, px: 0.5 }}>
+                {CONDITIONS.map((condition) => {
+                  const isChecked = (localFilters.condition || []).includes(condition.value);
 
-              {/* Subcategories */}
-              {categoryId && (() => {
-                const subcategories = getChildrenOf(categoryId);
-                if (subcategories.length > 0) {
                   return (
-                    <Accordion
-                      expanded={expandedAccordions.has('subcategories')}
-                      onChange={() => toggleAccordion('subcategories')}
-                      sx={{ mb: 0.25, boxShadow: 'none', '&:before': { display: 'none' } }}
-                    >
-                      <AccordionSummary expandIcon={<ChevronDown size={18} />} sx={{ minHeight: 36, py: 0, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flex: 1 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-                            📁 Unterkategorie
-                          </Typography>
-                          {localFilters.subcategories && localFilters.subcategories.length > 0 && (
-                            <Chip
-                              label={localFilters.subcategories.length}
-                              size="small"
-                              color="primary"
-                              sx={{ height: 18, fontSize: '0.65rem', minWidth: 18 }}
-                            />
-                          )}
-                        </Box>
-                      </AccordionSummary>
-                      <AccordionDetails sx={{ p: 0, '&.MuiAccordionDetails-root': { p: 0 } }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, px: 0.5 }}>
-                          {subcategories.map((subcat) => {
-                            const subcatId = subcat.id;
-                            const subcatName = getCategoryName(subcat, 'de');
-                            const count = getSubcategoryCount(subcatId);
-                            const isChecked = (localFilters.subcategories || []).includes(subcatId);
-
-                            return (
-                              <FormControlLabel
-                                key={subcatId}
-                                control={
-                                  <Checkbox
-                                    checked={isChecked}
-                                    onChange={() => handleToggleFilter('subcategories', subcatId)}
-                                    size="small"
-                                    sx={{ py: 0, px: 0.5 }}
-                                  />
-                                }
-                                label={
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                                    <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>{subcatName}</Typography>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      sx={{ ml: 1, fontWeight: 500, fontSize: '0.7rem' }}
-                                    >
-                                      ({count})
-                                    </Typography>
-                                  </Box>
-                                }
-                                sx={{
-                                  m: 0,
-                                  py: 0,
-                                  px: 0.5,
-                                  borderRadius: 1,
-                                  '&:hover': { bgcolor: 'action.hover' },
-                                  ...(isChecked && { bgcolor: 'primary.50' }),
-                                }}
-                              />
-                            );
-                          })}
-                        </Box>
-                      </AccordionDetails>
-                    </Accordion>
-                  );
-                }
-                return null;
-              })()}
-
-              <Divider sx={{ my: 0.25 }} />
-
-              {/* Dynamic Filters */}
-              {Object.entries(data.filters).map(([key, filter]) => {
-                const selectedValues = localFilters[key] || [];
-                const hasSelections = selectedValues.length > 0;
-
-                return (
-                  <Accordion
-                    key={key}
-                    expanded={expandedAccordions.has(key)}
-                    onChange={() => toggleAccordion(key)}
-                    sx={{ mb: 0.25, boxShadow: 'none', '&:before': { display: 'none' } }}
-                  >
-                    <AccordionSummary expandIcon={<ChevronDown size={18} />} sx={{ minHeight: 36, py: 0, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flex: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-                          {filter.label}
+                    <FormControlLabel
+                      key={condition.value}
+                      control={
+                        <Checkbox
+                          checked={isChecked}
+                          onChange={() => handleToggleFilter('condition', condition.value)}
+                          size="small"
+                          sx={{ p: 0.5 }}
+                        />
+                      }
+                      label={
+                        <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                          {condition.label}
                         </Typography>
-                        {hasSelections && (
-                          <Chip
-                            label={selectedValues.length}
-                            size="small"
-                            color="primary"
-                            sx={{ height: 18, fontSize: '0.65rem', minWidth: 18 }}
-                          />
-                        )}
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ p: 0, '&.MuiAccordionDetails-root': { p: 0 } }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, px: 0.5 }}>
-                        {filter.values.map((val, idx) => {
-                          const isChecked = selectedValues.includes(val.value);
-
-                          return (
-                            <FormControlLabel
-                              key={idx}
-                              control={
-                                <Checkbox
-                                  checked={isChecked}
-                                  onChange={() => handleToggleFilter(key, val.value)}
-                                  size="small"
-                                  sx={{ py: 0, px: 0.5 }}
-                                />
-                              }
-                              label={
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                                  <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-                                    {key === 'condition' ? getConditionLabel(String(val.value)) : val.value}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    sx={{ ml: 1, fontWeight: 500, fontSize: '0.7rem' }}
-                                  >
-                                    ({val.count})
-                                  </Typography>
-                                </Box>
-                              }
-                              sx={{
-                                m: 0,
-                                py: 0,
-                                px: 0.5,
-                                borderRadius: 1,
-                                '&:hover': { bgcolor: 'action.hover' },
-                                ...(isChecked && { bgcolor: 'primary.50' }),
-                              }}
-                            />
-                          );
-                        })}
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-                );
-              })}
-            </>
-          )}
+                      }
+                      sx={{
+                        m: 0,
+                        py: 0.25,
+                        px: 0.75,
+                        borderRadius: 0.5,
+                        '&:hover': { bgcolor: 'action.hover' },
+                        ...(isChecked && { bgcolor: 'primary.50' }),
+                      }}
+                    />
+                  );
+                })}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
         </Box>
 
         {/* Footer Actions */}
-        <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', gap: 1 }}>
+        <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', gap: 0.75 }}>
           <Button
             variant="outlined"
             fullWidth
-            startIcon={<RotateCcw size={16} />}
+            startIcon={<RotateCcw size={14} />}
             onClick={handleResetFilters}
             disabled={activeCount === 0}
+            size="small"
+            sx={{ fontSize: '0.8125rem', py: 0.75 }}
           >
-            Zurücksetzen
+            Reset
           </Button>
           <Button
             variant="contained"
             fullWidth
             onClick={handleApplyFilters}
-            disabled={loading}
+            size="small"
+            sx={{ fontSize: '0.8125rem', py: 0.75 }}
           >
-            Anzeigen ({data?.total_items || 0})
+            Anzeigen ({totalItems})
           </Button>
         </Box>
       </Box>
     </Drawer>
+  );
+};
+
+export const SelectedFilters = ({
+  filters,
+  onRemoveFilter,
+  onClearAll,
+}: {
+  filters: SelectedFilters;
+  onRemoveFilter: (key: string, value?: string | number) => void;
+  onClearAll: () => void;
+}) => {
+  const filterChips: Array<{ key: string; label: string; value?: string | number }> = [];
+
+  // Price range
+  if (filters.priceRange) {
+    const [min, max] = filters.priceRange;
+    if (min > 0 || max < 10000) {
+      filterChips.push({
+        key: 'priceRange',
+        label: `€${min} - €${max}`,
+      });
+    }
+  }
+
+  // Condition
+  if (filters.condition) {
+    filters.condition.forEach(val => {
+      filterChips.push({
+        key: 'condition',
+        label: getConditionLabel(String(val)),
+        value: val,
+      });
+    });
+  }
+
+  if (filterChips.length === 0) {
+    return null;
+  }
+
+  return (
+    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+      {filterChips.map((chip, idx) => (
+        <Box
+          key={`${chip.key}-${chip.value || idx}`}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 1.5,
+            py: 0.5,
+            bgcolor: 'primary.50',
+            borderRadius: 2,
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            color: 'primary.main',
+            cursor: 'pointer',
+            '&:hover': {
+              bgcolor: 'primary.100',
+            },
+          }}
+          onClick={() => onRemoveFilter(chip.key, chip.value)}
+        >
+          {chip.label}
+          <X size={14} />
+        </Box>
+      ))}
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          px: 1.5,
+          py: 0.5,
+          bgcolor: 'grey.100',
+          borderRadius: 2,
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          color: 'text.secondary',
+          cursor: 'pointer',
+          '&:hover': {
+            bgcolor: 'grey.200',
+          },
+        }}
+        onClick={onClearAll}
+      >
+        Alle löschen
+      </Box>
+    </Box>
   );
 };
