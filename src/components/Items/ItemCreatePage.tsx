@@ -126,6 +126,15 @@ export const ItemCreatePage = () => {
   const [brand, setBrand] = useState('');
   const [condition, setCondition] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [metaCategories, setMetaCategories] = useState<{
+    sustainability?: string[];
+    condition?: string[];
+    seller_type?: string[];
+  }>({
+    sustainability: [],
+    condition: [],
+    seller_type: [],
+  });
 
   // AI Analysis Preview States
   const [showPreview, setShowPreview] = useState(false);
@@ -1717,6 +1726,38 @@ export const ItemCreatePage = () => {
         }
       }
 
+      // Save meta-categories if present
+      if (itemData && metaCategories) {
+        console.log('[Meta-Categories] Saving meta-categories...', metaCategories);
+        const metaCategoryInserts = [];
+
+        // Add all selected meta-categories from all types
+        Object.values(metaCategories).forEach(categoryIds => {
+          if (Array.isArray(categoryIds)) {
+            categoryIds.forEach(catId => {
+              if (catId) {
+                metaCategoryInserts.push({
+                  item_id: itemData.id,
+                  meta_category_id: catId,
+                });
+              }
+            });
+          }
+        });
+
+        if (metaCategoryInserts.length > 0) {
+          const { error: metaCategoriesError } = await supabase
+            .from('item_meta_categories')
+            .insert(metaCategoryInserts);
+
+          if (metaCategoriesError) {
+            console.error('[Meta-Categories] Error saving meta-categories:', metaCategoriesError);
+          } else {
+            console.log('[Meta-Categories] Saved', metaCategoryInserts.length, 'meta-categories');
+          }
+        }
+      }
+
       // Handle credit deduction based on listing type
       console.log('[Credit Check] Processing credit deduction...', {
         creditSource: creditCheck.source,
@@ -2171,6 +2212,13 @@ export const ItemCreatePage = () => {
                     onIsFreeChange={setIsFree}
                     onPriceOnRequestChange={setPriceOnRequest}
                     onDurationChange={setDuration}
+                    metaCategories={metaCategories}
+                    onMetaCategoriesChange={(type, value) => {
+                      setMetaCategories(prev => ({
+                        ...prev,
+                        [type]: value,
+                      }));
+                    }}
                     isMobile={isMobile}
                     hideExtendedSettings={true}
                   />

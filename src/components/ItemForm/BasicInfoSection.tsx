@@ -1,8 +1,9 @@
-import { Box, TextField, Typography, MenuItem, Autocomplete, Chip, FormControlLabel, Switch, FormControl, InputLabel, Select } from '@mui/material';
+import { Box, TextField, Typography, MenuItem, Autocomplete, Chip, FormControlLabel, Switch, FormControl, InputLabel, Select, Divider } from '@mui/material';
 import { conditionOptions } from '../../utils/translations';
 import { CategoryDropdown } from '../CategoryDropdown';
 import { CategorySelection } from '../../types/categories';
 import { CategorySuggestions } from '../CategorySuggestions';
+import MetaCategorySelector from '../Common/MetaCategorySelector';
 
 interface BasicInfoSectionProps {
   title: string;
@@ -16,6 +17,11 @@ interface BasicInfoSectionProps {
   isFree?: boolean;
   priceOnRequest?: boolean;
   duration?: number;
+  metaCategories?: {
+    sustainability?: string[];
+    condition?: string[];
+    seller_type?: string[];
+  };
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onPriceChange: (value: string) => void;
@@ -27,6 +33,7 @@ interface BasicInfoSectionProps {
   onIsFreeChange?: (value: boolean) => void;
   onPriceOnRequestChange?: (value: boolean) => void;
   onDurationChange?: (value: number) => void;
+  onMetaCategoriesChange?: (type: 'sustainability' | 'condition' | 'seller_type', value: string[]) => void;
   isMobile?: boolean;
   hideExtendedSettings?: boolean;
 }
@@ -57,6 +64,7 @@ export const BasicInfoSection = ({
   isFree,
   priceOnRequest,
   duration,
+  metaCategories,
   onTitleChange,
   onDescriptionChange,
   onPriceChange,
@@ -68,6 +76,7 @@ export const BasicInfoSection = ({
   onIsFreeChange,
   onPriceOnRequestChange,
   onDurationChange,
+  onMetaCategoriesChange,
   isMobile = false,
   hideExtendedSettings = false,
 }: BasicInfoSectionProps) => {
@@ -145,6 +154,53 @@ export const BasicInfoSection = ({
             </MenuItem>
           ))}
         </TextField>
+
+        {/* Meta-Kategorien Sektion */}
+        {onMetaCategoriesChange && metaCategories && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+            <Divider sx={{ my: 1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                Zusätzliche Eigenschaften
+              </Typography>
+            </Divider>
+
+            {/* Zustand Meta-Kategorie */}
+            <MetaCategorySelector
+              type="condition"
+              value={metaCategories.condition || []}
+              onChange={(selected) => onMetaCategoriesChange('condition', selected)}
+              multiple={false}
+              label="Artikelzustand"
+              helperText="Wähle den Zustand des Artikels"
+              orientation={isMobile ? 'vertical' : 'horizontal'}
+              fullWidth
+            />
+
+            {/* Verkäufer-Typ Meta-Kategorie */}
+            <MetaCategorySelector
+              type="seller_type"
+              value={metaCategories.seller_type || []}
+              onChange={(selected) => onMetaCategoriesChange('seller_type', selected)}
+              multiple={false}
+              label="Verkäufer-Typ"
+              helperText="Privat oder gewerblich?"
+              orientation={isMobile ? 'vertical' : 'horizontal'}
+              fullWidth
+            />
+
+            {/* Nachhaltigkeit Meta-Kategorie */}
+            <MetaCategorySelector
+              type="sustainability"
+              value={metaCategories.sustainability || []}
+              onChange={(selected) => onMetaCategoriesChange('sustainability', selected)}
+              multiple={true}
+              label="Nachhaltigkeit (optional)"
+              helperText="Nachhaltige Eigenschaften des Artikels"
+              orientation={isMobile ? 'vertical' : 'horizontal'}
+              fullWidth
+            />
+          </Box>
+        )}
 
         {onTagsChange && (
           <Autocomplete
