@@ -7,6 +7,7 @@ interface FavoritesContextType {
   loading: boolean;
   toggleFavorite: (itemId: string) => Promise<boolean>;
   isFavorite: (itemId: string) => boolean;
+  getFavoritesCount: () => number;
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
@@ -106,12 +107,15 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
 
   const isFavorite = useCallback((itemId: string) => favorites.has(itemId), [favorites]);
 
+  const getFavoritesCount = useCallback(() => favorites.size, [favorites]);
+
   const value = useMemo(() => ({
     favorites,
     loading,
     toggleFavorite,
-    isFavorite
-  }), [favorites, loading, toggleFavorite, isFavorite]);
+    isFavorite,
+    getFavoritesCount
+  }), [favorites, loading, toggleFavorite, isFavorite, getFavoritesCount]);
 
   return (
     <FavoritesContext.Provider value={value}>

@@ -4,6 +4,15 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.19] - 2025-10-27
+
+### Fixed
+- 🎨 **Border-Radius entfernt (Mobile)**
+  - **App.tsx**: Paper Elements haben jetzt `borderRadius: '0 !important'`
+  - Keine abgerundeten Ecken mehr bei Navigation und Suchfeld im Smartphone-Modus
+  - Scharfe, klare Kanten für professionelleres Erscheinungsbild
+  - Betrifft: Mobile Search Paper (Zeile 1270) und Navigation Paper (Zeile 1292)
+
 ## [1.15.18] - 2025-10-27
 
 ### Added

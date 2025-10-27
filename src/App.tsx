@@ -407,6 +407,59 @@ const MainContent = () => {
     loadCounts();
   }, [user, getCached]);
 
+  // Realtime listener for favorites count
+  useEffect(() => {
+    if (!user) return;
+
+    // Initial count load
+    const loadFavoritesCount = async () => {
+      const { count } = await supabase
+        .from('favorites')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (count !== null) {
+        setFavoritesCount(count);
+        console.log('✅ Initial favorites count loaded:', count);
+      }
+    };
+
+    loadFavoritesCount();
+
+    // Setup realtime listener
+    const channel = supabase
+      .channel('favorites-count-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT and DELETE
+          schema: 'public',
+          table: 'favorites',
+          filter: `user_id=eq.${user.id}`
+        },
+        async (payload) => {
+          console.log('🔔 Favorites change detected:', payload);
+          // Reload favorites count
+          const { count } = await supabase
+            .from('favorites')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+          if (count !== null) {
+            setFavoritesCount(count);
+            console.log('✅ Favorites count updated:', count);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Favorites realtime subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
 
   const loadItems = async (loadMore = false, forceRefresh = false) => {
     // Check cache for initial load
@@ -1214,7 +1267,7 @@ const MainContent = () => {
       ) : (
         <>
           {isMobile && (
-            <Paper elevation={1} sx={{ borderRadius: 0, py: 2, px: 2, bgcolor: 'white' }}>
+            <Paper elevation={1} sx={{ borderRadius: '0 !important', py: 2, px: 2, bgcolor: 'white' }}>
               <SearchAutocomplete
                 fullWidth
                 value={searchQuery}
@@ -1236,6 +1289,7 @@ const MainContent = () => {
                 bgcolor: 'background.paper',
                 borderBottom: '1px solid',
                 borderColor: 'divider',
+                borderRadius: '0 !important',
                 mb: 0
               }}
             >
@@ -1377,12 +1431,12 @@ const MainContent = () => {
                   alignItems: 'center',
                   mb: 2,
                   py: 0,
-                  gap: 1,
-                  flexWrap: 'wrap',
+                  gap: isMobile ? 0.5 : 1,
+                  flexWrap: isMobile ? 'nowrap' : 'wrap',
                 }}
                 data-testid="toolbar"
               >
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: isMobile ? 0.5 : 1, alignItems: 'center', flex: 1, flexWrap: isMobile ? 'nowrap' : 'wrap' }}>
                   <IconButton
                     onClick={() => setFilterOpen(true)}
                     sx={{
@@ -1391,7 +1445,9 @@ const MainContent = () => {
                       borderColor: 'rgba(0, 0, 0, 0.12)',
                       color: 'text.primary',
                       bgcolor: 'background.paper',
-                      p: isMobile ? 1 : 1.25,
+                      p: isMobile ? 0.5 : 1.25,
+                      minWidth: isMobile ? 32 : 'auto',
+                      height: isMobile ? 32 : 'auto',
                       '&:hover': {
                         borderColor: 'primary.main',
                         bgcolor: 'rgba(25, 118, 210, 0.08)',
@@ -1399,7 +1455,7 @@ const MainContent = () => {
                       }
                     }}
                   >
-                    <Filter size={isMobile ? 18 : 20} />
+                    <Filter size={isMobile ? 16 : 20} />
                   </IconButton>
 
                   <IconButton
@@ -1417,7 +1473,9 @@ const MainContent = () => {
                       borderColor: 'rgba(0, 0, 0, 0.12)',
                       color: 'text.primary',
                       bgcolor: 'background.paper',
-                      p: isMobile ? 1 : 1.25,
+                      p: isMobile ? 0.5 : 1.25,
+                      minWidth: isMobile ? 32 : 'auto',
+                      height: isMobile ? 32 : 'auto',
                       '&:hover': {
                         borderColor: 'primary.main',
                         bgcolor: 'rgba(25, 118, 210, 0.08)',
@@ -1425,7 +1483,7 @@ const MainContent = () => {
                       }
                     }}
                   >
-                    <ArrowUpDown size={isMobile ? 18 : 20} />
+                    <ArrowUpDown size={isMobile ? 16 : 20} />
                   </IconButton>
 
                   {!isMobile && (
@@ -1473,20 +1531,20 @@ const MainContent = () => {
                     </FormControl>
                   )}
 
-                  {(selectedCategories.length > 0 || priceRange[0] > 0 || priceRange[1] < 10000) && (
+                  {!isMobile && (selectedCategories.length > 0 || priceRange[0] > 0 || priceRange[1] < 10000) && (
                     <Chip
                       label={`${
                         (selectedCategories.length || 0) +
                         (priceRange[0] > 0 || priceRange[1] < 10000 ? 1 : 0)
                       } Filter aktiv`}
-                      size={isMobile ? 'small' : 'medium'}
+                      size="medium"
                       onDelete={clearFilters}
                       color="primary"
                       sx={{
                         borderRadius: 4,
                         fontWeight: 600,
                         fontSize: '0.875rem',
-                        height: isMobile ? 28 : 32,
+                        height: 32,
                         '& .MuiChip-label': {
                           px: 1.5,
                         },
@@ -1503,17 +1561,19 @@ const MainContent = () => {
                   )}
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 500,
-                      fontSize: '0.9375rem',
-                      color: 'text.secondary',
-                    }}
-                  >
-                    {filteredItems.length} Artikel
-                  </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
+                  {!isMobile && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 500,
+                        fontSize: '0.9375rem',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      {filteredItems.length} Artikel
+                    </Typography>
+                  )}
                   <ToggleButtonGroup
                     value={viewMode}
                     exclusive
@@ -1521,25 +1581,26 @@ const MainContent = () => {
                     size="small"
                     sx={{
                       border: '1.5px solid rgba(0, 0, 0, 0.12)',
-                      borderRadius: 5,
+                      borderRadius: isMobile ? 3 : 5,
                       bgcolor: 'background.paper',
                       '& .MuiToggleButton-root': {
                         border: 0,
-                        px: isMobile ? 1.5 : 2.5,
-                        py: isMobile ? 0.75 : 1,
+                        px: isMobile ? 0.75 : 2.5,
+                        py: isMobile ? 0.5 : 1,
                         color: 'text.secondary',
                         fontWeight: 500,
-                        minWidth: isMobile ? 36 : 'auto',
+                        minWidth: isMobile ? 32 : 'auto',
+                        height: isMobile ? 32 : 'auto',
                         '&:not(:last-of-type)': {
                           borderRight: '1.5px solid rgba(0, 0, 0, 0.12)',
                         },
                         '&:first-of-type': {
-                          borderTopLeftRadius: 18,
-                          borderBottomLeftRadius: 18,
+                          borderTopLeftRadius: isMobile ? 10 : 18,
+                          borderBottomLeftRadius: isMobile ? 10 : 18,
                         },
                         '&:last-of-type': {
-                          borderTopRightRadius: 18,
-                          borderBottomRightRadius: 18,
+                          borderTopRightRadius: isMobile ? 10 : 18,
+                          borderBottomRightRadius: isMobile ? 10 : 18,
                         },
                         '&.Mui-selected': {
                           bgcolor: 'primary.main',
@@ -1555,7 +1616,7 @@ const MainContent = () => {
                     }}
                   >
                     <ToggleButton value="grid" aria-label="Gitteransicht">
-                      <Grid3x3 size={isMobile ? 16 : 18} />
+                      <Grid3x3 size={isMobile ? 14 : 18} />
                     </ToggleButton>
                     {!isMobile && (
                       <ToggleButton value="list" aria-label="Listenansicht">
@@ -1563,44 +1624,48 @@ const MainContent = () => {
                       </ToggleButton>
                     )}
                     <ToggleButton value="gallery" aria-label="Galerieansicht">
-                      <Image size={isMobile ? 16 : 18} />
+                      <Image size={isMobile ? 14 : 18} />
                     </ToggleButton>
                     {isMobile && (
                       <ToggleButton value="compact" aria-label="Kompaktansicht">
-                        <List size={16} />
+                        <List size={14} />
                       </ToggleButton>
                     )}
                   </ToggleButtonGroup>
 
-                  <IconButton
-                    onClick={() => loadItems(false, true)}
-                    size="small"
-                    sx={{
-                      bgcolor: 'background.paper',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      '&:hover': { bgcolor: 'action.hover' }
-                    }}
-                    title="Aktualisieren"
-                    aria-label="Aktualisieren"
-                  >
-                    <RefreshCw size={isMobile ? 16 : 18} />
-                  </IconButton>
+                  {!isMobile && (
+                    <>
+                      <IconButton
+                        onClick={() => loadItems(false, true)}
+                        size="small"
+                        sx={{
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                        title="Aktualisieren"
+                        aria-label="Aktualisieren"
+                      >
+                        <RefreshCw size={18} />
+                      </IconButton>
 
-                  <IconButton
-                    onClick={() => setShareDialogOpen(true)}
-                    size="small"
-                    sx={{
-                      bgcolor: 'background.paper',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      '&:hover': { bgcolor: 'action.hover' }
-                    }}
-                    title="Filter teilen"
-                    aria-label="Filter teilen"
-                  >
-                    <Share2 size={isMobile ? 16 : 18} />
-                  </IconButton>
+                      <IconButton
+                        onClick={() => setShareDialogOpen(true)}
+                        size="small"
+                        sx={{
+                          bgcolor: 'background.paper',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                        title="Filter teilen"
+                        aria-label="Filter teilen"
+                      >
+                        <Share2 size={18} />
+                      </IconButton>
+                    </>
+                  )}
                 </Box>
               </Box>
             )}
@@ -1845,9 +1910,9 @@ const MainContent = () => {
           <AdvancedFilterSidebar
             open={filterOpen}
             onClose={handleFilterClose}
-            categoryId={filterCategoryId}
             onFilterChange={handleFilterChange}
             selectedFilters={selectedFilters}
+            totalItems={filteredItems.length}
           />
         </>
       )}
