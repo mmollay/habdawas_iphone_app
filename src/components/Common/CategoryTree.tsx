@@ -6,6 +6,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Chip,
+  Button,
   CircularProgress,
   Alert,
   Paper,
@@ -297,6 +298,35 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                       height: 20,
                     }}
                   />
+                )}
+
+                {/* Klarer Button zum Navigieren */}
+                {onCategoryClick && (category.total_usage_count ?? 0) > 0 && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCategoryClick(category.slug);
+                    }}
+                    sx={{
+                      fontSize: '0.75rem',
+                      height: 24,
+                      minWidth: 80,
+                      textTransform: 'none',
+                      borderColor: 'primary.main',
+                      color: 'primary.main',
+                      fontWeight: 600,
+                      '&:hover': {
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        borderColor: 'primary.dark',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    Anzeigen
+                  </Button>
                 )}
               </Box>
             </Box>
