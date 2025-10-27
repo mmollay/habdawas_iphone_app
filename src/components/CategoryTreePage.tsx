@@ -17,7 +17,7 @@ import ExpandAllIcon from '@mui/icons-material/UnfoldMore';
 import CollapseAllIcon from '@mui/icons-material/UnfoldLess';
 import DownloadIcon from '@mui/icons-material/Download';
 import CategoryTree from './Common/CategoryTree';
-import { NavigationTabs } from './Common/NavigationTabs';
+import { MainNavigation } from './Common/MainNavigation';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCreditCheck } from '../hooks/useCreditCheck';
@@ -39,6 +39,11 @@ const CategoryTreePage: React.FC = () => {
     communityPotBalance?: number;
   } | null>(null);
 
+  // Item counts for navigation
+  const [allItemsCount, setAllItemsCount] = useState(0);
+  const [myItemsCount, setMyItemsCount] = useState(0);
+  const [favoritesCount, setFavoritesCount] = useState(0);
+
   // Load credit info
   useEffect(() => {
     if (user) {
@@ -47,6 +52,45 @@ const CategoryTreePage: React.FC = () => {
       setCreditInfo(null);
     }
   }, [user, checkCredit]);
+
+  // Load item counts
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        // All items count
+        const { count: allCount } = await supabase
+          .from('items')
+          .select('*', { count: 'exact', head: true });
+
+        if (allCount !== null) setAllItemsCount(allCount);
+
+        if (user) {
+          // My items count
+          const { count: myCount } = await supabase
+            .from('items')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+          if (myCount !== null) setMyItemsCount(myCount);
+
+          // Favorites count
+          const { count: favCount } = await supabase
+            .from('favorites')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+          if (favCount !== null) setFavoritesCount(favCount);
+        } else {
+          setMyItemsCount(0);
+          setFavoritesCount(0);
+        }
+      } catch (error) {
+        console.error('Error loading counts:', error);
+      }
+    };
+
+    loadCounts();
+  }, [user]);
 
   const handleCategoryClick = (categorySlug: string) => {
     // Navigate to items page with category filter
@@ -144,9 +188,23 @@ const CategoryTreePage: React.FC = () => {
     }
   };
 
+  const handleTabChange = (newValue: number) => {
+    if (newValue === 0) navigate('/');
+    else if (newValue === 1) navigate('/?view=myitems');
+    else if (newValue === 2) navigate('/?view=favorites');
+  };
+
+  const handleCategoryChange = (categoryId: string | null) => {
+    if (categoryId) {
+      navigate(`/?categories=${categoryId}`);
+    } else {
+      navigate('/');
+    }
+  };
+
   return (
     <>
-      {/* Navigation Tabs - Wiederverwendbare Komponente */}
+      {/* Navigation - EXAKT wie auf Homepage */}
       <Paper
         elevation={0}
         sx={{
@@ -157,9 +215,14 @@ const CategoryTreePage: React.FC = () => {
         }}
       >
         <Container maxWidth="xl" sx={{ maxWidth: '1400px !important' }}>
-          <NavigationTabs
+          <MainNavigation
             selectedTab={0}
-            showCategoryDropdown={false}
+            onTabChange={handleTabChange}
+            selectedCategories={[]}
+            onCategoryChange={handleCategoryChange}
+            allItemsCount={allItemsCount}
+            myItemsCount={myItemsCount}
+            favoritesCount={favoritesCount}
             creditInfo={creditInfo}
           />
         </Container>
