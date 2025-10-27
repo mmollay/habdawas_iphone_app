@@ -4,6 +4,21 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.32] - 2025-10-27
+
+### Fixed
+- 🎯 **Mobile Navigation: Professionelles Design & Fehlerbereinigung**
+  - **MainNavigation.tsx**: Kategorie-Button auf Desktop-Only beschränkt
+  - Mobile: Neue erste Tab für Kategorien mit FolderTree-Icon (22px)
+  - Badges professionell repositioniert: top: -4px, right: -8px
+  - Badge-Styling verbessert: 2px weißer Border für besseren Kontrast
+  - Icon-Größe erhöht: 20px → 22px für bessere Proportionen
+  - Relative/Absolute Positionierung für saubere Badge-Platzierung
+  - Console-Fehler behoben: Nested Button (IconButton in Tab) entfernt
+  - Proportionen optimiert für professionelles, ausgewogenes Design
+  - Keine Validierungs-Fehler mehr - sauberer HTML-Code
+  - Änderungen nach habdawas kopiert
+
 ## [1.15.31] - 2025-10-27
 
 ### Changed

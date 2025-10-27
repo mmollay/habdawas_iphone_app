@@ -168,26 +168,28 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
       }}>
         {/* Kategorien Button & Tabs */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 0.5 }}>
-        {/* Category Button - Both Mobile & Desktop */}
-        <IconButton
-          onClick={() => navigate('/categories')}
-          sx={{
-            color: 'text.primary',
-            border: '1.5px solid',
-            borderColor: 'rgba(0, 0, 0, 0.12)',
-            borderRadius: isMobile ? 0 : 2,
-            width: 40,
-            height: 40,
-            flexShrink: 0,
-            '&:hover': {
-              borderColor: 'primary.main',
-              bgcolor: 'rgba(25, 118, 210, 0.08)',
-            }
-          }}
-          title="Kategorien Übersicht"
-        >
-          <FolderTree size={20} />
-        </IconButton>
+        {/* Category Button - Desktop only (mobile integrated in tabs) */}
+        {!isMobile && (
+          <IconButton
+            onClick={() => navigate('/categories')}
+            sx={{
+              color: 'text.primary',
+              border: '1.5px solid',
+              borderColor: 'rgba(0, 0, 0, 0.12)',
+              borderRadius: 2,
+              width: 40,
+              height: 40,
+              flexShrink: 0,
+              '&:hover': {
+                borderColor: 'primary.main',
+                bgcolor: 'rgba(25, 118, 210, 0.08)',
+              }
+            }}
+            title="Kategorien Übersicht"
+          >
+            <FolderTree size={20} />
+          </IconButton>
+        )}
         <Tabs
           value={selectedTab}
           onChange={(_, value) => onTabChange(value)}
@@ -297,11 +299,21 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               }
             />
           )}
-          {/* Mobile: Icon-only Tab with Dropdown */}
+          {/* Mobile: Category Tab (First Tab) */}
+          {isMobile && (
+            <Tab
+              label={<FolderTree size={22} />}
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/categories');
+              }}
+            />
+          )}
+          {/* Mobile: Alle/Filter Tab with Dropdown */}
           {isMobile && (
             <Tab
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   <Select
                     value={selectedCategory ? selectedCategory.id : 'all'}
                     onChange={(e) => {
@@ -327,7 +339,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                       '&:after': { display: 'none' },
                       '& .MuiSelect-select': {
                         padding: 0,
-                        paddingRight: '16px !important',
+                        paddingRight: '18px !important',
                         display: 'flex',
                         alignItems: 'center',
                       },
@@ -338,9 +350,9 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                     }}
                     renderValue={(value) => {
                       if (value === 'all') {
-                        return <Globe size={20} />;
+                        return <Globe size={22} />;
                       }
-                      return getCategoryIcon(value);
+                      return getCategoryIconBySlug(getCategoryById(value)?.slug || '', 22);
                     }}
                   >
                     <MenuItem value="all">
@@ -376,35 +388,35 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
             icon={isMobile ? undefined : <User size={16} />}
             iconPosition="start"
             label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.25 : 0.75, justifyContent: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center', position: 'relative' }}>
                 {isMobile ? (
-                  <>
-                    <User size={20} />
+                  <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <User size={22} />
                     {myItemsCount > 0 && (
                       <Box
                         sx={{
+                          position: 'absolute',
+                          top: -4,
+                          right: -8,
                           bgcolor: 'primary.main',
                           color: 'white',
-                          borderRadius: 2.5,
+                          borderRadius: '10px',
                           px: 0.5,
-                          py: 0.125,
-                          fontSize: '0.625rem',
-                          fontWeight: 600,
-                          minWidth: 16,
-                          height: 16,
+                          minWidth: 18,
+                          height: 18,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          fontSize: '0.625rem',
+                          fontWeight: 700,
                           lineHeight: 1,
-                          position: 'absolute',
-                          top: 4,
-                          right: 4,
+                          border: '2px solid white',
                         }}
                       >
-                        {myItemsCount > 99 ? '99+' : myItemsCount}
+                        {myItemsCount > 99 ? '99' : myItemsCount}
                       </Box>
                     )}
-                  </>
+                  </Box>
                 ) : (
                   <>
                     <span>Meine</span>
@@ -440,33 +452,33 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.25 : 0.75, justifyContent: 'center' }}>
                 {isMobile ? (
-                  <>
-                    <Heart size={20} />
+                  <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Heart size={22} />
                     {favoritesCount > 0 && (
                       <Box
                         sx={{
+                          position: 'absolute',
+                          top: -4,
+                          right: -8,
                           bgcolor: 'error.main',
                           color: 'white',
-                          borderRadius: 2.5,
+                          borderRadius: '10px',
                           px: 0.5,
-                          py: 0.125,
-                          fontSize: '0.625rem',
-                          fontWeight: 600,
-                          minWidth: 16,
-                          height: 16,
+                          minWidth: 18,
+                          height: 18,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          fontSize: '0.625rem',
+                          fontWeight: 700,
                           lineHeight: 1,
-                          position: 'absolute',
-                          top: 4,
-                          right: 4,
+                          border: '2px solid white',
                         }}
                       >
-                        {favoritesCount > 99 ? '99+' : favoritesCount}
+                        {favoritesCount > 99 ? '99' : favoritesCount}
                       </Box>
                     )}
-                  </>
+                  </Box>
                 ) : (
                   <>
                     <span>Favorit</span>
