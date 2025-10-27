@@ -184,7 +184,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
         <Box sx={{
           display: 'flex',
           gap: 1,
-          px: 2,
+          px: 1,
           py: 1.5,
           bgcolor: 'background.paper',
           borderBottom: '1px solid',
@@ -349,8 +349,8 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
         gap: isMobile ? 0 : 1.5,
         justifyContent: 'space-between',
         width: '100%',
-        mx: isMobile ? -2 : 0,
-        px: isMobile ? 2 : 0,
+        mx: 0,
+        px: 0,
       }}>
         {/* Kategorien Button & Tabs */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>

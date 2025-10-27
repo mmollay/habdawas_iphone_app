@@ -4,6 +4,16 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.20] - 2025-10-27
+
+### Changed
+- 📱 **Mobile Navigation Padding optimiert**
+  - **MainNavigation.tsx**: Padding reduziert von 16px auf 8px (px: 2 → px: 1)
+  - Navigation geht jetzt näher an den Bildschirmrand
+  - Maximiert verfügbare Breite für Dropdown und Buttons
+  - Behält noch genug Abstand für gute Touch-Bedienbarkeit
+  - Betrifft: Category Dropdown Row (Mobile)
+
 ## [1.15.19] - 2025-10-27
 
 ### Fixed
