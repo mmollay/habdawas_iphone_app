@@ -4,6 +4,16 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.15] - 2025-10-27
+
+### Fixed
+- 🔧 **Supabase Foreign-Key-Relationships korrigiert**
+  - `src/hooks/useDonations.ts:39`: Explizite FK-Beziehung `user:profiles!user_id(...)`
+  - `src/hooks/useCommunityPotTransactions.ts:41,44`: Explizite FK-Beziehungen für User und Items
+  - Behebt PGRST200 Console-Fehler "Could not find relationship between 'donations' and 'profiles'"
+  - Behebt PGRST200 Console-Fehler "Could not find relationship between 'community_pot_transactions' and 'profiles'"
+  - Verhindert 400 Bad Request Fehler bei Supabase-Queries
+
 ## [1.15.14] - 2025-01-26
 
 ### Added
