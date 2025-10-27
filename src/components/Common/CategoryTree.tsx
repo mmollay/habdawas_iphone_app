@@ -298,32 +298,6 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                     }}
                   />
                 )}
-
-                {onCategoryClick && (category.total_usage_count ?? 0) > 0 && (
-                  <Chip
-                    label="→"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCategoryClick(category.slug);
-                    }}
-                    title="Zur Kategorie wechseln"
-                    sx={{
-                      fontSize: '0.875rem',
-                      height: 20,
-                      minWidth: 28,
-                      cursor: 'pointer',
-                      backgroundColor: 'primary.main',
-                      color: 'white',
-                      fontWeight: 700,
-                      '&:hover': {
-                        backgroundColor: 'primary.dark',
-                        transform: 'translateX(2px)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                  />
-                )}
               </Box>
             </Box>
           </AccordionSummary>
