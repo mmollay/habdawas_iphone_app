@@ -38,10 +38,10 @@ export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}
       // Build select statement - include relations if requested
       let selectParts = ['*'];
       if (includeUser) {
-        selectParts.push('profiles(id, full_name, email)');
+        selectParts.push('user:profiles!user_id(id, full_name, email)');
       }
       if (includeItem) {
-        selectParts.push('items(id, title)');
+        selectParts.push('item:items!item_id(id, title)');
       }
       const selectStatement = selectParts.join(', ');
 

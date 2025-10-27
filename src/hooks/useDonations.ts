@@ -36,7 +36,7 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
 
       // Build select statement - include user profile if requested
       const selectStatement = includeUser
-        ? '*, profiles(id, full_name, email)'
+        ? '*, user:profiles!user_id(id, full_name, email)'
         : '*';
 
       let query = supabase
