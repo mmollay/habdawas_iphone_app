@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -19,14 +19,34 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CategoryTree from './Common/CategoryTree';
 import { NavigationTabs } from './Common/NavigationTabs';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useCreditCheck } from '../hooks/useCreditCheck';
 import { supabase } from '../lib/supabase';
 
 const CategoryTreePage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { checkCredit } = useCreditCheck();
   const [searchQuery, setSearchQuery] = useState('');
   const [showUsageCount, setShowUsageCount] = useState(true);
   const [expandAll, setExpandAll] = useState(false);
   const [showOnlyWithItems, setShowOnlyWithItems] = useState(false);
+  const [creditInfo, setCreditInfo] = useState<{
+    canCreate: boolean;
+    source?: string;
+    message: string;
+    personalCredits?: number;
+    communityPotBalance?: number;
+  } | null>(null);
+
+  // Load credit info
+  useEffect(() => {
+    if (user) {
+      checkCredit().then(setCreditInfo);
+    } else {
+      setCreditInfo(null);
+    }
+  }, [user, checkCredit]);
 
   const handleCategoryClick = (categorySlug: string) => {
     // Navigate to items page with category filter
@@ -140,6 +160,7 @@ const CategoryTreePage: React.FC = () => {
           <NavigationTabs
             selectedTab={0}
             showCategoryDropdown={false}
+            creditInfo={creditInfo}
           />
         </Container>
       </Paper>

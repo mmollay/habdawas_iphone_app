@@ -85,6 +85,13 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
     if (onTabChange) {
       onTabChange(newValue);
     }
+
+    // Default navigation if no custom handler provided
+    if (!onTabChange) {
+      if (newValue === 0) navigate('/');
+      else if (newValue === 1) navigate('/?tab=my');
+      else if (newValue === 2) navigate('/?tab=favorites');
+    }
   };
 
   return (
