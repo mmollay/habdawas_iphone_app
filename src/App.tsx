@@ -47,6 +47,7 @@ import { Footer } from './components/Layout/Footer';
 import { ErrorBoundary } from './components/Common/ErrorBoundary';
 import { SearchAutocomplete } from './components/Common/SearchAutocomplete';
 import { ShareFilterDialog } from './components/Common/ShareFilterDialog';
+import { MainNavigation } from './components/Common/MainNavigation';
 import { supabase, Item } from './lib/supabase';
 import { useSellerProfiles } from './hooks/useSellerProfiles';
 import { useCreditCheck } from './hooks/useCreditCheck';
@@ -1239,387 +1240,34 @@ const MainContent = () => {
               }}
             >
               <Container maxWidth="xl" sx={{ maxWidth: '1400px !important' }}>
-                <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <IconButton
-                      onClick={() => navigate('/categories')}
-                      sx={{
-                        color: 'text.primary',
-                        border: '1.5px solid',
-                        borderColor: 'rgba(0, 0, 0, 0.12)',
-                        borderRadius: 2,
-                        width: 40,
-                        height: 40,
-                        '&:hover': {
-                          borderColor: 'primary.main',
-                          bgcolor: 'rgba(25, 118, 210, 0.08)',
-                        }
-                      }}
-                      title="Kategorien"
-                    >
-                      <FolderTree size={20} />
-                    </IconButton>
-                  <Tabs
-                    value={showFavorites ? 2 : showMyItems ? 1 : 0}
-                    onChange={(_, value) => {
-                      setLoading(true);
-                      setItems([]);
-                      setFilteredItems([]);
-                      setShowMyItems(value === 1);
-                      setShowFavorites(value === 2);
-                      updateURL({
-                        view: value === 1 ? 'myitems' : value === 2 ? 'favorites' : null
-                      });
-                    }}
-                    variant={isMobile ? 'scrollable' : 'standard'}
-                    scrollButtons={isMobile ? 'auto' : false}
-                    allowScrollButtonsMobile
-                    sx={{
-                      minHeight: isMobile ? 44 : 52,
-                      flex: isMobile ? 'none' : 1,
-                      '& .MuiTabs-indicator': {
-                        height: 2,
-                        borderRadius: '2px 2px 0 0',
-                      },
-                      '& .MuiTab-root': {
-                        minHeight: isMobile ? 44 : 52,
-                        textTransform: 'none',
-                        fontSize: isMobile ? '0.8125rem' : '0.875rem',
-                        fontWeight: 600,
-                        minWidth: isMobile ? 'auto' : 100,
-                        px: isMobile ? 1.5 : 2.5,
-                        py: isMobile ? 0.75 : 1,
-                        color: 'text.secondary',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          color: 'primary.main',
-                          bgcolor: 'rgba(25, 118, 210, 0.04)',
-                        },
-                        '&.Mui-selected': {
-                          color: 'primary.main',
-                          fontWeight: 700,
-                        }
-                      }
-                    }}
-                  >
-                  <Tab
-                    icon={isMobile ? undefined : (selectedCategories.length === 1 ? getCategoryIcon(selectedCategories[0]) : <Globe size={16} />)}
-                    iconPosition="start"
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                        {isMobile ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            {selectedCategories.length === 1 ? getCategoryIcon(selectedCategories[0]) : <Globe size={16} />}
-                            <Select
-                              value={selectedCategories.length === 1 ? selectedCategories[0] : 'all'}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                const value = e.target.value;
-                                if (value === 'all') {
-                                  setSelectedCategories([]);
-                                  updateURL({ categories: null });
-                                } else {
-                                  setSelectedCategories([value]);
-                                  // Convert UUID to slug for URL
-                                  const categorySlug = getCategoryById(value)?.slug || value;
-                                  updateURL({ categories: categorySlug });
-                                }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              size="small"
-                              variant="standard"
-                              MenuProps={{
-                                PaperProps: {
-                                  style: {
-                                    maxHeight: 'none',
-                                  },
-                                },
-                              }}
-                              sx={{
-                                fontSize: '0.8125rem',
-                                fontWeight: 600,
-                                color: 'inherit',
-                                '&:before': { display: 'none' },
-                                '&:after': { display: 'none' },
-                                '& .MuiSelect-select': {
-                                  padding: 0,
-                                  paddingRight: '20px !important',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                },
-                                '& .MuiSelect-icon': {
-                                  right: -2,
-                                },
-                              }}
-                              renderValue={(value) => {
-                                if (value === 'all') return 'Alle';
-                                const cat = categories.find(c => c.id === value);
-                                return cat ? getCategoryName(cat, 'de') : value;
-                              }}
-                            >
-                              <MenuItem value="all">
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Globe size={16} />
-                                  <span>Alle</span>
-                                </Box>
-                              </MenuItem>
-                              {categoryTree.map(category => (
-                                <MenuItem key={category.id} value={category.id}>
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      {getCategoryIcon(category.id)}
-                                      <span>{getCategoryName(category, 'de')}</span>
-                                    </Box>
-                                    <span style={{ opacity: 0.6 }}>{getCategoryCount(category.id)}</span>
-                                  </Box>
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </Box>
-                        ) : (
-                          <Select
-                            value={selectedCategories.length === 1 ? selectedCategories[0] : 'all'}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              const value = e.target.value;
-                              if (value === 'all') {
-                                setSelectedCategories([]);
-                                updateURL({ categories: null });
-                              } else {
-                                setSelectedCategories([value]);
-                                // Convert UUID to slug for URL
-                                const categorySlug = getCategoryById(value)?.slug || value;
-                                updateURL({ categories: categorySlug });
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            size="small"
-                            variant="standard"
-                            MenuProps={{
-                              PaperProps: {
-                                style: {
-                                  maxHeight: 'none',
-                                },
-                              },
-                            }}
-                            sx={{
-                              fontSize: '0.875rem',
-                              fontWeight: 600,
-                              color: 'inherit',
-                              '&:before': { display: 'none' },
-                              '&:after': { display: 'none' },
-                              '& .MuiSelect-select': {
-                                padding: 0,
-                                paddingRight: '20px !important',
-                                display: 'flex',
-                                alignItems: 'center',
-                              },
-                              '& .MuiSelect-icon': {
-                                right: -2,
-                              },
-                            }}
-                            renderValue={(value) => {
-                              if (value === 'all') return 'Alle';
-                              const cat = categories.find(c => c.id === value);
-                              return cat ? getCategoryName(cat, 'de') : value;
-                            }}
-                          >
-                            <MenuItem value="all">
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Globe size={16} />
-                                <span>Alle</span>
-                              </Box>
-                            </MenuItem>
-                            {categoryTree.map(category => (
-                              <MenuItem key={category.id} value={category.id}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    {getCategoryIcon(category.id)}
-                                    <span>{getCategoryName(category, 'de')}</span>
-                                  </Box>
-                                  <span style={{ opacity: 0.6 }}>{getCategoryCount(category.id)}</span>
-                                </Box>
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        )}
-                        {!isMobile && selectedCategories.length === 0 && (
-                          <Box
-                            sx={{
-                              bgcolor: 'primary.main',
-                              color: 'white',
-                              borderRadius: 2.5,
-                              px: 0.75,
-                              py: 0.125,
-                              fontSize: '0.6875rem',
-                              fontWeight: 600,
-                              minWidth: 20,
-                              height: 18,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              lineHeight: 1,
-                            }}
-                          >
-                            {allItemsCount > 999 ? '999+' : allItemsCount}
-                          </Box>
-                        )}
-                      </Box>
+                <MainNavigation
+                  selectedTab={showFavorites ? 2 : showMyItems ? 1 : 0}
+                  onTabChange={(value) => {
+                    setLoading(true);
+                    setItems([]);
+                    setFilteredItems([]);
+                    setShowMyItems(value === 1);
+                    setShowFavorites(value === 2);
+                    updateURL({
+                      view: value === 1 ? 'myitems' : value === 2 ? 'favorites' : null
+                    });
+                  }}
+                  selectedCategories={selectedCategories}
+                  onCategoryChange={(categoryId) => {
+                    if (categoryId === null) {
+                      setSelectedCategories([]);
+                      updateURL({ categories: null });
+                    } else {
+                      setSelectedCategories([categoryId]);
+                      const categorySlug = getCategoryById(categoryId)?.slug || categoryId;
+                      updateURL({ categories: categorySlug });
                     }
-                  />
-                  <Tab
-                    icon={isMobile ? undefined : <User size={16} />}
-                    iconPosition="start"
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                        {isMobile ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <User size={16} />
-                            <span>Meine</span>
-                          </Box>
-                        ) : (
-                          <span>Meine</span>
-                        )}
-                        {myItemsCount > 0 && (
-                          <Box
-                            sx={{
-                              bgcolor: 'primary.main',
-                              color: 'white',
-                              borderRadius: 2.5,
-                              px: 0.75,
-                              py: 0.125,
-                              fontSize: '0.6875rem',
-                              fontWeight: 600,
-                              minWidth: 20,
-                              height: 18,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              lineHeight: 1,
-                            }}
-                          >
-                            {myItemsCount > 999 ? '999+' : myItemsCount}
-                          </Box>
-                        )}
-                      </Box>
-                    }
-                  />
-                  <Tab
-                    icon={isMobile ? undefined : <Heart size={16} />}
-                    iconPosition="start"
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                        {isMobile ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Heart size={16} />
-                            <span>Favoriten</span>
-                          </Box>
-                        ) : (
-                          <span>Favoriten</span>
-                        )}
-                        {favoritesCount > 0 && (
-                          <Box
-                            sx={{
-                              bgcolor: 'error.main',
-                              color: 'white',
-                              borderRadius: 2.5,
-                              px: 0.75,
-                              py: 0.125,
-                              fontSize: '0.6875rem',
-                              fontWeight: 600,
-                              minWidth: 20,
-                              height: 18,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              lineHeight: 1,
-                            }}
-                          >
-                            {favoritesCount > 999 ? '999+' : favoritesCount}
-                          </Box>
-                        )}
-                      </Box>
-                    }
-                  />
-                </Tabs>
-                  </Box>
-
-                {/* Listing Info & Community-Topf Display - Material Design 3 */}
-                {creditInfo && (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      px: isMobile ? 2 : 0,
-                      py: isMobile ? 1.25 : 0,
-                      borderTop: isMobile ? '1px solid' : 'none',
-                      borderColor: 'divider',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    {/* Personal Inserate Display */}
-                    {creditInfo.personalCredits !== undefined && creditInfo.personalCredits > 0 && (
-                      <Chip
-                        icon={<Coins size={14} />}
-                        label={`${creditInfo.personalCredits} Guthaben`}
-                        size="small"
-                        onClick={() => navigate('/settings?section=tokens')}
-                        sx={{
-                          height: 24,
-                          bgcolor: 'rgba(102, 126, 234, 0.08)',
-                          color: '#667eea',
-                          fontWeight: 600,
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          '& .MuiChip-icon': {
-                            color: '#667eea',
-                            fontSize: 14,
-                          },
-                          '&:hover': {
-                            bgcolor: 'rgba(102, 126, 234, 0.16)',
-                            transform: 'scale(1.02)',
-                          },
-                        }}
-                      />
-                    )}
-
-                    {/* Community-Topf Display */}
-                    {communityStats && communityStats.totalBalance > 0 && (
-                      <Chip
-                        icon={<Heart size={14} fill="currentColor" />}
-                        label={`${communityStats.totalBalance} Community`}
-                        size="small"
-                        onClick={() => navigate('/tokens?tab=community')}
-                        sx={{
-                          height: 24,
-                          bgcolor: 'rgba(76, 175, 80, 0.08)',
-                          color: 'success.main',
-                          fontWeight: 600,
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          '& .MuiChip-icon': {
-                            color: 'success.main',
-                            fontSize: 14,
-                          },
-                          '&:hover': {
-                            bgcolor: 'rgba(76, 175, 80, 0.16)',
-                            transform: 'scale(1.02)',
-                          },
-                        }}
-                      />
-                    )}
-
-                    {(!creditInfo.personalCredits || creditInfo.personalCredits === 0) && (
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', ml: 1 }}>
-                        Kein Guthaben verfügbar
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-              </Box>
+                  }}
+                  allItemsCount={filteredItems.length}
+                  myItemsCount={myItemsCount}
+                  favoritesCount={favoritesCount}
+                  creditInfo={creditInfo}
+                />
               </Container>
             </Paper>
           )}
