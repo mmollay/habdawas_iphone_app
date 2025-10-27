@@ -47,6 +47,38 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
   const { categories, categoryTree } = useCategories();
   const { stats: communityStats } = useCommunityStats();
 
+  // Calculate total_usage_count for each category (including children)
+  const categoriesWithCounts = React.useMemo(() => {
+    const calculateTotalUsageCount = (category: any): number => {
+      let total = category.usage_count || 0;
+      if (category.children && category.children.length > 0) {
+        category.children.forEach((child: any) => {
+          total += calculateTotalUsageCount(child);
+        });
+      }
+      return total;
+    };
+
+    // Build map with total counts
+    const countMap = new Map<string, number>();
+    categoryTree.forEach(cat => {
+      const totalCount = calculateTotalUsageCount(cat);
+      countMap.set(cat.id, totalCount);
+      // Also count children recursively
+      const addChildrenToMap = (c: any) => {
+        if (c.children) {
+          c.children.forEach((child: any) => {
+            countMap.set(child.id, calculateTotalUsageCount(child));
+            addChildrenToMap(child);
+          });
+        }
+      };
+      addChildrenToMap(cat);
+    });
+
+    return countMap;
+  }, [categoryTree]);
+
   const getCategoryIcon = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     if (!category) return <Globe size={16} />;
@@ -54,8 +86,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
   };
 
   const getCategoryCount = (categoryId: string): number => {
-    // TODO: Implement proper count
-    return 0;
+    return categoriesWithCounts.get(categoryId) || 0;
   };
 
   const getCategoryById = (id: string) => {
@@ -242,27 +273,6 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                       </MenuItem>
                     ))}
                   </Select>
-                )}
-                {!isMobile && selectedCategories.length === 0 && (
-                  <Box
-                    sx={{
-                      bgcolor: 'primary.main',
-                      color: 'white',
-                      borderRadius: 2.5,
-                      px: 0.75,
-                      py: 0.125,
-                      fontSize: '0.6875rem',
-                      fontWeight: 600,
-                      minWidth: 20,
-                      height: 18,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      lineHeight: 1,
-                    }}
-                  >
-                    {allItemsCount > 999 ? '999+' : allItemsCount}
-                  </Box>
                 )}
               </Box>
             }
