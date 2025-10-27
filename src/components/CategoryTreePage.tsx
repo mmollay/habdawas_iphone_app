@@ -125,13 +125,26 @@ const CategoryTreePage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <>
       {/* Navigation Tabs - Wiederverwendbare Komponente */}
-      <NavigationTabs
-        selectedTab={0}
-        showCategoryDropdown={false}
-      />
+      <Paper
+        elevation={0}
+        sx={{
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          mb: 0
+        }}
+      >
+        <Container maxWidth="xl" sx={{ maxWidth: '1400px !important' }}>
+          <NavigationTabs
+            selectedTab={0}
+            showCategoryDropdown={false}
+          />
+        </Container>
+      </Paper>
 
+      <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Header */}
       <Box
         sx={{
@@ -368,7 +381,8 @@ const CategoryTreePage: React.FC = () => {
           </Button>
         </Box>
       </Paper>
-    </Container>
+      </Container>
+    </>
   );
 };
 
