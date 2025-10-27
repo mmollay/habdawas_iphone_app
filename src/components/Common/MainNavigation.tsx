@@ -63,7 +63,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 3, justifyContent: 'space-between', width: '100%' }}>
       {/* Kategorien Button & Tabs */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <IconButton
