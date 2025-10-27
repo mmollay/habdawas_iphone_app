@@ -1693,12 +1693,22 @@ const MainContent = () => {
                           />
                           <Typography
                             variant="body2"
+                            onClick={() => {
+                              // Navigate to this category level
+                              navigate(`/?categories=${cat.slug}`);
+                            }}
                             sx={{
                               color: index === path.length - 1 ? 'primary.main' : 'text.secondary',
                               fontWeight: index === path.length - 1 ? 700 : 500,
                               fontSize: isMobile ? '0.8125rem' : '0.875rem',
                               whiteSpace: 'nowrap',
                               letterSpacing: '0.01em',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                color: 'primary.main',
+                                textDecoration: 'underline',
+                              },
                             }}
                           >
                             {cat.translations?.de?.name || cat.slug}
