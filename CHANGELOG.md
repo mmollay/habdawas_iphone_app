@@ -4,6 +4,19 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.29] - 2025-10-27
+
+### Changed
+- 📱 **Mobile Navigation: Kategorien-Dropdown integriert**
+  - **MainNavigation.tsx**: Mobile "Alle" Tab mit Dropdown-Funktionalität ausgestattet
+  - Separate Mobile-Dropdown-Zeile entfernt - Dropdown jetzt direkt im Tab integriert
+  - Dynamische Tab-Beschriftung: "Alle" + Globe-Icon wenn keine Kategorie ausgewählt
+  - Bei Kategorieauswahl: "Filter" + Kategorie-Icon für klare Filteranzeige
+  - Kategorien-Button links neben "Alle" Tab sichtbar (auch im Mobile-Modus)
+  - Select-Dropdown zeigt alle Hauptkategorien mit Anzahl-Badge
+  - Kompakte, platzsparende Navigation im Material Design 3 Stil
+  - Änderungen nach habdawas kopiert
+
 ## [1.15.28] - 2025-10-27
 
 ### Changed

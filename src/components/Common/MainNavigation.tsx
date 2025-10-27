@@ -155,105 +155,6 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
-      {/* Category Dropdown Row (Mobile Only) */}
-      {isMobile && (
-        <Box sx={{
-          display: 'flex',
-          gap: 1,
-          px: 1,
-          py: 1.5,
-          bgcolor: 'background.paper',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-        }}>
-          <IconButton
-            onClick={() => navigate('/categories')}
-            sx={{
-              color: 'text.primary',
-              border: '1.5px solid',
-              borderColor: 'rgba(0, 0, 0, 0.12)',
-              borderRadius: 0,
-              width: 40,
-              height: 40,
-              flexShrink: 0,
-              '&:hover': {
-                borderColor: 'primary.main',
-                bgcolor: 'rgba(25, 118, 210, 0.08)',
-              }
-            }}
-            title="Kategorien Übersicht"
-          >
-            <FolderTree size={20} />
-          </IconButton>
-          <Select
-            value={selectedCategory ? selectedCategory.id : 'all'}
-            onChange={(e) => {
-              console.log('🔄 Category Select onChange:', e.target.value);
-              const value = e.target.value;
-              onCategoryChange(value === 'all' ? null : value);
-            }}
-            size="small"
-            fullWidth
-            MenuProps={{
-              PaperProps: {
-                style: {
-                  maxHeight: '70vh',
-                },
-              },
-            }}
-            sx={{
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              '& .MuiSelect-select': {
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-              },
-            }}
-            renderValue={(value) => {
-              if (value === 'all') {
-                return (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Globe size={18} />
-                    <span>Alle Kategorien</span>
-                  </Box>
-                );
-              }
-              const category = getCategoryById(value);
-              if (!category) return 'Alle';
-              return (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {getCategoryIcon(value)}
-                  <span>{getCategoryName(category, 'de')}</span>
-                </Box>
-              );
-            }}
-          >
-            <MenuItem value="all">
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
-                <Globe size={18} />
-                <span>Alle Kategorien</span>
-              </Box>
-            </MenuItem>
-            {displayCategories.map(category => (
-              <MenuItem key={category.id} value={category.id}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    {getCategoryIcon(category.id)}
-                    <span>
-                      {getCategoryName(category, 'de')}
-                    </span>
-                  </Box>
-                  <span style={{ opacity: 0.6, fontSize: '0.75rem', fontWeight: 600 }}>
-                    {getCategoryCount(category.id)}
-                  </span>
-                </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        </Box>
-      )}
-
       {/* Main Navigation Row */}
       <Box sx={{
         display: 'flex',
@@ -267,28 +168,26 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
       }}>
         {/* Kategorien Button & Tabs */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        {/* Desktop Category Button */}
-        {!isMobile && (
-          <IconButton
-            onClick={() => navigate('/categories')}
-            sx={{
-              color: 'text.primary',
-              border: '1.5px solid',
-              borderColor: 'rgba(0, 0, 0, 0.12)',
-              borderRadius: 2,
-              width: 40,
-              height: 40,
-              flexShrink: 0,
-              '&:hover': {
-                borderColor: 'primary.main',
-                bgcolor: 'rgba(25, 118, 210, 0.08)',
-              }
-            }}
-            title="Kategorien Übersicht"
-          >
-            <FolderTree size={20} />
-          </IconButton>
-        )}
+        {/* Category Button - Both Mobile & Desktop */}
+        <IconButton
+          onClick={() => navigate('/categories')}
+          sx={{
+            color: 'text.primary',
+            border: '1.5px solid',
+            borderColor: 'rgba(0, 0, 0, 0.12)',
+            borderRadius: isMobile ? 0 : 2,
+            width: 40,
+            height: 40,
+            flexShrink: 0,
+            '&:hover': {
+              borderColor: 'primary.main',
+              bgcolor: 'rgba(25, 118, 210, 0.08)',
+            }
+          }}
+          title="Kategorien Übersicht"
+        >
+          <FolderTree size={20} />
+        </IconButton>
         <Tabs
           value={selectedTab}
           onChange={(_, value) => onTabChange(value)}
@@ -398,13 +297,88 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               }
             />
           )}
-          {/* Mobile: Simple Alle Tab */}
+          {/* Mobile: Alle/Filter Tab with Dropdown */}
           {isMobile && (
             <Tab
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                  <Globe size={18} />
-                  <span>Alle</span>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Select
+                    value={selectedCategory ? selectedCategory.id : 'all'}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      const value = e.target.value;
+                      onCategoryChange(value === 'all' ? null : value);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    size="small"
+                    variant="standard"
+                    MenuProps={{
+                      PaperProps: {
+                        style: {
+                          maxHeight: '70vh',
+                        },
+                      },
+                    }}
+                    sx={{
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      color: 'inherit',
+                      '&:before': { display: 'none' },
+                      '&:after': { display: 'none' },
+                      '& .MuiSelect-select': {
+                        padding: 0,
+                        paddingRight: '20px !important',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                      },
+                      '& .MuiSelect-icon': {
+                        right: -2,
+                      },
+                    }}
+                    renderValue={(value) => {
+                      if (value === 'all') {
+                        return (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Globe size={18} />
+                            <span>Alle</span>
+                          </Box>
+                        );
+                      }
+                      const category = getCategoryById(value);
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          {getCategoryIcon(value)}
+                          <span>Filter</span>
+                        </Box>
+                      );
+                    }}
+                  >
+                    <MenuItem value="all">
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Globe size={16} />
+                        <span>Alle</span>
+                      </Box>
+                    </MenuItem>
+                    {displayCategories.map(category => (
+                      <MenuItem
+                        key={category.id}
+                        value={category.id}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {getCategoryIcon(category.id)}
+                            <span>
+                              {getCategoryName(category, 'de')}
+                            </span>
+                          </Box>
+                          <span style={{ opacity: 0.6, fontSize: '0.75rem', fontWeight: 600 }}>
+                            {getCategoryCount(category.id)}
+                          </span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
                 </Box>
               }
             />
