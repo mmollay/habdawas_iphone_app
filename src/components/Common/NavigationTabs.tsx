@@ -7,15 +7,16 @@ import {
   Chip,
   Select,
   MenuItem,
+  Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Globe, User, Heart, Coins, FolderTree, Car, Home, Sofa, Apple, Dumbbell, Shirt, Baby, PawPrint, Briefcase, Store, Sprout, Factory, Cloud } from 'lucide-react';
+import { Globe, User, Heart, Coins, FolderTree } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { useCategories } from '../../hooks/useCategories';
 import { useCommunityStats } from '../../hooks/useCommunityStats';
 import { getCategoryName } from '../../utils/categories';
+import { getCategoryIconBySlug } from '../../utils/categoryIcons';
 
 interface NavigationTabsProps {
   selectedTab?: number;
@@ -49,36 +50,22 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { user } = useAuth();
   const { categories, categoryTree } = useCategories();
   const { stats: communityStats } = useCommunityStats();
 
   const getCategoryIcon = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     if (!category) return <Globe size={16} />;
-
-    const slug = category.slug;
-    const iconMap: Record<string, JSX.Element> = {
-      'fahrzeuge': <Car size={16} />,
-      'immobilien': <Home size={16} />,
-      'haushalt-moebel': <Sofa size={16} />,
-      'elektronik': <Apple size={16} />,
-      'freizeit-sport': <Dumbbell size={16} />,
-      'mode-lifestyle': <Shirt size={16} />,
-      'kinder-familie': <Baby size={16} />,
-      'tiere': <PawPrint size={16} />,
-      'arbeit': <Briefcase size={16} />,
-      'marktplatz': <Store size={16} />,
-      'landwirtschaft': <Sprout size={16} />,
-      'industrie': <Factory size={16} />,
-      'digitale-produkte': <Cloud size={16} />,
-    };
-    return iconMap[slug] || <Globe size={16} />;
+    return getCategoryIconBySlug(category.slug, 16);
   };
 
   const getCategoryCount = (categoryId: string): number => {
     // This would need to be implemented based on your data structure
     return 0;
+  };
+
+  const getCategoryById = (id: string) => {
+    return categories.find(c => c.id === id);
   };
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -95,7 +82,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 0 : 3, justifyContent: 'space-between', width: '100%' }}>
       {/* Kategorien Button & Tabs */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <IconButton
@@ -223,90 +210,92 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
                     )}
                   </Box>
                 ) : (
-                  showCategoryDropdown ? (
-                    <Select
-                      value={selectedCategory || 'all'}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        const value = e.target.value;
-                        if (onCategoryChange) {
-                          onCategoryChange(value === 'all' ? '' : value);
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      size="small"
-                      variant="standard"
-                      MenuProps={{
-                        PaperProps: {
-                          style: {
-                            maxHeight: 'none',
+                  <>
+                    {showCategoryDropdown ? (
+                      <Select
+                        value={selectedCategory || 'all'}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          const value = e.target.value;
+                          if (onCategoryChange) {
+                            onCategoryChange(value === 'all' ? '' : value);
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        size="small"
+                        variant="standard"
+                        MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 'none',
+                            },
                           },
-                        },
-                      }}
-                      sx={{
-                        fontSize: '0.875rem',
-                        fontWeight: 600,
-                        color: 'inherit',
-                        '&:before': { display: 'none' },
-                        '&:after': { display: 'none' },
-                        '& .MuiSelect-select': {
-                          padding: 0,
-                          paddingRight: '20px !important',
-                          display: 'flex',
-                          alignItems: 'center',
-                        },
-                        '& .MuiSelect-icon': {
-                          right: -2,
-                        },
-                      }}
-                      renderValue={(value) => {
-                        if (value === 'all') return 'Alle';
-                        const cat = categories.find(c => c.id === value);
-                        return cat ? getCategoryName(cat, 'de') : value;
-                      }}
-                    >
-                      <MenuItem value="all">
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Globe size={16} />
-                          <span>Alle</span>
-                        </Box>
-                      </MenuItem>
-                      {categoryTree.map(category => (
-                        <MenuItem key={category.id} value={category.id}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {getCategoryIcon(category.id)}
-                              <span>{getCategoryName(category, 'de')}</span>
-                            </Box>
-                            <span style={{ opacity: 0.6 }}>{getCategoryCount(category.id)}</span>
+                        }}
+                        sx={{
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: 'inherit',
+                          '&:before': { display: 'none' },
+                          '&:after': { display: 'none' },
+                          '& .MuiSelect-select': {
+                            padding: 0,
+                            paddingRight: '20px !important',
+                            display: 'flex',
+                            alignItems: 'center',
+                          },
+                          '& .MuiSelect-icon': {
+                            right: -2,
+                          },
+                        }}
+                        renderValue={(value) => {
+                          if (value === 'all') return 'Alle';
+                          const cat = categories.find(c => c.id === value);
+                          return cat ? getCategoryName(cat, 'de') : value;
+                        }}
+                      >
+                        <MenuItem value="all">
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Globe size={16} />
+                            <span>Alle</span>
                           </Box>
                         </MenuItem>
-                      ))}
-                    </Select>
-                  ) : (
-                    <span>Alle</span>
-                  )
-                )}
-                {!isMobile && selectedTab === 0 && allItemsCount > 0 && (
-                  <Box
-                    sx={{
-                      bgcolor: 'primary.main',
-                      color: 'white',
-                      borderRadius: 2.5,
-                      px: 0.75,
-                      py: 0.125,
-                      fontSize: '0.6875rem',
-                      fontWeight: 600,
-                      minWidth: 20,
-                      height: 18,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      lineHeight: 1,
-                    }}
-                  >
-                    {allItemsCount > 999 ? '999+' : allItemsCount}
-                  </Box>
+                        {categoryTree.map(category => (
+                          <MenuItem key={category.id} value={category.id}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {getCategoryIcon(category.id)}
+                                <span>{getCategoryName(category, 'de')}</span>
+                              </Box>
+                              <span style={{ opacity: 0.6 }}>{getCategoryCount(category.id)}</span>
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    ) : (
+                      <span>Alle</span>
+                    )}
+                    {!selectedCategory && selectedTab === 0 && allItemsCount > 0 && (
+                      <Box
+                        sx={{
+                          bgcolor: 'primary.main',
+                          color: 'white',
+                          borderRadius: 2.5,
+                          px: 0.75,
+                          py: 0.125,
+                          fontSize: '0.6875rem',
+                          fontWeight: 600,
+                          minWidth: 20,
+                          height: 18,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1,
+                        }}
+                      >
+                        {allItemsCount > 999 ? '999+' : allItemsCount}
+                      </Box>
+                    )}
+                  </>
                 )}
               </Box>
             }
@@ -388,7 +377,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
         </Tabs>
       </Box>
 
-      {/* Community Stats */}
+      {/* Community Stats - RECHTSBÜNDIG */}
       {creditInfo && (
         <Box
           sx={{
@@ -400,6 +389,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
             borderTop: isMobile ? '1px solid' : 'none',
             borderColor: 'divider',
             flexWrap: 'wrap',
+            justifyContent: isMobile ? 'flex-start' : 'flex-end',
           }}
         >
           {/* Personal Credits */}
@@ -456,10 +446,10 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
             />
           )}
 
-          {((!creditInfo.personalCredits || creditInfo.personalCredits === 0)) && (
-            <span style={{ fontSize: '0.75rem', color: 'rgba(0, 0, 0, 0.38)', marginLeft: '8px' }}>
+          {(!creditInfo.personalCredits || creditInfo.personalCredits === 0) && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', ml: 1 }}>
               Kein Guthaben verfügbar
-            </span>
+            </Typography>
           )}
         </Box>
       )}

@@ -300,9 +300,10 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                   />
                 )}
 
-                {/* Klarer Button zum Navigieren */}
+                {/* Klarer Chip zum Navigieren - KEIN Button wegen Nesting-Warnung */}
                 {onCategoryClick && (category.total_usage_count ?? 0) > 0 && (
-                  <Button
+                  <Chip
+                    label="Anzeigen"
                     variant="outlined"
                     size="small"
                     onClick={(e) => {
@@ -313,20 +314,21 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                       fontSize: '0.75rem',
                       height: 24,
                       minWidth: 80,
-                      textTransform: 'none',
                       borderColor: 'primary.main',
                       color: 'primary.main',
                       fontWeight: 600,
+                      cursor: 'pointer',
                       '&:hover': {
                         backgroundColor: 'primary.main',
                         color: 'white',
                         borderColor: 'primary.dark',
+                        '& .MuiChip-label': {
+                          color: 'white',
+                        },
                       },
                       transition: 'all 0.2s ease',
                     }}
-                  >
-                    Anzeigen
-                  </Button>
+                  />
                 )}
               </Box>
             </Box>
