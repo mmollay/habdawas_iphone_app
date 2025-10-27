@@ -237,18 +237,18 @@ const CategoryTreePage: React.FC = () => {
       <Box
         sx={{
           mb: isMobile ? 0 : 4,
-          pb: isMobile ? 2 : 3,
+          pb: isMobile ? 1.5 : 3,
           borderBottom: isMobile ? 'none' : '2px solid',
           borderColor: 'divider',
           background: isMobile ? 'none' : 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
           borderRadius: isMobile ? 0 : 2,
-          p: isMobile ? 2 : 3
+          p: isMobile ? 1.5 : 3
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1.5 : 2, mb: isMobile ? 0 : 2 }}>
           <Box
             sx={{
-              p: isMobile ? 1 : 1.5,
+              p: isMobile ? 0.75 : 1.5,
               borderRadius: isMobile ? 1.5 : 2,
               backgroundColor: 'primary.main',
               display: 'flex',
@@ -257,10 +257,10 @@ const CategoryTreePage: React.FC = () => {
               boxShadow: isMobile ? 'none' : '0 4px 12px rgba(25, 118, 210, 0.3)'
             }}
           >
-            <AccountTreeIcon sx={{ fontSize: isMobile ? 24 : 32, color: 'white' }} />
+            <AccountTreeIcon sx={{ fontSize: isMobile ? 22 : 32, color: 'white' }} />
           </Box>
           <Box>
-            <Typography variant={isMobile ? 'h5' : 'h4'} component="h1" sx={{ fontWeight: 700, mb: isMobile ? 0 : 0.5 }}>
+            <Typography variant={isMobile ? 'h6' : 'h4'} component="h1" sx={{ fontWeight: isMobile ? 600 : 700, mb: isMobile ? 0 : 0.5 }}>
               Kategorien
             </Typography>
             {!isMobile && (
@@ -277,7 +277,7 @@ const CategoryTreePage: React.FC = () => {
       {/* Controls */}
       <Box
         sx={{
-          p: isMobile ? 2 : 3,
+          p: isMobile ? 1.5 : 3,
           mb: isMobile ? 0 : 3,
           borderRadius: isMobile ? 0 : 2,
           border: isMobile ? 'none' : '1px solid',
@@ -286,7 +286,7 @@ const CategoryTreePage: React.FC = () => {
           boxShadow: isMobile ? 'none' : 2
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 1.5 : 2.5 }}>
           {/* Search */}
           <TextField
             fullWidth
@@ -312,25 +312,49 @@ const CategoryTreePage: React.FC = () => {
           <Divider />
 
           {/* Options */}
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: isMobile ? 1 : 2, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', gap: isMobile ? 1 : 2, flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
               <FormControlLabel
                 control={
                   <Switch
                     checked={showUsageCount}
                     onChange={(e) => setShowUsageCount(e.target.checked)}
+                    size={isMobile ? 'small' : 'medium'}
                   />
                 }
-                label="Anzahl Inserate anzeigen"
+                label="Anzahl anzeigen"
+                componentsProps={{
+                  typography: {
+                    variant: isMobile ? 'body2' : 'body1',
+                    sx: {
+                      fontSize: isMobile ? '0.875rem' : undefined,
+                      fontWeight: isMobile ? 400 : undefined,
+                      color: isMobile ? 'text.secondary' : undefined
+                    }
+                  }
+                }}
+                sx={{ m: 0 }}
               />
               <FormControlLabel
                 control={
                   <Switch
                     checked={showOnlyWithItems}
                     onChange={(e) => setShowOnlyWithItems(e.target.checked)}
+                    size={isMobile ? 'small' : 'medium'}
                   />
                 }
-                label="Nur Kategorien mit Inseraten"
+                label="Nur mit Inseraten"
+                componentsProps={{
+                  typography: {
+                    variant: isMobile ? 'body2' : 'body1',
+                    sx: {
+                      fontSize: isMobile ? '0.875rem' : undefined,
+                      fontWeight: isMobile ? 400 : undefined,
+                      color: isMobile ? 'text.secondary' : undefined
+                    }
+                  }
+                }}
+                sx={{ m: 0 }}
               />
             </Box>
 
@@ -338,14 +362,17 @@ const CategoryTreePage: React.FC = () => {
               variant={expandAll ? 'contained' : 'outlined'}
               startIcon={expandAll ? <CollapseAllIcon /> : <ExpandAllIcon />}
               onClick={() => setExpandAll(!expandAll)}
-              size="medium"
+              size={isMobile ? 'small' : 'medium'}
               sx={{
-                minWidth: 180,
+                minWidth: isMobile ? 'auto' : 180,
                 fontWeight: 600,
-                boxShadow: expandAll ? 2 : 0
+                boxShadow: expandAll ? 2 : 0,
+                fontSize: isMobile ? '0.75rem' : undefined,
+                px: isMobile ? 1.5 : undefined,
+                py: isMobile ? 0.5 : undefined
               }}
             >
-              {expandAll ? 'Alle einklappen' : 'Alle ausklappen'}
+              {isMobile ? (expandAll ? 'Einklappen' : 'Ausklappen') : (expandAll ? 'Alle einklappen' : 'Alle ausklappen')}
             </Button>
           </Box>
         </Box>
@@ -354,7 +381,7 @@ const CategoryTreePage: React.FC = () => {
       {isMobile && <Divider />}
 
       {/* Category Tree */}
-      <Box sx={{ mb: isMobile ? 0 : 4, p: isMobile ? 2 : 0 }}>
+      <Box sx={{ mb: isMobile ? 0 : 4, p: isMobile ? 1.5 : 0 }}>
         <CategoryTree
           searchQuery={searchQuery}
           showUsageCount={showUsageCount}
@@ -369,7 +396,7 @@ const CategoryTreePage: React.FC = () => {
       {/* Info Box */}
       <Box
         sx={{
-          p: isMobile ? 2 : 3,
+          p: isMobile ? 1.5 : 3,
           background: isMobile ? 'transparent' : 'linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(255, 255, 255, 1) 100%)',
           borderRadius: isMobile ? 0 : 2,
           border: isMobile ? 'none' : '1px solid',

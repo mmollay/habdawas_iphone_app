@@ -4,6 +4,21 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.25] - 2025-10-27
+
+### Changed
+- 📱 **Kategorien-Seite noch kompakter & stilvoller**
+  - **CategoryTreePage.tsx**: Labels optimiert für Mobile
+  - "Anzahl Inserate anzeigen" → "Anzahl anzeigen"
+  - "Nur Kategorien mit Inseraten" → "Nur mit Inseraten"
+  - Button: "Alle ausklappen" → "Ausklappen" / "Einklappen"
+  - Text zarter: fontWeight 400, color text.secondary
+  - Padding reduziert: 1.5 statt 2
+  - Icon kleiner: 22px statt 24px
+  - Header: h6 statt h5, fontWeight 600 statt 700
+  - Switches in Column-Layout für bessere Lesbarkeit
+  - Keine Zeilenumbrüche mehr auf Mobile
+
 ## [1.15.24] - 2025-10-27
 
 ### Changed
