@@ -208,6 +208,30 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             <>
               {user ? (
                 <>
+                  <IconButton
+                    onClick={() => onNavigate('messages')}
+                    sx={{
+                      color: 'text.primary',
+                      width: 40,
+                      height: 40,
+                      mr: 0.5,
+                    }}
+                  >
+                    <Badge
+                      badgeContent={unreadCount}
+                      color="error"
+                      max={99}
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          fontSize: '0.65rem',
+                          height: 18,
+                          minWidth: 18,
+                        }
+                      }}
+                    >
+                      <MessageCircle size={20} />
+                    </Badge>
+                  </IconButton>
                   {location.pathname !== '/create' && (
                     <>
                       {!isMobile && (
@@ -234,37 +258,18 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
                             bgcolor: 'primary.main',
                             color: 'white',
                             mr: 0.5,
-                            width: 44,
-                            height: 44,
+                            width: 40,
+                            height: 40,
                             '&:hover': {
                               bgcolor: 'primary.dark',
                             },
                           }}
                         >
-                          <Camera size={22} />
+                          <Camera size={20} />
                         </IconButton>
                       )}
                     </>
                   )}
-                  <IconButton
-                    onClick={() => onNavigate('messages')}
-                    sx={{ color: 'text.primary' }}
-                  >
-                    <Badge
-                      badgeContent={unreadCount}
-                      color="error"
-                      max={99}
-                      sx={{
-                        '& .MuiBadge-badge': {
-                          fontSize: '0.65rem',
-                          height: 18,
-                          minWidth: 18,
-                        }
-                      }}
-                    >
-                      <MessageCircle size={22} />
-                    </Badge>
-                  </IconButton>
                   <IconButton
                     onClick={handleAvatarClick}
                     sx={{

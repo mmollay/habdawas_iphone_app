@@ -4,6 +4,18 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.28] - 2025-10-27
+
+### Changed
+- ✨ **Header Icons einheitlich gestaltet**
+  - **Header.tsx**: Alle Icons jetzt gleich groß (40x40px wie Avatar)
+  - Kamera-Icon neben Avatar verschoben für bessere Gruppierung
+  - Nachrichten-Icon: 40x40px mit mr: 0.5
+  - Kamera-Icon (Mobile): 40x40px mit mr: 0.5
+  - Icons verkleinert auf 20px für ausgewogenes Erscheinungsbild
+  - Einheitliches, professionelles Design im gesamten Header
+  - Änderungen nach habdawas kopiert
+
 ## [1.15.27] - 2025-10-27
 
 ### Changed
