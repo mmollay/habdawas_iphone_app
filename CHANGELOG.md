@@ -4,6 +4,15 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.21] - 2025-10-27
+
+### Changed
+- 📱 **Mobile Suchfeld Padding-Bottom entfernt**
+  - **App.tsx**: `py: 2` geändert zu `pt: 2, pb: 0`
+  - Kein Abstand mehr zwischen Suchfeld und Navigation
+  - Kompakteres, effizienteres Layout
+  - Mehr vertikaler Platz für Content
+
 ## [1.15.20] - 2025-10-27
 
 ### Changed

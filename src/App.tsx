@@ -1267,7 +1267,7 @@ const MainContent = () => {
       ) : (
         <>
           {isMobile && (
-            <Paper elevation={1} sx={{ borderRadius: '0 !important', py: 2, px: 2, bgcolor: 'white' }}>
+            <Paper elevation={1} sx={{ borderRadius: '0 !important', pt: 2, pb: 0, px: 2, bgcolor: 'white' }}>
               <SearchAutocomplete
                 fullWidth
                 value={searchQuery}
