@@ -10,42 +10,23 @@ import {
   FormControlLabel,
   Divider,
   Button,
-  Tab,
-  Tabs,
-  Select,
-  MenuItem,
-  Badge,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ExpandAllIcon from '@mui/icons-material/UnfoldMore';
 import CollapseAllIcon from '@mui/icons-material/UnfoldLess';
 import DownloadIcon from '@mui/icons-material/Download';
-import { Search, Globe, User, Heart, Coins, ChevronDown } from 'lucide-react';
 import CategoryTree from './Common/CategoryTree';
-import { SearchAutocomplete } from './Common/SearchAutocomplete';
+import { NavigationTabs } from './Common/NavigationTabs';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { useCategories } from '../hooks/useCategories';
-import { useCommunityStats } from '../hooks/useCommunityStats';
-import { getCategoryName } from '../utils/categories';
 
 const CategoryTreePage: React.FC = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { user } = useAuth();
-  const { categories, categoryTree } = useCategories();
-  const { totalBalance } = useCommunityStats();
-
   const [searchQuery, setSearchQuery] = useState('');
   const [showUsageCount, setShowUsageCount] = useState(true);
   const [expandAll, setExpandAll] = useState(false);
   const [showOnlyWithItems, setShowOnlyWithItems] = useState(false);
-  const [selectedTab, setSelectedTab] = useState(0);
 
   const handleCategoryClick = (categorySlug: string) => {
     // Navigate to items page with category filter
@@ -145,101 +126,11 @@ const CategoryTreePage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Navigation Menu - wie auf der Startseite */}
-      <Box sx={{ mb: 3 }}>
-        {/* Suchfeld */}
-        <Box sx={{ mb: 2 }}>
-          <SearchAutocomplete
-            onItemSelect={(item) => navigate(`/item/${item.id}`)}
-            placeholder="Suche nach Produkten..."
-          />
-        </Box>
-
-        {/* Tabs & Buttons */}
-        <Box sx={{
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          gap: 2,
-          alignItems: isMobile ? 'stretch' : 'center',
-          justifyContent: 'space-between'
-        }}>
-          {/* Tabs */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<AccountTreeIcon />}
-              onClick={() => navigate('/categories')}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600
-              }}
-            >
-              Kategorien
-            </Button>
-
-            <Tabs
-              value={selectedTab}
-              onChange={(_, newValue) => {
-                setSelectedTab(newValue);
-                if (newValue === 0) navigate('/');
-                else if (newValue === 1) navigate('/?tab=my');
-                else if (newValue === 2) navigate('/?tab=favorites');
-              }}
-              sx={{ minHeight: 40 }}
-            >
-              <Tab
-                icon={<Globe size={16} />}
-                iconPosition="start"
-                label="Alle"
-                sx={{ minHeight: 40, textTransform: 'none' }}
-              />
-              <Tab
-                icon={<User size={16} />}
-                iconPosition="start"
-                label="Meine"
-                sx={{ minHeight: 40, textTransform: 'none' }}
-              />
-              <Tab
-                icon={<Heart size={16} />}
-                iconPosition="start"
-                label="Favoriten"
-                sx={{ minHeight: 40, textTransform: 'none' }}
-              />
-            </Tabs>
-          </Box>
-
-          {/* Community Stats Buttons */}
-          {user && (
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Button
-                variant="text"
-                startIcon={<Coins size={16} />}
-                onClick={() => navigate('/settings?tab=credits')}
-                sx={{
-                  textTransform: 'none',
-                  color: 'primary.main',
-                  fontWeight: 600
-                }}
-              >
-                {user.credits || 0} Guthaben
-              </Button>
-              <Button
-                variant="text"
-                startIcon={<Coins size={16} color="green" />}
-                onClick={() => navigate('/settings?tab=community')}
-                sx={{
-                  textTransform: 'none',
-                  color: 'success.main',
-                  fontWeight: 600
-                }}
-              >
-                {totalBalance || 0} Community
-              </Button>
-            </Box>
-          )}
-        </Box>
-      </Box>
+      {/* Navigation Tabs - Wiederverwendbare Komponente */}
+      <NavigationTabs
+        selectedTab={0}
+        showCategoryDropdown={false}
+      />
 
       {/* Header */}
       <Box
