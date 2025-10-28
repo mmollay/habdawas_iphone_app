@@ -43,11 +43,15 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
   creditInfo,
 }) => {
   const navigate = useNavigate();
+  const location = window.location;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { categories, categoryTree } = useCategories();
   const { stats: communityStats } = useCommunityStats();
   const { getFavoritesCount } = useFavoritesContext();
+
+  // Check if we're on the categories page
+  const isOnCategoriesPage = location.pathname === '/categories';
 
 
   // Use real-time count from context instead of prop
@@ -121,7 +125,29 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
     return filterCategoriesWithItems(categoryTree);
   }, [categoryTree, categoriesWithCounts]);
 
-  // Get subcategories when a category is selected
+  // Get the actually selected category (for dropdown display)
+  const actualSelectedCategory = React.useMemo(() => {
+    if (selectedCategories.length === 1) {
+      const selectedId = selectedCategories[0];
+
+      // Recursive search through entire tree
+      const findCategory = (cats: any[]): any => {
+        for (const cat of cats) {
+          if (cat.id === selectedId) return cat;
+          if (cat.children) {
+            const found = findCategory(cat.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      return findCategory(categoryTree);
+    }
+    return null;
+  }, [selectedCategories, categoryTree]);
+
+  // Get subcategories when a category is selected (for chips/buttons)
   const selectedCategory = React.useMemo(() => {
     if (selectedCategories.length === 1) {
       const selectedId = selectedCategories[0];
@@ -168,31 +194,11 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
       }}>
         {/* Kategorien Button & Tabs */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 0.5 }}>
-        {/* Category Button - Desktop only (mobile integrated in tabs) */}
-        {!isMobile && (
-          <IconButton
-            onClick={() => navigate('/categories')}
-            sx={{
-              color: 'text.primary',
-              border: '1.5px solid',
-              borderColor: 'rgba(0, 0, 0, 0.12)',
-              borderRadius: 2,
-              width: 40,
-              height: 40,
-              flexShrink: 0,
-              '&:hover': {
-                borderColor: 'primary.main',
-                bgcolor: 'rgba(25, 118, 210, 0.08)',
-              }
-            }}
-            title="Kategorien Übersicht"
-          >
-            <FolderTree size={20} />
-          </IconButton>
-        )}
         <Tabs
-          value={selectedTab}
-          onChange={(_, value) => onTabChange(value)}
+          value={isOnCategoriesPage ? false : selectedTab}
+          onChange={(_, value) => {
+            onTabChange(value);
+          }}
           variant={isMobile ? 'fullWidth' : 'standard'}
           sx={{
             minHeight: isMobile ? 48 : 48,
@@ -234,7 +240,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                   <Select
-                    value={selectedCategory ? selectedCategory.id : 'all'}
+                    value={actualSelectedCategory ? actualSelectedCategory.id : 'all'}
                     onChange={(e) => {
                       e.stopPropagation();
                       const value = e.target.value;
@@ -252,7 +258,7 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                     }}
                     sx={{
                       fontSize: '0.875rem',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       color: 'inherit',
                       '&:before': { display: 'none' },
                       '&:after': { display: 'none' },
@@ -267,6 +273,9 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                       },
                     }}
                     renderValue={(value) => {
+                      if (value !== 'all' && actualSelectedCategory) {
+                        return getCategoryName(actualSelectedCategory, 'de');
+                      }
                       return 'Alle';
                     }}
                   >
@@ -299,16 +308,33 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               }
             />
           )}
-          {/* Mobile: Category Tab (First Tab) */}
-          {isMobile && (
-            <Tab
-              label={<FolderTree size={22} />}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate('/categories');
-              }}
-            />
-          )}
+          {/* Category Tab - Both Desktop and Mobile */}
+          <Tab
+            icon={!isMobile ? <FolderTree size={16} /> : undefined}
+            iconPosition="start"
+            label={
+              isMobile ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                  <FolderTree size={20} />
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 600 }}>Kategorien</span>
+                </Box>
+              ) : (
+                <span style={{ fontWeight: 500 }}>Kategorien</span>
+              )
+            }
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/categories');
+            }}
+            sx={{
+              ...(isOnCategoriesPage && {
+                color: 'primary.main',
+                fontWeight: 700,
+                borderBottom: '3px solid',
+                borderColor: 'primary.main',
+              })
+            }}
+          />
           {/* Mobile: Alle/Filter Tab with Dropdown */}
           {isMobile && (
             <Tab
@@ -350,9 +376,19 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                     }}
                     renderValue={(value) => {
                       if (value === 'all') {
-                        return <Globe size={22} />;
+                        return (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                            <Globe size={20} />
+                            <span style={{ fontSize: '0.6875rem', fontWeight: 600 }}>Alle</span>
+                          </Box>
+                        );
                       }
-                      return getCategoryIconBySlug(getCategoryById(value)?.slug || '', 22);
+                      return (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                          {getCategoryIconBySlug(getCategoryById(value)?.slug || '', 20)}
+                          <span style={{ fontSize: '0.6875rem', fontWeight: 600 }}>Gefiltert</span>
+                        </Box>
+                      );
                     }}
                   >
                     <MenuItem value="all">
@@ -390,36 +426,39 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center', position: 'relative' }}>
                 {isMobile ? (
-                  <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <User size={22} />
-                    {myItemsCount > 0 && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: -4,
-                          right: -8,
-                          bgcolor: 'primary.main',
-                          color: 'white',
-                          borderRadius: '10px',
-                          px: 0.5,
-                          minWidth: 18,
-                          height: 18,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.625rem',
-                          fontWeight: 700,
-                          lineHeight: 1,
-                          border: '2px solid white',
-                        }}
-                      >
-                        {myItemsCount > 99 ? '99' : myItemsCount}
-                      </Box>
-                    )}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <User size={20} />
+                      {myItemsCount > 0 && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: -6,
+                            right: -14,
+                            bgcolor: 'primary.main',
+                            color: 'white',
+                            borderRadius: '10px',
+                            px: 0.5,
+                            minWidth: 18,
+                            height: 18,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.625rem',
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            border: '2px solid white',
+                          }}
+                        >
+                          {myItemsCount > 99 ? '99' : myItemsCount}
+                        </Box>
+                      )}
+                    </Box>
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 600 }}>Meine</span>
                   </Box>
                 ) : (
                   <>
-                    <span>Meine</span>
+                    <span style={{ fontWeight: 500 }}>Meine</span>
                     {myItemsCount > 0 && (
                       <Box
                         sx={{
@@ -452,36 +491,39 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.25 : 0.75, justifyContent: 'center' }}>
                 {isMobile ? (
-                  <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <Heart size={22} />
-                    {favoritesCount > 0 && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: -4,
-                          right: -8,
-                          bgcolor: 'error.main',
-                          color: 'white',
-                          borderRadius: '10px',
-                          px: 0.5,
-                          minWidth: 18,
-                          height: 18,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.625rem',
-                          fontWeight: 700,
-                          lineHeight: 1,
-                          border: '2px solid white',
-                        }}
-                      >
-                        {favoritesCount > 99 ? '99' : favoritesCount}
-                      </Box>
-                    )}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <Heart size={20} />
+                      {favoritesCount > 0 && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: -6,
+                            right: -14,
+                            bgcolor: 'error.main',
+                            color: 'white',
+                            borderRadius: '10px',
+                            px: 0.5,
+                            minWidth: 18,
+                            height: 18,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.625rem',
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            border: '2px solid white',
+                          }}
+                        >
+                          {favoritesCount > 99 ? '99' : favoritesCount}
+                        </Box>
+                      )}
+                    </Box>
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 600 }}>Favoriten</span>
                   </Box>
                 ) : (
                   <>
-                    <span>Favorit</span>
+                    <span style={{ fontWeight: 500 }}>Favoriten</span>
                     {favoritesCount > 0 && (
                       <Box
                         sx={{

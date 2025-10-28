@@ -1,7 +1,7 @@
 import { Box, Paper, List, ListItemButton, ListItemIcon, ListItemText, IconButton, Tooltip, Divider } from '@mui/material';
-import { Users, Shield, ListTodo, Coins, ChevronLeft, ChevronRight, Brain, Mail, FileText } from 'lucide-react';
+import { Users, Shield, ListTodo, Coins, ChevronLeft, ChevronRight, Brain, Mail, FileText, Code } from 'lucide-react';
 
-type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'newsletter' | 'email-templates';
+type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'newsletter' | 'email-templates' | 'developer';
 
 interface AdminSidebarProps {
   currentSection: AdminSection;
@@ -20,6 +20,7 @@ export const AdminSidebar = ({ currentSection, onSectionChange, collapsed, onTog
     { id: 'email-templates' as AdminSection, label: 'Email-Templates', icon: <FileText size={20} /> },
     { id: 'ai' as AdminSection, label: 'KI-Einstellungen', icon: <Brain size={20} /> },
     { id: 'tasks' as AdminSection, label: 'Aufgaben', icon: <ListTodo size={20} /> },
+    { id: 'developer' as AdminSection, label: 'Entwickler-Modus', icon: <Code size={20} /> },
   ];
 
   return (

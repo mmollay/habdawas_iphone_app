@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Box, Button, IconButton, TextField, InputAdornment, useMediaQuery, useTheme, Badge, Avatar, Menu, MenuItem, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
-import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp, Calendar, FolderTree } from 'lucide-react';
+import { MessageCircle, User, LogIn, LogOut, Search, Heart, Share2, X, Settings, Camera, List, FileText, Info, Coins, Shield, CheckCircle, Store, Crown, Award, Sparkles, Users, TrendingUp, Calendar, FolderTree, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 import { useCreditsStats } from '../../hooks/useCreditsStats';
@@ -20,6 +20,9 @@ interface HeaderProps {
   onSearch?: (query: string) => void;
   showSearch?: boolean;
   customButtons?: React.ReactNode;
+  onFilterClick?: () => void;
+  onShareClick?: () => void;
+  onReloadClick?: () => void;
 }
 
 // Helper function to get badge icon component
@@ -43,7 +46,7 @@ const getBadgeIcon = (iconName: string, size = 16) => {
   }
 };
 
-export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = '', onSearchChange, onSearch, showSearch = true, customButtons }: HeaderProps) => {
+export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = '', onSearchChange, onSearch, showSearch = true, customButtons, onFilterClick, onShareClick, onReloadClick }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
@@ -161,7 +164,23 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
   };
 
   return (
-    <AppBar position="sticky" elevation={0} sx={{ top: 0, bgcolor: '#f7f7f7', color: 'text.primary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
+    <>
+      {/* Safe Area Top Background */}
+      <Box sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 'env(safe-area-inset-top)',
+        bgcolor: '#f7f7f7',
+        zIndex: 1300
+      }} />
+      <AppBar position="sticky" elevation={0} sx={{
+        top: 'env(safe-area-inset-top)',
+        bgcolor: '#f7f7f7',
+        color: 'text.primary',
+        borderBottom: '1px solid rgba(0, 0, 0, 0.08)'
+      }}>
       <Toolbar sx={{ gap: { xs: 1, sm: 2 }, minHeight: { xs: 64, sm: 72 }, px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 1.5 } }}>
         <Box
           component="img"
@@ -178,14 +197,34 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
         />
 
         {showSearch && onSearchChange && !isMobile && (
-          <Box sx={{ flex: 1, maxWidth: 720, mx: 2 }}>
+          <Box sx={{ flex: 1, maxWidth: 720, mx: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
             <SearchAutocomplete
               fullWidth
               value={searchQuery}
               onChange={onSearchChange}
               onSearch={onSearch || onSearchChange}
               placeholder="Suche nach Produkten, Kategorien, Marken..."
+              onFilterClick={onFilterClick}
             />
+            {onFilterClick && (
+              <IconButton
+                onClick={onFilterClick}
+                sx={{
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'rgba(0, 0, 0, 0.12)',
+                  width: 44,
+                  height: 44,
+                  flexShrink: 0,
+                  '&:hover': {
+                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                    borderColor: 'rgba(0, 0, 0, 0.23)',
+                  },
+                }}
+              >
+                <SlidersHorizontal size={20} />
+              </IconButton>
+            )}
           </Box>
         )}
 
@@ -364,13 +403,34 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
             borderTop: '1px solid rgba(0, 0, 0, 0.05)',
           }}
         >
-          <SearchAutocomplete
-            fullWidth
-            value={searchQuery}
-            onChange={onSearchChange}
-            onSearch={onSearch || onSearchChange}
-            placeholder="Suche nach Produkten, Kategorien, Marken..."
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SearchAutocomplete
+              fullWidth
+              value={searchQuery}
+              onChange={onSearchChange}
+              onSearch={onSearch || onSearchChange}
+              placeholder="Suche nach Produkten, Kategorien, Marken..."
+            />
+            {onFilterClick && (
+              <IconButton
+                onClick={onFilterClick}
+                sx={{
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'rgba(0, 0, 0, 0.12)',
+                  width: 44,
+                  height: 44,
+                  flexShrink: 0,
+                  '&:hover': {
+                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                    borderColor: 'rgba(0, 0, 0, 0.23)',
+                  },
+                }}
+              >
+                <SlidersHorizontal size={20} />
+              </IconButton>
+            )}
+          </Box>
         </Box>
       )}
 
@@ -695,5 +755,6 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
         </MenuItem>
       </Menu>
     </AppBar>
+    </>
   );
 };

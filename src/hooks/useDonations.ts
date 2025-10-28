@@ -6,11 +6,11 @@ interface UseDonationsOptions {
   userId?: string;
   limit?: number;
   autoFetch?: boolean;
-  includeUser?: boolean; // Whether to include user profile data
+  includeUser?: boolean; // Whether to include user profile data (requires FK in database)
 }
 
 export const useDonations = (options: UseDonationsOptions = {}) => {
-  const { userId, limit = 50, autoFetch = true, includeUser = false } = options;
+  const { userId, limit = 50, autoFetch = false, includeUser = false } = options;
   const [donations, setDonations] = useState<DonationWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,10 +34,11 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
       setLoading(true);
       setError(null);
 
-      // Build select statement - include user profile if requested
-      const selectStatement = includeUser
-        ? '*, user:profiles!user_id(id, full_name, email)'
-        : '*';
+      // Build select statement - DISABLED: FK relationship not configured in database
+      // const selectStatement = includeUser
+      //   ? '*, user:profiles!user_id(id, full_name, email)'
+      //   : '*';
+      const selectStatement = '*';
 
       let query = supabase
         .from('donations')

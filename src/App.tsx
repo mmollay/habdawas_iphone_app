@@ -34,6 +34,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { HandPreferenceProvider, useHandPreference } from './contexts/HandPreferenceContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import { GlobalCacheProvider, useGlobalCache } from './contexts/GlobalCacheContext';
+import { DeveloperModeProvider } from './contexts/DeveloperModeContext';
 import { LoginDialog } from './components/Auth/LoginDialog';
 import { OnboardingWizard } from './components/Onboarding/OnboardingWizard';
 import { ImageUpload } from './components/Upload/ImageUpload';
@@ -1225,6 +1226,9 @@ const MainContent = () => {
           }
         }}
         showSearch={true}
+        onFilterClick={() => setFilterOpen(true)}
+        onShareClick={() => setShareDialogOpen(true)}
+        onReloadClick={() => window.location.reload()}
       />
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -1335,11 +1339,29 @@ const MainContent = () => {
                   },
                 }}
               >
-                <Home
-                  size={isMobile ? 18 : 20}
-                  color="currentColor"
-                  style={{ color: 'rgba(0, 0, 0, 0.6)', flexShrink: 0 }}
-                />
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    setSelectedCategories([]);
+                    updateURL({ categories: null });
+                  }}
+                  sx={{
+                    p: 0.5,
+                    color: 'rgba(0, 0, 0, 0.6)',
+                    '&:hover': {
+                      color: 'primary.main',
+                      bgcolor: 'rgba(25, 118, 210, 0.08)',
+                    }
+                  }}
+                  title="Zur Startseite"
+                  aria-label="Zur Startseite"
+                >
+                  <Home
+                    size={isMobile ? 18 : 20}
+                    color="currentColor"
+                    style={{ flexShrink: 0 }}
+                  />
+                </IconButton>
                 {selectedCategories.map((categoryId) => {
                   const category = getCategoryById(categoryId);
                   if (!category) return null;
@@ -1421,26 +1443,18 @@ const MainContent = () => {
                 data-testid="toolbar"
               >
                 <Box sx={{ display: 'flex', gap: isMobile ? 0.5 : 1, alignItems: 'center', flex: 1, flexWrap: isMobile ? 'nowrap' : 'wrap' }}>
-                  <IconButton
-                    onClick={() => setFilterOpen(true)}
+                  {/* Artikel-Anzahl Anzeige */}
+                  <Typography
+                    variant="body2"
                     sx={{
-                      borderRadius: 5,
-                      border: '1.5px solid',
-                      borderColor: 'rgba(0, 0, 0, 0.12)',
-                      color: 'text.primary',
-                      bgcolor: 'background.paper',
-                      p: isMobile ? 0.5 : 1.25,
-                      minWidth: isMobile ? 32 : 'auto',
-                      height: isMobile ? 32 : 'auto',
-                      '&:hover': {
-                        borderColor: 'primary.main',
-                        bgcolor: 'rgba(25, 118, 210, 0.08)',
-                        border: '1.5px solid',
-                      }
+                      color: 'text.secondary',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      px: 1,
                     }}
                   >
-                    <Filter size={isMobile ? 16 : 20} />
-                  </IconButton>
+                    {filteredItems.length} {filteredItems.length === 1 ? 'Artikel' : 'Artikel'}
+                  </Typography>
 
                   <IconButton
                     onClick={() => {
@@ -1546,18 +1560,6 @@ const MainContent = () => {
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
-                  {!isMobile && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 500,
-                        fontSize: '0.9375rem',
-                        color: 'text.secondary',
-                      }}
-                    >
-                      {filteredItems.length} Artikel
-                    </Typography>
-                  )}
                   <ToggleButtonGroup
                     value={viewMode}
                     exclusive
@@ -1617,39 +1619,51 @@ const MainContent = () => {
                     )}
                   </ToggleButtonGroup>
 
-                  {!isMobile && (
-                    <>
-                      <IconButton
-                        onClick={() => loadItems(false, true)}
-                        size="small"
-                        sx={{
-                          bgcolor: 'background.paper',
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          '&:hover': { bgcolor: 'action.hover' }
-                        }}
-                        title="Aktualisieren"
-                        aria-label="Aktualisieren"
-                      >
-                        <RefreshCw size={18} />
-                      </IconButton>
+                  <IconButton
+                    onClick={() => loadItems(false, true)}
+                    sx={{
+                      borderRadius: 5,
+                      border: '1.5px solid',
+                      borderColor: 'rgba(0, 0, 0, 0.12)',
+                      color: 'text.primary',
+                      bgcolor: 'background.paper',
+                      p: isMobile ? 0.5 : 1.25,
+                      minWidth: isMobile ? 32 : 'auto',
+                      height: isMobile ? 32 : 'auto',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        bgcolor: 'rgba(25, 118, 210, 0.08)',
+                        border: '1.5px solid',
+                      }
+                    }}
+                    title="Aktualisieren"
+                    aria-label="Aktualisieren"
+                  >
+                    <RefreshCw size={isMobile ? 16 : 20} />
+                  </IconButton>
 
-                      <IconButton
-                        onClick={() => setShareDialogOpen(true)}
-                        size="small"
-                        sx={{
-                          bgcolor: 'background.paper',
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          '&:hover': { bgcolor: 'action.hover' }
-                        }}
-                        title="Filter teilen"
-                        aria-label="Filter teilen"
-                      >
-                        <Share2 size={18} />
-                      </IconButton>
-                    </>
-                  )}
+                  <IconButton
+                    onClick={() => setShareDialogOpen(true)}
+                    sx={{
+                      borderRadius: 5,
+                      border: '1.5px solid',
+                      borderColor: 'rgba(0, 0, 0, 0.12)',
+                      color: 'text.primary',
+                      bgcolor: 'background.paper',
+                      p: isMobile ? 0.5 : 1.25,
+                      minWidth: isMobile ? 32 : 'auto',
+                      height: isMobile ? 32 : 'auto',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        bgcolor: 'rgba(25, 118, 210, 0.08)',
+                        border: '1.5px solid',
+                      }
+                    }}
+                    title="Filter teilen"
+                    aria-label="Filter teilen"
+                  >
+                    <Share2 size={isMobile ? 16 : 20} />
+                  </IconButton>
                 </Box>
               </Box>
             )}
@@ -1897,6 +1911,7 @@ const MainContent = () => {
             onFilterChange={handleFilterChange}
             selectedFilters={selectedFilters}
             totalItems={filteredItems.length}
+            categoryId={filterCategoryId}
           />
         </>
       )}
@@ -2014,14 +2029,13 @@ function App() {
           display: 'flex',
           flexDirection: 'column',
           minHeight: '100vh',
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
           <GlobalCacheProvider>
             <AuthProvider>
-              <FavoritesProvider>
-                <HandPreferenceProvider>
-                  <BrowserRouter>
+              <DeveloperModeProvider>
+                <FavoritesProvider>
+                  <HandPreferenceProvider>
+                    <BrowserRouter>
                 <Suspense fallback={
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
                     <CircularProgress />
@@ -2055,9 +2069,10 @@ function App() {
                     </Routes>
                   </LayoutWrapper>
                 </Suspense>
-                  </BrowserRouter>
-                </HandPreferenceProvider>
-              </FavoritesProvider>
+                    </BrowserRouter>
+                  </HandPreferenceProvider>
+                </FavoritesProvider>
+              </DeveloperModeProvider>
             </AuthProvider>
           </GlobalCacheProvider>
         </Box>

@@ -6,12 +6,12 @@ interface UseTransactionsOptions {
   limit?: number;
   transactionType?: 'donation' | 'usage' | 'adjustment';
   autoFetch?: boolean;
-  includeUser?: boolean; // Whether to include user profile data
-  includeItem?: boolean; // Whether to include item data
+  includeUser?: boolean; // Whether to include user profile data (requires FK in database)
+  includeItem?: boolean; // Whether to include item data (requires FK in database)
 }
 
 export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}) => {
-  const { limit = 100, transactionType, autoFetch = true, includeUser = false, includeItem = false } = options;
+  const { limit = 100, transactionType, autoFetch = false, includeUser = false, includeItem = false } = options;
   const [transactions, setTransactions] = useState<CommunityPotTransactionWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,15 +35,16 @@ export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}
       setLoading(true);
       setError(null);
 
-      // Build select statement - include relations if requested
-      let selectParts = ['*'];
-      if (includeUser) {
-        selectParts.push('user:profiles!user_id(id, full_name, email)');
-      }
-      if (includeItem) {
-        selectParts.push('item:items!item_id(id, title)');
-      }
-      const selectStatement = selectParts.join(', ');
+      // Build select statement - DISABLED: FK relationships not configured in database
+      // let selectParts = ['*'];
+      // if (includeUser) {
+      //   selectParts.push('user:profiles!user_id(id, full_name, email)');
+      // }
+      // if (includeItem) {
+      //   selectParts.push('item:items!item_id(id, title)');
+      // }
+      // const selectStatement = selectParts.join(', ');
+      const selectStatement = '*';
 
       let query = supabase
         .from('community_pot_transactions')

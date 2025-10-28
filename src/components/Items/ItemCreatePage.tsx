@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { ChevronDown, ChevronUp, Sparkles, Info, Package, Save, Coins, X, Lightbulb, Smartphone, Car, FileText, Camera } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDeveloperMode } from '../../contexts/DeveloperModeContext';
 import { useCreditsStats } from '../../hooks/useCreditsStats';
 import { useCreditCheck } from '../../hooks/useCreditCheck';
 import { useTokenBasedCredits } from '../../hooks/useTokenBasedCredits';
@@ -92,6 +93,7 @@ type WorkflowStep = 'upload' | 'choose' | 'manual';
 export const ItemCreatePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isDeveloperMode } = useDeveloperMode();
   const { personalCredits } = useCreditsStats();
   const { checkCredit, consumeCredit } = useCreditCheck();
   const { calculateCreditsFromTokens, deductCreditsForAI, settings } = useTokenBasedCredits();
@@ -514,7 +516,7 @@ export const ItemCreatePage = () => {
           'cabrio': ['autos', 'fahrzeuge'],
           'van': ['autos', 'fahrzeuge'],
           'motorrad': ['motorräder', 'roller', 'fahrzeuge'],
-          'bike': ['motorräder', 'roller', 'fahrzeuge'],
+          'motorbike': ['motorräder', 'roller', 'fahrzeuge'],
           'roller': ['motorräder', 'roller', 'fahrzeuge'],
           'moped': ['motorräder', 'roller', 'fahrzeuge'],
           'quad': ['motorräder', 'roller', 'fahrzeuge'],
@@ -579,7 +581,6 @@ export const ItemCreatePage = () => {
           'smart-home': ['smart-home', 'gadgets', 'elektronik'],
           'alexa': ['smart-home', 'gadgets', 'elektronik'],
           'google-home': ['smart-home', 'gadgets', 'elektronik'],
-          'smartwatch': ['smart-home', 'gadgets', 'elektronik'],
           'fitness-tracker': ['smart-home', 'gadgets', 'elektronik'],
           'staubsauger': ['haushalts-elektronik', 'elektronik'],
           'roboter-staubsauger': ['haushalts-elektronik', 'elektronik'],
@@ -617,7 +618,6 @@ export const ItemCreatePage = () => {
           'ohrringe': ['schmuck', 'uhren', 'mode'],
           'tasche': ['taschen', 'accessoires', 'mode'],
           'handtasche': ['taschen', 'accessoires', 'mode'],
-          'rucksack': ['taschen', 'accessoires', 'mode'],
           'koffer': ['taschen', 'accessoires', 'mode'],
           'gürtel': ['taschen', 'accessoires', 'mode'],
           'sonnenbrille': ['taschen', 'accessoires', 'mode'],
@@ -772,7 +772,7 @@ export const ItemCreatePage = () => {
           'tür': ['baumaterial', 'industrie'],
           'kabel': ['elektrotechnik', 'industrie'],
           'leitungen': ['elektrotechnik', 'industrie'],
-          'regal': ['lager', 'transport', 'industrie'],
+          'lagerregal': ['lager', 'transport', 'industrie'],
           'palette': ['lager', 'transport', 'industrie'],
           'europalette': ['lager', 'transport', 'industrie'],
 
@@ -903,7 +903,6 @@ export const ItemCreatePage = () => {
           'smart-home': ['smart-home-systeme', 'smart'],
           'überwachungskamera': ['sicherheit-ueberwachung', 'kamera'],
           'alarmanlage': ['sicherheit-ueberwachung', 'alarm'],
-          'smartwatch': ['wearables', 'watch'],
           'fitness-tracker': ['wearables', 'fitness'],
           'staubsauger': ['staubsauger', 'saug'],
           'saugroboter': ['staubsauger', 'roboter'],
@@ -926,7 +925,6 @@ export const ItemCreatePage = () => {
           'ohrringe': ['ohrringe', 'ohr'],
           'handtasche': ['handtaschen', 'hand'],
           'clutch': ['handtaschen', 'clutch'],
-          'rucksack': ['rucksaecke', 'ruck'],
           'wanderrucksack': ['rucksaecke', 'wander'],
           'koffer': ['koffer-reisegepaeck', 'koffer'],
           'trolley': ['koffer-reisegepaeck', 'trolley'],
@@ -1285,23 +1283,29 @@ export const ItemCreatePage = () => {
         }
       }
 
-      // Show Preview with category info
-      setPreviewData({
-        analyses,
-        scoredAnalyses,
-        mergedAnalysis,
-        categoryInfo: {
-          level1: mappedCategorySelection.level1?.translations?.de?.name || mappedCategorySelection.level1?.slug,
-          level2: mappedCategorySelection.level2?.translations?.de?.name || mappedCategorySelection.level2?.slug,
-          level3: mappedCategorySelection.level3?.translations?.de?.name || mappedCategorySelection.level3?.slug,
-        }
-      });
-      setShowPreview(true);
-      console.log('🎨 Preview shown with category:', {
-        level1: mappedCategorySelection.level1?.translations?.de?.name,
-        level2: mappedCategorySelection.level2?.translations?.de?.name,
-        level3: mappedCategorySelection.level3?.translations?.de?.name
-      });
+      // Developer Mode: Show Preview | Production: Publish directly
+      if (isDeveloperMode) {
+        setPreviewData({
+          analyses,
+          scoredAnalyses,
+          mergedAnalysis,
+          categoryInfo: {
+            level1: mappedCategorySelection.level1?.translations?.de?.name || mappedCategorySelection.level1?.slug,
+            level2: mappedCategorySelection.level2?.translations?.de?.name || mappedCategorySelection.level2?.slug,
+            level3: mappedCategorySelection.level3?.translations?.de?.name || mappedCategorySelection.level3?.slug,
+          }
+        });
+        setShowPreview(true);
+        console.log('🎨 [Developer Mode] Preview shown with category:', {
+          level1: mappedCategorySelection.level1?.translations?.de?.name,
+          level2: mappedCategorySelection.level2?.translations?.de?.name,
+          level3: mappedCategorySelection.level3?.translations?.de?.name
+        });
+      } else {
+        // Production mode: Skip preview and publish directly
+        console.log('🚀 [Production Mode] Skipping preview, publishing directly...');
+        await publishItem(mergedAnalysis);
+      }
     } catch (err) {
       console.error('Error in handleAIGenerate:', err);
       setError(err instanceof Error ? err.message : 'Analyse fehlgeschlagen');
@@ -1994,79 +1998,100 @@ export const ItemCreatePage = () => {
               />
 
               {/* AI Tips Section */}
-              <Collapse in={showAiTips}>
-                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'rgba(255, 152, 0, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(255, 152, 0, 0.3)' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                      <Lightbulb size={16} style={{ color: '#ed6c02' }} />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'warning.main', fontSize: '0.8rem' }}>
-                        Tipp: So verbessern Sie das KI-Ergebnis deutlich
-                      </Typography>
+              {showAiTips ? (
+                <Collapse in={showAiTips}>
+                  <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'rgba(255, 152, 0, 0.04)', borderRadius: 1, border: '1px solid', borderColor: 'rgba(255, 152, 0, 0.3)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <Lightbulb size={16} style={{ color: '#ed6c02' }} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'warning.main', fontSize: '0.8rem' }}>
+                          Tipp: So verbessern Sie das KI-Ergebnis deutlich
+                        </Typography>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowAiTips(false)}
+                        sx={{ p: 0.25 }}
+                      >
+                        <X size={14} />
+                      </IconButton>
                     </Box>
-                    <IconButton
-                      size="small"
-                      onClick={() => setShowAiTips(false)}
-                      sx={{ p: 0.25 }}
-                    >
-                      <X size={14} />
-                    </IconButton>
+
+                    <Typography variant="caption" sx={{ display: 'block', mb: 1.25, color: 'text.secondary', fontSize: '0.75rem', lineHeight: 1.4 }}>
+                      Die KI kann nur sehen, was auf den Bildern zu erkennen ist. Geben Sie zusätzliche Infos an, die schwer zu erkennen sind:
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Smartphone size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
+                            Elektronik:
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
+                            "iPhone 17 Pro, 256GB, Space Gray, OVP vorhanden"
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Car size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
+                            Fahrzeuge:
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
+                            "VW Golf 8, Baujahr 2021, 45.000 km, TÜV bis 08/2025"
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Camera size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
+                            Zusätzliche Fotos:
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
+                            Laden Sie Zulassungsschein, Rechnung, Planette oder technische Daten hoch
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <FileText size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
+                            Wichtige Details:
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
+                            Modellbezeichnung, Seriennummer, Garantie, versteckte Mängel
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
                   </Box>
-
-                  <Typography variant="caption" sx={{ display: 'block', mb: 1.25, color: 'text.secondary', fontSize: '0.75rem', lineHeight: 1.4 }}>
-                    Die KI kann nur sehen, was auf den Bildern zu erkennen ist. Geben Sie zusätzliche Infos an, die schwer zu erkennen sind:
-                  </Typography>
-
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                      <Smartphone size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
-                      <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
-                          Elektronik:
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
-                          "iPhone 17 Pro, 256GB, Space Gray, OVP vorhanden"
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                      <Car size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
-                      <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
-                          Fahrzeuge:
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
-                          "VW Golf 8, Baujahr 2021, 45.000 km, TÜV bis 08/2025"
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                      <Camera size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
-                      <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
-                          Zusätzliche Fotos:
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
-                          Laden Sie Zulassungsschein, Rechnung, Planette oder technische Daten hoch
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                      <FileText size={14} style={{ marginTop: '2px', flexShrink: 0, color: '#666' }} />
-                      <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: 'text.primary' }}>
-                          Wichtige Details:
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block' }}>
-                          Modellbezeichnung, Seriennummer, Garantie, versteckte Mängel
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
+                </Collapse>
+              ) : (
+                <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'center' }}>
+                  <IconButton
+                    onClick={() => setShowAiTips(true)}
+                    sx={{
+                      bgcolor: 'rgba(255, 152, 0, 0.1)',
+                      color: 'warning.main',
+                      width: 36,
+                      height: 36,
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 152, 0, 0.2)',
+                        transform: 'scale(1.1)',
+                      },
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <Lightbulb size={20} />
+                  </IconButton>
                 </Box>
-              </Collapse>
+              )}
             </Box>
 
             <ItemSettingsPreview

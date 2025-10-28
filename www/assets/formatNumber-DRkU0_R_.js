@@ -1,0 +1,1 @@
+const t=r=>r==null?"0":r.toLocaleString("de-DE"),n=r=>r==null?"0,00 €":r.toLocaleString("de-DE",{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2});export{n as a,t as f};

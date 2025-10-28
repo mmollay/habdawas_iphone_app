@@ -35,7 +35,8 @@ export const Footer = () => {
   };
 
   return (
-    <Box component="footer" sx={{ bgcolor: '#f5f5f5', color: 'text.primary', mt: 'auto', borderTop: '1px solid', borderColor: 'divider' }}>
+    <>
+    <Box component="footer" sx={{ bgcolor: '#f5f5f5', color: 'text.primary', mt: 'auto', borderTop: '1px solid', borderColor: 'divider', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <Container maxWidth="lg" sx={{ py: 2 }}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -171,5 +172,15 @@ export const Footer = () => {
         </Stack>
       </Container>
     </Box>
+    {/* Safe Area Bottom Background */}
+    <Box sx={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 'env(safe-area-inset-bottom)',
+      bgcolor: '#f5f5f5'
+    }} />
+    </>
   );
 };

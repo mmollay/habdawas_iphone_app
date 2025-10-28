@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { MapPin, Calendar, Heart, Send, Package, Truck, ZoomIn, Tag, Ruler, Weight, Box as BoxIcon, Palette, Sparkles, Grid3x3, Hash, Share2, X, ChevronLeft, ChevronRight, MessageCircle, ArrowUp, Phone, Pencil, Trash2, Check, Image as ImageIcon, ShieldCheck, XCircle, Car, Fuel, Zap, CalendarCheck } from 'lucide-react';
+import { MapPin, Calendar, Heart, Send, Package, Truck, ZoomIn, Tag, Ruler, Weight, Box as BoxIcon, Palette, Sparkles, Grid3x3, Hash, Share2, X, ChevronLeft, ChevronRight, MessageCircle, ArrowUp, Phone, Pencil, Trash2, Check, Image as ImageIcon, ShieldCheck, XCircle, Car, Fuel, Zap, CalendarCheck, Home } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { Item, supabase, Profile, PickupAddress } from '../../lib/supabase';
 import { getRelativeTimeString } from '../../utils/dateUtils';
@@ -2935,6 +2935,25 @@ export const ItemDetailPage = () => {
                   <ChevronLeft size={28} color="#1976d2" />
                 </IconButton>
               )}
+              <IconButton
+                onClick={navigateBack}
+                sx={{
+                  bgcolor: 'rgba(25, 118, 210, 0.85)',
+                  backdropFilter: 'blur(8px)',
+                  color: 'white',
+                  boxShadow: 3,
+                  width: 56,
+                  height: 56,
+                  '&:hover': {
+                    bgcolor: 'rgba(25, 118, 210, 0.95)',
+                    transform: 'scale(1.1)',
+                  },
+                  pointerEvents: 'auto',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Home size={28} />
+              </IconButton>
               {allItems.length > 0 && hasNext && (
                 <IconButton
                   onClick={() => navigateToItem('next')}
@@ -3081,6 +3100,25 @@ export const ItemDetailPage = () => {
                   <ChevronLeft size={28} color="#1976d2" />
                 </IconButton>
               )}
+              <IconButton
+                onClick={navigateBack}
+                sx={{
+                  bgcolor: 'rgba(25, 118, 210, 0.85)',
+                  backdropFilter: 'blur(8px)',
+                  color: 'white',
+                  boxShadow: 3,
+                  width: 56,
+                  height: 56,
+                  '&:hover': {
+                    bgcolor: 'rgba(25, 118, 210, 0.95)',
+                    transform: 'scale(1.1)',
+                  },
+                  pointerEvents: 'auto',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Home size={28} />
+              </IconButton>
               {allItems.length > 0 && hasNext && (
                 <IconButton
                   onClick={() => navigateToItem('next')}

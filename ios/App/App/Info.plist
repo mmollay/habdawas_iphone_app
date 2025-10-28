@@ -66,6 +66,12 @@
 	</dict>
 	<key>UIRequiresPersistentWiFi</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>HabDaWas benötigt Zugriff auf die Kamera, um Fotos von deinen Artikeln aufzunehmen.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>HabDaWas benötigt Zugriff auf deine Fotomediathek, um Bilder für deine Artikel auszuwählen.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>HabDaWas möchte Fotos in deiner Fotomediathek speichern.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

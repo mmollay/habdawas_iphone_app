@@ -4,21 +4,24 @@ import {
   Drawer,
   Typography,
   Button,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  FormControlLabel,
-  Checkbox,
   Slider,
   IconButton,
   Badge,
+  CircularProgress,
+  useMediaQuery,
+  useTheme,
+  Chip,
+  Autocomplete,
+  TextField,
 } from '@mui/material';
-import { ChevronDown, X, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { X, SlidersHorizontal, Check, Hammer, Scissors, TreePine, Disc, Sparkles } from 'lucide-react';
 import { getConditionLabel } from '../../utils/translations';
+import { supabase } from '../../lib/supabase';
 
 export interface SelectedFilters {
-  [key: string]: (string | number)[];
+  [key: string]: (string | number)[] | number | [number, number];
   priceRange?: [number, number];
+  radius?: number;
 }
 
 interface AdvancedFilterSidebarProps {
@@ -27,15 +30,39 @@ interface AdvancedFilterSidebarProps {
   onFilterChange: (filters: SelectedFilters) => void;
   selectedFilters: SelectedFilters;
   totalItems?: number;
+  categoryId?: string; // Für kategorie-spezifische Filter
 }
 
-// Statische Filter-Definitionen
+interface FilterOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+interface FilterCounts {
+  brands: FilterOption[];
+  colors: FilterOption[];
+  conditions: FilterOption[];
+  materials: FilterOption[];
+  vehicleFuelTypes: FilterOption[];
+  vehicleColors: FilterOption[];
+}
+
+// Statische Filter-Definitionen mit Icons
 const CONDITIONS = [
-  { value: 'new', label: 'Neu' },
-  { value: 'like_new', label: 'Wie neu' },
-  { value: 'very_good', label: 'Sehr gut' },
-  { value: 'good', label: 'Gut' },
-  { value: 'acceptable', label: 'Akzeptabel' },
+  { value: 'new', label: 'Neu', icon: '✨' },
+  { value: 'like_new', label: 'Wie neu', icon: '🌟' },
+  { value: 'very_good', label: 'Sehr gut', icon: '💫' },
+  { value: 'good', label: 'Gut', icon: '👍' },
+  { value: 'acceptable', label: 'Akzeptabel', icon: '👌' },
+];
+
+const FUEL_TYPES = [
+  { value: 'benzin', label: 'Benzin' },
+  { value: 'diesel', label: 'Diesel' },
+  { value: 'elektro', label: 'Elektro' },
+  { value: 'hybrid', label: 'Hybrid' },
+  { value: 'gas', label: 'Gas (LPG/CNG)' },
 ];
 
 export const AdvancedFilterSidebar = ({
@@ -44,14 +71,236 @@ export const AdvancedFilterSidebar = ({
   onFilterChange,
   selectedFilters,
   totalItems = 0,
+  categoryId,
 }: AdvancedFilterSidebarProps) => {
-  const [localFilters, setLocalFilters] = useState<SelectedFilters>(selectedFilters);
-  const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set(['price', 'condition']));
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Sync local filters with external filters when they change
+  const [localFilters, setLocalFilters] = useState<SelectedFilters>(selectedFilters);
+  const [filterCounts, setFilterCounts] = useState<FilterCounts>({
+    brands: [],
+    colors: [],
+    conditions: [],
+    materials: [],
+    vehicleFuelTypes: [],
+    vehicleColors: [],
+  });
+  const [loadingCounts, setLoadingCounts] = useState(false);
+  const [isVehicleCategory, setIsVehicleCategory] = useState(false);
+  const [filteredItemCount, setFilteredItemCount] = useState<number>(totalItems);
+  const [countDebounceTimeout, setCountDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Sync local filters with external filters
   useEffect(() => {
     setLocalFilters(selectedFilters);
   }, [selectedFilters]);
+
+  // Check if category is vehicle-related
+  useEffect(() => {
+    const checkVehicleCategory = async () => {
+      if (!categoryId) {
+        setIsVehicleCategory(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('slug, parent_id, level')
+          .eq('id', categoryId)
+          .single();
+
+        if (error) throw error;
+
+        // Check if slug contains vehicle-related terms or is under Fahrzeuge category
+        const vehicleTerms = ['auto', 'fahrzeug', 'motorrad', 'roller', 'fahrrad'];
+        const isVehicle = vehicleTerms.some(term =>
+          data?.slug?.toLowerCase().includes(term)
+        );
+
+        setIsVehicleCategory(isVehicle);
+      } catch (err) {
+        console.error('Error checking category:', err);
+        setIsVehicleCategory(false);
+      }
+    };
+
+    checkVehicleCategory();
+  }, [categoryId]);
+
+  // Calculate filtered item count based on local filters with debouncing
+  useEffect(() => {
+    const countFilteredItems = async () => {
+      if (!open) return;
+
+      try {
+        let query = supabase
+          .from('items')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'published');
+
+        // Apply category filter
+        if (categoryId) {
+          query = query.eq('category_id', categoryId);
+        }
+
+        // Apply price range
+        if (localFilters.priceRange) {
+          query = query
+            .gte('price', localFilters.priceRange[0])
+            .lte('price', localFilters.priceRange[1]);
+        }
+
+        // Apply brand filter
+        if (localFilters.brand && (localFilters.brand as string[]).length > 0) {
+          query = query.in('brand', localFilters.brand as string[]);
+        }
+
+        // Apply condition filter
+        if (localFilters.condition && (localFilters.condition as string[]).length > 0) {
+          query = query.in('condition', localFilters.condition as string[]);
+        }
+
+        // Apply material filter
+        if (localFilters.material && (localFilters.material as string[]).length > 0) {
+          query = query.in('material', localFilters.material as string[]);
+        }
+
+        // Apply colors filter (array contains)
+        if (localFilters.colors && (localFilters.colors as string[]).length > 0) {
+          query = query.overlaps('colors', localFilters.colors as string[]);
+        }
+
+        // Apply vehicle-specific filters
+        if (localFilters.vehicle_fuel_type && (localFilters.vehicle_fuel_type as string[]).length > 0) {
+          query = query.in('vehicle_fuel_type', localFilters.vehicle_fuel_type as string[]);
+        }
+
+        if (localFilters.vehicle_color && (localFilters.vehicle_color as string[]).length > 0) {
+          query = query.in('vehicle_color', localFilters.vehicle_color as string[]);
+        }
+
+        const { count } = await query;
+        setFilteredItemCount(count || 0);
+      } catch (err) {
+        console.error('Error counting filtered items:', err);
+        setFilteredItemCount(totalItems);
+      }
+    };
+
+    // Debounce the count calculation
+    if (countDebounceTimeout) {
+      clearTimeout(countDebounceTimeout);
+    }
+
+    const timeout = setTimeout(() => {
+      countFilteredItems();
+    }, 300);
+
+    setCountDebounceTimeout(timeout);
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [open, localFilters, categoryId, totalItems]);
+
+  // Load filter counts from database (excluding price range for stability)
+  useEffect(() => {
+    const loadFilterCounts = async () => {
+      if (!open) return;
+
+      setLoadingCounts(true);
+      try {
+        // Build query based on category only (not price, to prevent reload on price changes)
+        let query = supabase
+          .from('items')
+          .select('brand, colors, condition, material, vehicle_fuel_type, vehicle_color')
+          .eq('status', 'published');
+
+        // Apply category filter if present
+        if (categoryId) {
+          query = query.eq('category_id', categoryId);
+        }
+
+        // Note: We intentionally don't filter by price here to show all available options
+        // The filtered count at the bottom will reflect the price range
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // Count occurrences
+        const brandCounts: Record<string, number> = {};
+        const colorCounts: Record<string, number> = {};
+        const conditionCounts: Record<string, number> = {};
+        const materialCounts: Record<string, number> = {};
+        const fuelTypeCounts: Record<string, number> = {};
+        const vehicleColorCounts: Record<string, number> = {};
+
+        data?.forEach(item => {
+          // Brands
+          if (item.brand) {
+            brandCounts[item.brand] = (brandCounts[item.brand] || 0) + 1;
+          }
+
+          // Colors (array)
+          if (Array.isArray(item.colors)) {
+            item.colors.forEach(color => {
+              if (color) {
+                colorCounts[color] = (colorCounts[color] || 0) + 1;
+              }
+            });
+          }
+
+          // Condition
+          if (item.condition) {
+            conditionCounts[item.condition] = (conditionCounts[item.condition] || 0) + 1;
+          }
+
+          // Material
+          if (item.material) {
+            materialCounts[item.material] = (materialCounts[item.material] || 0) + 1;
+          }
+
+          // Vehicle-specific
+          if (item.vehicle_fuel_type) {
+            fuelTypeCounts[item.vehicle_fuel_type] = (fuelTypeCounts[item.vehicle_fuel_type] || 0) + 1;
+          }
+          if (item.vehicle_color) {
+            vehicleColorCounts[item.vehicle_color] = (vehicleColorCounts[item.vehicle_color] || 0) + 1;
+          }
+        });
+
+        // Convert to FilterOption arrays and sort by count
+        const toOptions = (counts: Record<string, number>): FilterOption[] =>
+          Object.entries(counts)
+            .map(([value, count]) => ({ value, label: value, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 20); // Top 20
+
+        setFilterCounts({
+          brands: toOptions(brandCounts),
+          colors: toOptions(colorCounts),
+          conditions: CONDITIONS.map(c => ({
+            ...c,
+            count: conditionCounts[c.value] || 0
+          })),
+          materials: toOptions(materialCounts),
+          vehicleFuelTypes: FUEL_TYPES.map(f => ({
+            ...f,
+            count: fuelTypeCounts[f.value] || 0
+          })).filter(f => f.count > 0),
+          vehicleColors: toOptions(vehicleColorCounts),
+        });
+      } catch (err) {
+        console.error('Error loading filter counts:', err);
+      } finally {
+        setLoadingCounts(false);
+      }
+    };
+
+    // Load immediately without debouncing since this doesn't change with price
+    loadFilterCounts();
+  }, [open, categoryId]);
 
   const handleToggleFilter = (filterKey: string, value: string | number) => {
     setLocalFilters(prev => {
@@ -64,10 +313,12 @@ export const AdvancedFilterSidebar = ({
 
       const newFilters = { ...prev, [filterKey]: updated };
 
-      // Remove empty arrays
       if (updated.length === 0) {
         delete newFilters[filterKey];
       }
+
+      // LIVE FILTERING: Apply immediately
+      onFilterChange(newFilters);
 
       return newFilters;
     });
@@ -75,12 +326,22 @@ export const AdvancedFilterSidebar = ({
 
   const handlePriceChange = (event: Event, newValue: number | number[]) => {
     const range = newValue as [number, number];
-    setLocalFilters(prev => ({ ...prev, priceRange: range }));
-  };
+    setLocalFilters(prev => {
+      const newFilters = { ...prev, priceRange: range };
 
-  const handleApplyFilters = () => {
-    onFilterChange(localFilters);
-    onClose();
+      // LIVE FILTERING: Apply immediately with debouncing
+      if (countDebounceTimeout) {
+        clearTimeout(countDebounceTimeout);
+      }
+
+      const timeout = setTimeout(() => {
+        onFilterChange(newFilters);
+      }, 500); // Debounce price changes
+
+      setCountDebounceTimeout(timeout);
+
+      return newFilters;
+    });
   };
 
   const handleResetFilters = () => {
@@ -89,26 +350,12 @@ export const AdvancedFilterSidebar = ({
     onFilterChange(resetFilters);
   };
 
-  const toggleAccordion = (key: string) => {
-    setExpandedAccordions(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
-      } else {
-        newSet.add(key);
-      }
-      return newSet;
-    });
-  };
-
   const getActiveFilterCount = () => {
     let count = 0;
     Object.entries(localFilters).forEach(([key, values]) => {
       if (key === 'priceRange') {
         const [min, max] = values as [number, number];
-        if (min > 0 || max < 10000) {
-          count++;
-        }
+        if (min > 0 || max < 10000) count++;
       } else if (Array.isArray(values) && values.length > 0) {
         count += values.length;
       }
@@ -120,167 +367,368 @@ export const AdvancedFilterSidebar = ({
 
   return (
     <Drawer
-      anchor="left"
+      anchor={isMobile ? 'bottom' : 'left'}
       open={open}
       onClose={onClose}
       sx={{
         '& .MuiDrawer-paper': {
-          width: { xs: '85%', sm: 360 },
-          maxWidth: 400,
+          ...(isMobile ? {
+            // Mobile: Bottom sheet
+            width: '100%',
+            maxHeight: '85vh',
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            pb: 2, // Safe area for iOS
+          } : {
+            // Desktop: Left drawer
+            width: { xs: '90%', sm: 420 },
+            maxWidth: 480,
+            height: '100%',
+          }),
         },
       }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* Mobile Drag Handle */}
+        {isMobile && (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              py: 1,
+              cursor: 'grab',
+            }}
+            onClick={onClose}
+          >
+            <Box
+              sx={{
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                bgcolor: 'divider',
+              }}
+            />
+          </Box>
+        )}
+
         {/* Header */}
-        <Box sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            <SlidersHorizontal size={18} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9375rem' }}>
+            <SlidersHorizontal size={16} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
               Filter
             </Typography>
             {activeCount > 0 && (
-              <Badge badgeContent={activeCount} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.625rem', height: 16, minWidth: 16 } }} />
+              <Badge badgeContent={activeCount} color="primary" sx={{ ml: 0.75, '& .MuiBadge-badge': { fontSize: '0.625rem', height: 14, minWidth: 14 } }} />
             )}
           </Box>
-          <IconButton onClick={onClose} size="small" sx={{ p: 0.5 }}>
-            <X size={18} />
+          <IconButton onClick={onClose} size="small" sx={{ p: 0.25 }}>
+            <X size={16} />
           </IconButton>
         </Box>
 
         {/* Content */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 0.75 }}>
-          {/* Total Items */}
-          <Box sx={{ mb: 0.75, p: 1, bgcolor: 'primary.50', borderRadius: 0.5 }}>
-            <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-              {totalItems} {totalItems === 1 ? 'Artikel' : 'Artikel'}
-            </Typography>
-          </Box>
-
-          {/* Price Range */}
-          <Accordion
-            expanded={expandedAccordions.has('price')}
-            onChange={() => toggleAccordion('price')}
-            sx={{ mb: 0.5, boxShadow: 'none', '&:before': { display: 'none' } }}
-          >
-            <AccordionSummary
-              expandIcon={<ChevronDown size={16} />}
-              sx={{
-                minHeight: 40,
-                '& .MuiAccordionSummary-content': { my: 0.75 }
-              }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-                💰 Preis
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ pt: 0, pb: 1 }}>
-              <Box sx={{ px: 0.5 }}>
-                <Slider
-                  value={localFilters.priceRange || [0, 10000]}
-                  onChange={handlePriceChange}
-                  valueLabelDisplay="auto"
-                  min={0}
-                  max={10000}
-                  valueLabelFormat={(value) => `€${value}`}
-                  size="small"
-                />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6875rem' }}>
+        <Box sx={{ flex: 1, overflow: 'auto', p: 1.5 }}>
+          {loadingCounts ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : (
+            <>
+              {/* Price Section */}
+              <Box sx={{ mb: 1.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+                    Preis
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+                    € {localFilters.priceRange?.[1] || 10000}
+                  </Typography>
+                </Box>
+                <Box sx={{ px: 1.5 }}>
+                  <Slider
+                    value={localFilters.priceRange || [0, 10000]}
+                    onChange={handlePriceChange}
+                    valueLabelDisplay="auto"
+                    min={0}
+                    max={10000}
+                    valueLabelFormat={(value) => `€${value}`}
+                    sx={{
+                      width: 'calc(100% - 0px)',
+                      '& .MuiSlider-track': {
+                        background: 'linear-gradient(90deg, #4ade80 0%, #fbbf24 50%, #fb923c 100%)',
+                        border: 'none',
+                      },
+                      '& .MuiSlider-rail': {
+                        bgcolor: 'grey.300',
+                      },
+                      '& .MuiSlider-thumb': {
+                        bgcolor: 'white',
+                        border: '2px solid',
+                        borderColor: '#4ade80',
+                        boxShadow: 2,
+                      },
+                    }}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5, px: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
                     €{localFilters.priceRange?.[0] || 0}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6875rem' }}>
+                  <Typography variant="caption" color="text.secondary">
                     €{localFilters.priceRange?.[1] || 10000}
                   </Typography>
                 </Box>
               </Box>
-            </AccordionDetails>
-          </Accordion>
 
-          {/* Condition */}
-          <Accordion
-            expanded={expandedAccordions.has('condition')}
-            onChange={() => toggleAccordion('condition')}
-            sx={{ mb: 0.5, boxShadow: 'none', '&:before': { display: 'none' } }}
-          >
-            <AccordionSummary
-              expandIcon={<ChevronDown size={16} />}
-              sx={{
-                minHeight: 40,
-                '& .MuiAccordionSummary-content': { my: 0.75 }
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flex: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-                  ✨ Zustand
+              {/* Condition Section */}
+              <Box sx={{ mb: 1.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', mb: 0.5 }}>
+                  Zustand
                 </Typography>
-                {localFilters.condition && localFilters.condition.length > 0 && (
-                  <Badge
-                    badgeContent={localFilters.condition.length}
-                    color="primary"
-                    sx={{ '& .MuiBadge-badge': { fontSize: '0.625rem', height: 16, minWidth: 16 } }}
-                  />
-                )}
-              </Box>
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0, pt: 0 }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, px: 0.5 }}>
-                {CONDITIONS.map((condition) => {
-                  const isChecked = (localFilters.condition || []).includes(condition.value);
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                  {CONDITIONS.map((condition) => {
+                    const matchingOption = filterCounts.conditions.find(o => o.value === condition.value);
+                    const isSelected = (localFilters.condition || []).includes(condition.value);
 
-                  return (
-                    <FormControlLabel
-                      key={condition.value}
-                      control={
-                        <Checkbox
-                          checked={isChecked}
-                          onChange={() => handleToggleFilter('condition', condition.value)}
-                          size="small"
-                          sx={{ p: 0.5 }}
-                        />
-                      }
-                      label={
-                        <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-                          {condition.label}
-                        </Typography>
-                      }
+                    return (
+                      <Chip
+                        key={condition.value}
+                        icon={<Box component="span" sx={{ fontSize: '0.9rem', lineHeight: 1 }}>{condition.icon}</Box>}
+                        label={condition.label}
+                        onClick={() => handleToggleFilter('condition', condition.value)}
+                        deleteIcon={isSelected ? <Check size={14} /> : undefined}
+                        onDelete={isSelected ? () => handleToggleFilter('condition', condition.value) : undefined}
+                        size="small"
+                        sx={{
+                          bgcolor: isSelected ? 'success.main' : 'grey.200',
+                          color: isSelected ? 'white' : 'text.primary',
+                          fontWeight: 500,
+                          fontSize: '0.75rem',
+                          height: '26px',
+                          '& .MuiChip-label': {
+                            px: 1,
+                          },
+                          '& .MuiChip-deleteIcon': {
+                            color: 'white',
+                          },
+                          '&:hover': {
+                            bgcolor: isSelected ? 'success.dark' : 'grey.300',
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+              </Box>
+
+              {/* Brand Section with Search */}
+              <Box sx={{ mb: 1.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', mb: 0.5 }}>
+                  Marke
+                </Typography>
+                <Autocomplete
+                  value={filterCounts.brands.find(b => b.value === (localFilters.brand && localFilters.brand[0])) || null}
+                  onChange={(event, newValue) => {
+                    if (newValue) {
+                      setLocalFilters(prev => ({ ...prev, brand: [newValue.value] }));
+                      onFilterChange({ ...localFilters, brand: [newValue.value] });
+                    } else {
+                      const newFilters = { ...localFilters };
+                      delete newFilters.brand;
+                      setLocalFilters(newFilters);
+                      onFilterChange(newFilters);
+                    }
+                  }}
+                  options={filterCounts.brands}
+                  getOptionLabel={(option) => `${option.label} (${option.count})`}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Marke suchen..."
+                      size="small"
                       sx={{
-                        m: 0,
-                        py: 0.25,
-                        px: 0.75,
-                        borderRadius: 0.5,
-                        '&:hover': { bgcolor: 'action.hover' },
-                        ...(isChecked && { bgcolor: 'primary.50' }),
+                        '& .MuiOutlinedInput-root': {
+                          fontSize: '0.8125rem',
+                        },
                       }}
                     />
-                  );
-                })}
+                  )}
+                  size="small"
+                  sx={{
+                    '& .MuiAutocomplete-input': {
+                      fontSize: '0.8125rem',
+                    },
+                  }}
+                />
               </Box>
-            </AccordionDetails>
-          </Accordion>
+
+              {/* Material Section */}
+              {filterCounts.materials.length > 0 && (
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', mb: 0.5 }}>
+                    Material
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {filterCounts.materials.slice(0, 8).map((material) => {
+                      const isSelected = (localFilters.material || []).includes(material.value);
+
+                      // Professional Icon mapping with Lucide icons
+                      const getMaterialIcon = (val: string) => {
+                        const valLower = val.toLowerCase();
+                        if (valLower.includes('metall') || valLower.includes('metal')) return Hammer;
+                        if (valLower.includes('holz') || valLower.includes('wood')) return TreePine;
+                        if (valLower.includes('kunststoff') || valLower.includes('plastic')) return Disc;
+                        if (valLower.includes('carbon') || valLower.includes('faser')) return Sparkles;
+                        if (valLower.includes('stoff') || valLower.includes('textil')) return Scissors;
+                        return Hammer;
+                      };
+
+                      const IconComponent = getMaterialIcon(material.value);
+
+                      return (
+                        <Chip
+                          key={material.value}
+                          icon={<IconComponent size={14} />}
+                          label={`${material.label} (${material.count})`}
+                          onClick={() => handleToggleFilter('material', material.value)}
+                          deleteIcon={isSelected ? <Check size={14} /> : undefined}
+                          onDelete={isSelected ? () => handleToggleFilter('material', material.value) : undefined}
+                          size="small"
+                          sx={{
+                            bgcolor: isSelected ? 'success.main' : 'grey.200',
+                            color: isSelected ? 'white' : 'text.primary',
+                            fontWeight: 500,
+                            fontSize: '0.75rem',
+                            height: '26px',
+                            '& .MuiChip-label': {
+                              px: 1,
+                            },
+                            '& .MuiChip-icon': {
+                              color: isSelected ? 'white' : 'text.secondary',
+                            },
+                            '& .MuiChip-deleteIcon': {
+                              color: 'white',
+                            },
+                            '&:hover': {
+                              bgcolor: isSelected ? 'success.dark' : 'grey.300',
+                            },
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
+                </Box>
+              )}
+
+              {/* Distance/Radius Section */}
+              <Box sx={{ mb: 1.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+                    Umkreis
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', color: 'primary.main' }}>
+                    {localFilters.radius || 50} km
+                  </Typography>
+                </Box>
+                <Box sx={{ px: 1.5 }}>
+                  <Slider
+                    value={localFilters.radius || 50}
+                    onChange={(event: Event, newValue: number | number[]) => {
+                      const radius = newValue as number;
+                      setLocalFilters(prev => ({ ...prev, radius }));
+                      // Apply with debouncing
+                      if (countDebounceTimeout) {
+                        clearTimeout(countDebounceTimeout);
+                      }
+                      const timeout = setTimeout(() => {
+                        onFilterChange({ ...localFilters, radius });
+                      }, 500);
+                      setCountDebounceTimeout(timeout);
+                    }}
+                    valueLabelDisplay="off"
+                    min={5}
+                    max={500}
+                    step={5}
+                    valueLabelFormat={(value) => `${value} km`}
+                    sx={{
+                      width: 'calc(100% - 0px)',
+                      '& .MuiSlider-track': {
+                        bgcolor: 'primary.main',
+                      },
+                      '& .MuiSlider-rail': {
+                        bgcolor: 'grey.300',
+                      },
+                      '& .MuiSlider-thumb': {
+                        bgcolor: 'white',
+                        border: '2px solid',
+                        borderColor: 'primary.main',
+                        boxShadow: 2,
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
+            </>
+          )}
         </Box>
 
-        {/* Footer Actions */}
-        <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', gap: 0.75 }}>
-          <Button
-            variant="outlined"
-            fullWidth
-            startIcon={<RotateCcw size={14} />}
-            onClick={handleResetFilters}
-            disabled={activeCount === 0}
-            size="small"
-            sx={{ fontSize: '0.8125rem', py: 0.75 }}
-          >
-            Reset
-          </Button>
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={handleApplyFilters}
-            size="small"
-            sx={{ fontSize: '0.8125rem', py: 0.75 }}
-          >
-            Anzeigen ({totalItems})
-          </Button>
+        {/* Footer with Buttons */}
+        <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={handleResetFilters}
+              sx={{
+                flex: '0 0 auto',
+                px: 2,
+                py: 1,
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: 2,
+                borderColor: 'divider',
+                color: 'text.secondary',
+                '&:hover': {
+                  borderColor: 'text.secondary',
+                  bgcolor: 'action.hover',
+                },
+              }}
+            >
+              Reset
+            </Button>
+            <Button
+              variant="contained"
+              size="medium"
+              onClick={onClose}
+              disabled={filteredItemCount === 0}
+              sx={{
+                flex: 1,
+                bgcolor: filteredItemCount === 0 ? 'action.disabledBackground' : 'primary.main',
+                color: filteredItemCount === 0 ? 'action.disabled' : 'white',
+                py: 1,
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: 2,
+                '&:hover': {
+                  bgcolor: filteredItemCount === 0 ? 'action.disabledBackground' : 'primary.dark',
+                },
+              }}
+            >
+              {filteredItemCount === 0
+                ? 'Keine Ergebnisse'
+                : filteredItemCount !== undefined && filteredItemCount !== totalItems
+                ? `Anzeigen (${filteredItemCount})`
+                : 'Anzeigen'}
+            </Button>
+          </Box>
+          {filteredItemCount === 0 && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.75, fontSize: '0.7rem' }}>
+              Filter zurücksetzen
+            </Typography>
+          )}
         </Box>
       </Box>
     </Drawer>
@@ -309,16 +757,19 @@ export const SelectedFilters = ({
     }
   }
 
-  // Condition
-  if (filters.condition) {
-    filters.condition.forEach(val => {
-      filterChips.push({
-        key: 'condition',
-        label: getConditionLabel(String(val)),
-        value: val,
+  // All other filters
+  Object.entries(filters).forEach(([key, values]) => {
+    if (key !== 'priceRange' && Array.isArray(values)) {
+      values.forEach(val => {
+        const label = key === 'condition' ? getConditionLabel(String(val)) : String(val);
+        filterChips.push({
+          key,
+          label,
+          value: val,
+        });
       });
-    });
-  }
+    }
+  });
 
   if (filterChips.length === 0) {
     return null;

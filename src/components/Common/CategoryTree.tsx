@@ -10,6 +10,8 @@ import {
   CircularProgress,
   Alert,
   Paper,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -33,6 +35,9 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
   showOnlyWithItems = false,
   onCategoryClick,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,7 +217,7 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
     });
   };
 
-  const renderCategory = (category: CategoryWithChildren, depth: number = 0): React.ReactNode => {
+  const renderCategory = (category: CategoryWithChildren, depth: number = 0, isFirstInLevel: boolean = false): React.ReactNode => {
     if (!shouldShowCategory(category)) return null;
 
     const name = getCategoryName(category);
@@ -230,7 +235,22 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
     };
 
     return (
-      <Box key={category.id}>
+      <Box
+        key={category.id}
+        sx={{
+          // Add separator between main categories (level 1)
+          ...(depth === 0 && !isFirstInLevel && {
+            borderTop: '1px solid rgba(0, 0, 0, 0.06)',
+            mt: 1,
+            pt: 1,
+            // On mobile, extend separator to container edges
+            ...(isMobile && {
+              mx: -2,
+              px: 2,
+            })
+          })
+        }}
+      >
         <Accordion
           expanded={isExpanded}
           onChange={hasChildren ? () => handleToggle(category.id) : undefined}
@@ -341,7 +361,7 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
           {hasChildren && (
             <AccordionDetails sx={{ p: 0 }}>
               <Box>
-                {category.children!.map(child => renderCategory(child, depth + 1))}
+                {category.children!.map((child, index) => renderCategory(child, depth + 1, index === 0))}
               </Box>
             </AccordionDetails>
           )}
@@ -376,7 +396,7 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
 
   return (
     <Box>
-      {categories.map(category => renderCategory(category, 0))}
+      {categories.map((category, index) => renderCategory(category, 0, index === 0))}
     </Box>
   );
 };

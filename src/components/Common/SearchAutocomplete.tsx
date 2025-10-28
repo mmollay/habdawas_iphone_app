@@ -12,7 +12,7 @@ import {
   IconButton,
   CircularProgress,
 } from '@mui/material';
-import { Search, X, TrendingUp, Tag, Package } from 'lucide-react';
+import { Search, X, TrendingUp, Tag, Package, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface Suggestion {
@@ -27,6 +27,7 @@ interface SearchAutocompleteProps {
   onSearch?: (value: string, type?: string) => void;
   placeholder?: string;
   fullWidth?: boolean;
+  onFilterClick?: () => void;
 }
 
 export const SearchAutocomplete = ({
@@ -35,6 +36,7 @@ export const SearchAutocomplete = ({
   onSearch,
   placeholder = 'Suche nach Produkten...',
   fullWidth = false,
+  onFilterClick,
 }: SearchAutocompleteProps) => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -69,7 +71,7 @@ export const SearchAutocomplete = ({
 
         if (error) throw error;
         setSuggestions(data || []);
-        setShowSuggestions(true);
+        setShowSuggestions(data && data.length > 0);
       } catch (error) {
         console.error('Error fetching suggestions:', error);
         setSuggestions([]);

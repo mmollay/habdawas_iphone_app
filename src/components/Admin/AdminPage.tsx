@@ -21,10 +21,11 @@ import { AISettings } from './AISettings';
 import { NewsletterManagement } from './NewsletterManagement';
 import { EmailHeaderFooterManager } from './EmailHeaderFooterManager';
 import { EmailTemplateManager } from './EmailTemplateManager';
+import { DeveloperSettings } from './DeveloperSettings';
 import { Header } from '../Layout/Header';
 import { Footer } from '../Layout/Footer';
 
-type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'newsletter' | 'email-templates';
+type AdminSection = 'users' | 'roles' | 'tasks' | 'credits' | 'ai' | 'newsletter' | 'email-templates' | 'developer';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -101,6 +102,8 @@ const AdminPage = () => {
             </Box>
           </Box>
         );
+      case 'developer':
+        return <DeveloperSettings />;
       default:
         return <UserManagementTab />;
     }
@@ -122,6 +125,8 @@ const AdminPage = () => {
         return 'Newsletter-Verwaltung';
       case 'email-templates':
         return 'Email-Templates';
+      case 'developer':
+        return 'Entwickler-Modus';
       default:
         return 'Admin-Bereich';
     }
