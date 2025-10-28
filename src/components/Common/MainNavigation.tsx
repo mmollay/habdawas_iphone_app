@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Box, IconButton, Tabs, Tab, Chip, useMediaQuery, useTheme, Select, MenuItem } from '@mui/material';
-import { FolderTree, Globe, User, Heart, Coins } from 'lucide-react';
+import { FolderTree, Globe, User, Heart, Coins, Car, Home, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../../hooks/useCategories';
 import { useCommunityStats } from '../../hooks/useCommunityStats';
 import { getCategoryName } from '../../utils/categories';
 import { getCategoryIconBySlug } from '../../utils/categoryIcons';
 import { useFavoritesContext } from '../../contexts/FavoritesContext';
+import { SPECIAL_CATEGORIES } from '../../types/special-categories';
 
 interface MainNavigationProps {
   // Tab selection
@@ -285,6 +286,34 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                         <span>Alle</span>
                       </Box>
                     </MenuItem>
+                    {/* Big 3 in Desktop Dropdown */}
+                    {SPECIAL_CATEGORIES.map((specialCat) => {
+                      const IconComponent = specialCat.icon === 'Car' ? Car : specialCat.icon === 'Home' ? Home : Briefcase;
+                      const count = getCategoryCount(specialCat.id);
+                      return (
+                        <MenuItem
+                          key={specialCat.id}
+                          onClick={() => navigate(specialCat.route)}
+                          sx={{
+                            borderLeft: '3px solid',
+                            borderColor: 'primary.main',
+                            bgcolor: 'rgba(25, 118, 210, 0.04)',
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <IconComponent size={16} />
+                              <span style={{ fontWeight: 600 }}>{specialCat.label}</span>
+                            </Box>
+                            {count > 0 && (
+                              <span style={{ opacity: 0.8, fontSize: '0.875rem', fontWeight: 700, color: '#1976d2' }}>
+                                {count}
+                              </span>
+                            )}
+                          </Box>
+                        </MenuItem>
+                      );
+                    })}
                     {displayCategories.map(category => (
                       <MenuItem
                         key={category.id}
@@ -335,6 +364,58 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
               })
             }}
           />
+          {/* Big 3 Special Categories - Desktop Only */}
+          {!isMobile && SPECIAL_CATEGORIES.map((specialCat) => {
+            const isActive = location.pathname === specialCat.route;
+            const IconComponent = specialCat.icon === 'Car' ? Car : specialCat.icon === 'Home' ? Home : Briefcase;
+            const categoryCount = getCategoryCount(specialCat.id);
+
+            return (
+              <Tab
+                key={specialCat.id}
+                icon={<IconComponent size={16} />}
+                iconPosition="start"
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <span style={{ fontWeight: 500 }}>{specialCat.label}</span>
+                    {categoryCount > 0 && (
+                      <Box
+                        sx={{
+                          bgcolor: isActive ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.08)',
+                          color: isActive ? 'white' : 'text.secondary',
+                          borderRadius: 2.5,
+                          px: 0.75,
+                          py: 0.125,
+                          fontSize: '0.6875rem',
+                          fontWeight: 600,
+                          minWidth: 20,
+                          height: 18,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1,
+                        }}
+                      >
+                        {categoryCount}
+                      </Box>
+                    )}
+                  </Box>
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(specialCat.route);
+                }}
+                sx={{
+                  ...(isActive && {
+                    color: 'primary.main',
+                    fontWeight: 700,
+                    borderBottom: '3px solid',
+                    borderColor: 'primary.main',
+                  })
+                }}
+              />
+            );
+          })}
           {/* Mobile: Alle/Filter Tab with Dropdown */}
           {isMobile && (
             <Tab
@@ -397,6 +478,34 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({
                         <span>Alle</span>
                       </Box>
                     </MenuItem>
+                    {/* Big 3 in Mobile Dropdown */}
+                    {SPECIAL_CATEGORIES.map((specialCat) => {
+                      const IconComponent = specialCat.icon === 'Car' ? Car : specialCat.icon === 'Home' ? Home : Briefcase;
+                      const count = getCategoryCount(specialCat.id);
+                      return (
+                        <MenuItem
+                          key={specialCat.id}
+                          onClick={() => navigate(specialCat.route)}
+                          sx={{
+                            borderLeft: '3px solid',
+                            borderColor: 'primary.main',
+                            bgcolor: 'rgba(25, 118, 210, 0.04)',
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2, alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <IconComponent size={16} />
+                              <span style={{ fontWeight: 600 }}>{specialCat.label}</span>
+                            </Box>
+                            {count > 0 && (
+                              <span style={{ opacity: 0.8, fontSize: '0.75rem', fontWeight: 700, color: '#1976d2' }}>
+                                {count}
+                              </span>
+                            )}
+                          </Box>
+                        </MenuItem>
+                      );
+                    })}
                     {displayCategories.map(category => (
                       <MenuItem
                         key={category.id}

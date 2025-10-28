@@ -76,6 +76,9 @@ const AdminPage = lazy(() => import('./components/Admin/AdminPage'));
 const ResetPasswordPage = lazy(() => import('./components/Auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const OAuthCallbackPage = lazy(() => import('./components/Auth/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
 const CategoryTreePage = lazy(() => import('./components/CategoryTreePage'));
+const VehiclesPage = lazy(() => import('./pages/VehiclesPage').then(m => ({ default: m.VehiclesPage })));
+const PropertiesPage = lazy(() => import('./pages/PropertiesPage').then(m => ({ default: m.PropertiesPage })));
+const JobsPage = lazy(() => import('./pages/JobsPage').then(m => ({ default: m.JobsPage })));
 
 const theme = createTheme({
   palette: {
@@ -940,16 +943,6 @@ const MainContent = () => {
       search: null,
       sort: null
     });
-  };
-
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (selectedCategories.length > 0) count += selectedCategories.length;
-    if (priceRange[0] > 0 || priceRange[1] < 10000) count += 1;
-    if (activeSearchQuery) count += 1;
-    if (sortBy !== 'newest') count += 1;
-    if (attributeFilters.length > 0) count += attributeFilters.length;
-    return count;
   };
 
   const generateShareableURL = () => {
@@ -2151,6 +2144,9 @@ function App() {
                       <Route path="/tokens/success" element={<TokenSuccessPage />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/categories" element={<CategoryTreePage />} />
+                      <Route path="/fahrzeuge" element={<VehiclesPage />} />
+                      <Route path="/immobilien" element={<PropertiesPage />} />
+                      <Route path="/jobs" element={<JobsPage />} />
                       <Route path="/auth/callback" element={<OAuthCallbackPage />} />
                       <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
                       <Route path="*" element={<MainContent />} />
