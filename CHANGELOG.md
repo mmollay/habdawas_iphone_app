@@ -7,12 +7,22 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ## [1.16.0] - 2025-10-28
 
 ### Added
-- 🚀 **Big 3 Spezial-Kategorien: Willhaben-Modell implementiert**
+- 🚀 **Big 3 Spezial-Kategorien: Willhaben-Modell VOLLSTÄNDIG implementiert**
   - **Neue dedizierte Routen**: `/fahrzeuge`, `/immobilien`, `/jobs`
   - **special-categories.ts**: Zentrale Typ-Definition mit SpecialCategory Interface
-  - **VehiclesPage.tsx**: Placeholder-Seite für Fahrzeuge (Car Icon)
-  - **PropertiesPage.tsx**: Placeholder-Seite für Immobilien (Home Icon)
-  - **JobsPage.tsx**: Placeholder-Seite für Jobs & Karriere (Briefcase Icon)
+  - **VehiclesPage.tsx**: Vollständige Listing-Seite für Fahrzeuge mit Datenladung
+    - ItemGrid/ItemList/ItemGallery Integration (bestehende Components wiederverwendet)
+    - Supabase RPC `search_items_with_attributes` für hierarchisches Filtern
+    - View-Mode Toggle (Grid/List/Gallery) mit localStorage Persistenz
+    - Loading States & Empty States mit Car Icon & freundlichen Meldungen
+    - Toolbar mit Item-Count & Reload-Button
+    - Responsive Design (Mobile & Desktop optimiert)
+  - **PropertiesPage.tsx**: Vollständige Listing-Seite für Immobilien
+    - Gleiche Architektur wie VehiclesPage (Home Icon)
+    - Empty State: "Noch keine Immobilien verfügbar"
+  - **JobsPage.tsx**: Vollständige Listing-Seite für Jobs & Karriere
+    - Gleiche Architektur wie VehiclesPage (Briefcase Icon)
+    - Empty State: "Noch keine Jobs verfügbar"
   - **App.tsx**: Lazy-Loading für Big 3 Pages mit React Router Routes
   - **MainNavigation.tsx**: Big 3 Tabs prominent integriert (Desktop & Mobile)
   - Desktop: Big 3 als separate Tabs mit Icons, Labels & Count-Badges
@@ -21,16 +31,25 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Count-Badges zeigen Anzahl der Items pro Kategorie
   - Active-State-Highlighting für aktuelle Big 3 Seite
   - Lucide-React Icons: Car, Home, Briefcase
-  - Code-Splitting: Eigene Bundles für jede Big 3 Page (~0.34 kB)
+  - Code-Splitting: Eigene Bundles für jede Big 3 Page
+    - JobsPage: ~3.62 kB
+    - VehiclesPage: ~3.65 kB
+    - PropertiesPage: ~3.66 kB
   - DB-Integration: Erkennt Kategorien mit `is_special_category = true`
   - SPECIAL_CATEGORIES Array mit fixed UUIDs (Vehicle, Property, Job Types)
   - Vollständig responsive Design (Desktop Tabs, Mobile Dropdown)
+  - Alle Seiten getestet mit Playwright MCP:
+    - VehiclesPage: ✅ 3 VW Polo Items korrekt angezeigt
+    - PropertiesPage: ✅ Empty State korrekt
+    - JobsPage: ✅ Empty State korrekt
   - Änderungen nach habdawas synchronisiert
 
 ### Changed
 - 📱 **Navigation-Architektur erweitert**: Big 3 zwischen "Kategorien" und "Meine" Tab
 - 🎨 **Tab-Reihenfolge**: Kategorien → Fahrzeuge → Immobilien → Jobs → Alle → Meine → Favoriten
 - 🔧 **Build-Output**: Drei neue Code-Split Chunks für Big 3 Pages
+- 🔄 **Component Reuse**: Alle Big 3 Pages verwenden bestehende Item-Components
+- 🎯 **Default View Mode**: Grid als Standard (stabiler als Gallery)
 
 ## [1.15.36] - 2025-10-28
 
