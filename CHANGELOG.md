@@ -4,6 +4,21 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.34] - 2025-10-28
+
+### Added
+- 🎨 **Filter: Professionelle Material-Icons & Farben-Filter**
+  - **AdvancedFilterSidebar.tsx**: Umfassendes Material-Icon-Mapping mit 12 Lucide-Icons
+  - Material-Icons: Holz (TreePine), Metall (Hammer), Kunststoff (ShoppingBag), Stoff (Scissors), Leder (Feather), Glas/Keramik (Wine), Stein (Mountain), Papier (FileText), Carbon (Hexagon), Naturfasern (Leaf), Gummi (CircleDot), Sonstige (Package)
+  - **Farben-Filter neu**: Visuelle Farbchips mit echten Farb-Dots (16x16px Kreise)
+  - 30+ Farben unterstützt: Schwarz, Grau, Weiß, Rot, Rosa, Orange, Gelb, Gold, Beige, Grün, Oliv, Mint, Türkis, Blau, Navy, Lila, Violett, Braun, Silber, Bunt/Mehrfarbig
+  - Farbchips zeigen tatsächliche Farbe als rundes Icon vor dem Label
+  - Material-Filter: Unterstützt Metall-Varianten (Stahl, Aluminium, Eisen, Bronze)
+  - Farb-Filter funktioniert parallel zu allen anderen Filtern
+  - Perfekte Integration in bestehendes Filter-System mit Item-Counts
+  - Getestet mit Playwright: Filter funktioniert einwandfrei
+  - Änderungen nach iphone_app synchronisiert
+
 ## [1.15.33] - 2025-10-28
 
 ### Fixed

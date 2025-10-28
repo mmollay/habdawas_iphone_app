@@ -14,7 +14,25 @@ import {
   Autocomplete,
   TextField,
 } from '@mui/material';
-import { X, SlidersHorizontal, Check, Hammer, Scissors, TreePine, Disc, Sparkles } from 'lucide-react';
+import {
+  X,
+  SlidersHorizontal,
+  Check,
+  Hammer,
+  Scissors,
+  TreePine,
+  Disc,
+  Sparkles,
+  ShoppingBag,
+  Feather,
+  Wine,
+  Package,
+  Mountain,
+  FileText,
+  Hexagon,
+  Leaf,
+  CircleDot
+} from 'lucide-react';
 import { getConditionLabel } from '../../utils/translations';
 import { supabase } from '../../lib/supabase';
 
@@ -573,15 +591,62 @@ export const AdvancedFilterSidebar = ({
                     {filterCounts.materials.slice(0, 8).map((material) => {
                       const isSelected = (localFilters.material || []).includes(material.value);
 
-                      // Professional Icon mapping with Lucide icons
+                      // Comprehensive Material Icon Mapping with Lucide Icons
                       const getMaterialIcon = (val: string) => {
                         const valLower = val.toLowerCase();
-                        if (valLower.includes('metall') || valLower.includes('metal')) return Hammer;
+
+                        // Holz / Wood
                         if (valLower.includes('holz') || valLower.includes('wood')) return TreePine;
-                        if (valLower.includes('kunststoff') || valLower.includes('plastic')) return Disc;
-                        if (valLower.includes('carbon') || valLower.includes('faser')) return Sparkles;
-                        if (valLower.includes('stoff') || valLower.includes('textil')) return Scissors;
-                        return Hammer;
+
+                        // Metall / Metal
+                        if (valLower.includes('metall') || valLower.includes('metal') ||
+                            valLower.includes('stahl') || valLower.includes('aluminium') ||
+                            valLower.includes('eisen') || valLower.includes('bronze')) return Hammer;
+
+                        // Kunststoff / Plastic
+                        if (valLower.includes('kunststoff') || valLower.includes('plastic') ||
+                            valLower.includes('plastik')) return ShoppingBag;
+
+                        // Stoff / Textil / Fabric
+                        if (valLower.includes('stoff') || valLower.includes('textil') ||
+                            valLower.includes('fabric') || valLower.includes('baumwolle') ||
+                            valLower.includes('wolle')) return Scissors;
+
+                        // Leder / Leather
+                        if (valLower.includes('leder') || valLower.includes('leather')) return Feather;
+
+                        // Glas / Glass
+                        if (valLower.includes('glas') || valLower.includes('glass')) return Wine;
+
+                        // Keramik / Ceramic
+                        if (valLower.includes('keramik') || valLower.includes('ceramic') ||
+                            valLower.includes('porzellan')) return Wine;
+
+                        // Stein / Stone
+                        if (valLower.includes('stein') || valLower.includes('stone') ||
+                            valLower.includes('marmor') || valLower.includes('granit')) return Mountain;
+
+                        // Papier / Paper / Karton
+                        if (valLower.includes('papier') || valLower.includes('paper') ||
+                            valLower.includes('karton') || valLower.includes('pappe')) return FileText;
+
+                        // Carbon / Carbonfaser
+                        if (valLower.includes('carbon') || valLower.includes('kohlefaser')) return Hexagon;
+
+                        // Naturfasern / Natural Fibers
+                        if (valLower.includes('naturfaser') || valLower.includes('jute') ||
+                            valLower.includes('sisal') || valLower.includes('bambus')) return Leaf;
+
+                        // Gummi / Rubber
+                        if (valLower.includes('gummi') || valLower.includes('rubber') ||
+                            valLower.includes('silikon')) return CircleDot;
+
+                        // Sonstige / Diverse / Mixed
+                        if (valLower.includes('gemischt') || valLower.includes('mix') ||
+                            valLower.includes('diverse') || valLower.includes('sonstige')) return Package;
+
+                        // Default fallback
+                        return Package;
                       };
 
                       const IconComponent = getMaterialIcon(material.value);
@@ -606,6 +671,114 @@ export const AdvancedFilterSidebar = ({
                             },
                             '& .MuiChip-icon': {
                               color: isSelected ? 'white' : 'text.secondary',
+                            },
+                            '& .MuiChip-deleteIcon': {
+                              color: 'white',
+                            },
+                            '&:hover': {
+                              bgcolor: isSelected ? 'success.dark' : 'grey.300',
+                            },
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
+                </Box>
+              )}
+
+              {/* Color Section with Visual Color Chips */}
+              {filterCounts.colors.length > 0 && (
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', mb: 0.5 }}>
+                    Farbe
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {filterCounts.colors.slice(0, 12).map((color) => {
+                      const isSelected = (localFilters.colors || []).includes(color.value);
+
+                      // Professional Color Mapping with HEX values
+                      const getColorHex = (val: string) => {
+                        const valLower = val.toLowerCase();
+
+                        // Rottöne / Red shades
+                        if (valLower.includes('rot') || valLower.includes('red')) return '#ef4444';
+                        if (valLower.includes('rosa') || valLower.includes('pink')) return '#ec4899';
+                        if (valLower.includes('bordeaux') || valLower.includes('burgund')) return '#991b1b';
+
+                        // Orangetöne / Orange shades
+                        if (valLower.includes('orange')) return '#f97316';
+                        if (valLower.includes('lachs') || valLower.includes('salmon')) return '#fb923c';
+
+                        // Gelbtöne / Yellow shades
+                        if (valLower.includes('gelb') || valLower.includes('yellow')) return '#eab308';
+                        if (valLower.includes('gold') || valLower.includes('golden')) return '#ca8a04';
+                        if (valLower.includes('beige') || valLower.includes('creme') || valLower.includes('cream')) return '#d4b896';
+
+                        // Grüntöne / Green shades
+                        if (valLower.includes('grün') || valLower.includes('green')) return '#22c55e';
+                        if (valLower.includes('oliv') || valLower.includes('olive')) return '#84cc16';
+                        if (valLower.includes('mint')) return '#10b981';
+                        if (valLower.includes('türkis') || valLower.includes('turquoise') || valLower.includes('cyan')) return '#06b6d4';
+
+                        // Blautöne / Blue shades
+                        if (valLower.includes('blau') || valLower.includes('blue')) return '#3b82f6';
+                        if (valLower.includes('hellblau') || valLower.includes('light blue') || valLower.includes('himmelblau')) return '#60a5fa';
+                        if (valLower.includes('navy') || valLower.includes('dunkelblau') || valLower.includes('dark blue')) return '#1e3a8a';
+
+                        // Violett-/Lilatöne / Purple shades
+                        if (valLower.includes('lila') || valLower.includes('violett') || valLower.includes('purple')) return '#a855f7';
+                        if (valLower.includes('flieder') || valLower.includes('lavender')) return '#c084fc';
+                        if (valLower.includes('magenta')) return '#d946ef';
+
+                        // Brauntöne / Brown shades
+                        if (valLower.includes('braun') || valLower.includes('brown')) return '#92400e';
+                        if (valLower.includes('tan') || valLower.includes('khaki')) return '#b45309';
+
+                        // Neutral / Grautöne / Grayscale
+                        if (valLower.includes('schwarz') || valLower.includes('black')) return '#1f2937';
+                        if (valLower.includes('weiss') || valLower.includes('weiß') || valLower.includes('white')) return '#f9fafb';
+                        if (valLower.includes('grau') || valLower.includes('gray') || valLower.includes('grey')) return '#6b7280';
+                        if (valLower.includes('silber') || valLower.includes('silver')) return '#d1d5db';
+
+                        // Mehrfarbig / Multicolor
+                        if (valLower.includes('bunt') || valLower.includes('multi') || valLower.includes('gemischt')) return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+
+                        // Default fallback
+                        return '#9ca3af';
+                      };
+
+                      const colorHex = getColorHex(color.value);
+                      const isMulticolor = colorHex.includes('gradient');
+
+                      return (
+                        <Chip
+                          key={color.value}
+                          icon={
+                            <Box
+                              sx={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: '50%',
+                                background: colorHex,
+                                border: '2px solid',
+                                borderColor: isSelected ? 'white' : color.value.toLowerCase().includes('weiß') || color.value.toLowerCase().includes('weiss') ? '#e5e7eb' : 'transparent',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                              }}
+                            />
+                          }
+                          label={`${color.label} (${color.count})`}
+                          onClick={() => handleToggleFilter('colors', color.value)}
+                          deleteIcon={isSelected ? <Check size={14} /> : undefined}
+                          onDelete={isSelected ? () => handleToggleFilter('colors', color.value) : undefined}
+                          size="small"
+                          sx={{
+                            bgcolor: isSelected ? 'success.main' : 'grey.200',
+                            color: isSelected ? 'white' : 'text.primary',
+                            fontWeight: 500,
+                            fontSize: '0.75rem',
+                            height: '26px',
+                            '& .MuiChip-label': {
+                              px: 1,
                             },
                             '& .MuiChip-deleteIcon': {
                               color: 'white',
