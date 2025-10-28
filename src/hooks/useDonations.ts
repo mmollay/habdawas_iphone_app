@@ -34,11 +34,10 @@ export const useDonations = (options: UseDonationsOptions = {}) => {
       setLoading(true);
       setError(null);
 
-      // Build select statement - DISABLED: FK relationship not configured in database
-      // const selectStatement = includeUser
-      //   ? '*, user:profiles!user_id(id, full_name, email)'
-      //   : '*';
-      const selectStatement = '*';
+      // Build select statement with user profile if requested
+      const selectStatement = includeUser
+        ? '*, user:profiles(id, full_name, email)'
+        : '*';
 
       let query = supabase
         .from('donations')

@@ -35,16 +35,15 @@ export const useCommunityPotTransactions = (options: UseTransactionsOptions = {}
       setLoading(true);
       setError(null);
 
-      // Build select statement - DISABLED: FK relationships not configured in database
-      // let selectParts = ['*'];
-      // if (includeUser) {
-      //   selectParts.push('user:profiles!user_id(id, full_name, email)');
-      // }
-      // if (includeItem) {
-      //   selectParts.push('item:items!item_id(id, title)');
-      // }
-      // const selectStatement = selectParts.join(', ');
-      const selectStatement = '*';
+      // Build select statement with relations if requested
+      let selectParts = ['*'];
+      if (includeUser) {
+        selectParts.push('user:profiles(id, full_name, email)');
+      }
+      if (includeItem) {
+        selectParts.push('item:items(id, title)');
+      }
+      const selectStatement = selectParts.join(', ');
 
       let query = supabase
         .from('community_pot_transactions')

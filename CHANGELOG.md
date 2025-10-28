@@ -4,6 +4,24 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.33] - 2025-10-28
+
+### Fixed
+- 🐛 **Console-Fehler behoben: Supabase Foreign Key Queries**
+  - **useDonations.ts**: Foreign Key Join zu `profiles` aktiviert
+  - **useCommunityPotTransactions.ts**: Foreign Key Joins zu `profiles` und `items` aktiviert
+  - Query-Syntax korrigiert: `user:profiles(id, full_name, email)` statt `user:profiles!user_id(...)`
+  - 400 Bad Request Fehler behoben: "Could not find a relationship" - Beziehungen waren vorhanden, aber falsch abgerufen
+  - Alle Supabase-Console-Fehler eliminiert
+  - Änderungen nach iphone_app synchronisiert
+
+### Removed
+- 🧹 **System-Cleanup: Testfiles und Screenshots entfernt**
+  - **/.playwright-mcp/**: 382+ Screenshots in beiden Projekten gelöscht
+  - **/src/components/Test/**: Alle Test-Komponenten entfernt (AdvancedFilterSidebarTest.tsx, FilterCountsTest.tsx)
+  - **/tests/**: Playwright Test-Specs entfernt (vehicle-attribute-filtering.spec.ts)
+  - Mehr Ordnung im System, reduzierte Projektgröße
+
 ## [1.15.32] - 2025-10-27
 
 ### Fixed
@@ -18,6 +36,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
   - Proportionen optimiert für professionelles, ausgewogenes Design
   - Keine Validierungs-Fehler mehr - sauberer HTML-Code
   - Änderungen nach habdawas kopiert
+  - test
 
 ## [1.15.31] - 2025-10-27
 
