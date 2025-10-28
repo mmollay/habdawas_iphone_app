@@ -29,7 +29,7 @@ import {
   Tabs,
   Badge,
 } from '@mui/material';
-import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, ChevronRight, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2, FolderTree } from 'lucide-react';
+import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, ChevronRight, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2, FolderTree, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { HandPreferenceProvider, useHandPreference } from './contexts/HandPreferenceContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
@@ -802,6 +802,34 @@ const MainContent = () => {
     };
     return iconMap[slug] || <Globe size={16} />;
   }, [categories]);
+
+  // Count active filters
+  const getActiveFilterCount = useCallback(() => {
+    let count = 0;
+
+    // Check price range filter
+    if (priceRange[0] > 0 || priceRange[1] < 10000) {
+      count++;
+    }
+
+    // Count all selected filters
+    Object.entries(selectedFilters).forEach(([key, values]) => {
+      if (key !== 'priceRange' && Array.isArray(values) && values.length > 0) {
+        count += values.length;
+      }
+    });
+
+    return count;
+  }, [priceRange, selectedFilters]);
+
+  // Reset all filters
+  const handleResetFilters = useCallback(() => {
+    setSelectedFilters({});
+    setAttributeFilters([]);
+    setPriceRange([0, 10000]);
+    updateURL({ minPrice: null, maxPrice: null, filters: null });
+    loadItems(false, true);
+  }, []);
 
   // Handlers for AdvancedFilterSidebar
   const handleFilterClose = useCallback(() => {
@@ -1662,6 +1690,70 @@ const MainContent = () => {
                   >
                     <Share2 size={isMobile ? 18 : 22} />
                   </IconButton>
+
+                  {/* Filter Button mit Badge */}
+                  <Badge
+                    badgeContent={getActiveFilterCount()}
+                    color="primary"
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        fontSize: '0.625rem',
+                        height: 16,
+                        minWidth: 16,
+                        padding: '0 4px',
+                        fontWeight: 700,
+                      }
+                    }}
+                  >
+                    <IconButton
+                      onClick={() => setFilterOpen(true)}
+                      sx={{
+                        borderRadius: 5,
+                        border: '1.5px solid',
+                        borderColor: getActiveFilterCount() > 0 ? 'primary.main' : 'rgba(0, 0, 0, 0.12)',
+                        color: getActiveFilterCount() > 0 ? 'primary.main' : 'text.primary',
+                        bgcolor: getActiveFilterCount() > 0 ? 'rgba(25, 118, 210, 0.08)' : 'background.paper',
+                        p: isMobile ? 0.5 : '7px',
+                        minWidth: isMobile ? 36 : 40,
+                        height: isMobile ? 36 : 40,
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          bgcolor: 'rgba(25, 118, 210, 0.08)',
+                          border: '1.5px solid',
+                        }
+                      }}
+                      title="Filter"
+                      aria-label="Filter"
+                    >
+                      <SlidersHorizontal size={isMobile ? 18 : 22} />
+                    </IconButton>
+                  </Badge>
+
+                  {/* Reset Filter Button - nur anzeigen wenn Filter aktiv */}
+                  {getActiveFilterCount() > 0 && (
+                    <IconButton
+                      onClick={handleResetFilters}
+                      sx={{
+                        borderRadius: 5,
+                        border: '1.5px solid',
+                        borderColor: 'rgba(0, 0, 0, 0.12)',
+                        color: 'error.main',
+                        bgcolor: 'background.paper',
+                        p: isMobile ? 0.5 : '7px',
+                        minWidth: isMobile ? 36 : 40,
+                        height: isMobile ? 36 : 40,
+                        '&:hover': {
+                          borderColor: 'error.main',
+                          bgcolor: 'rgba(211, 47, 47, 0.08)',
+                          border: '1.5px solid',
+                        }
+                      }}
+                      title="Filter zurücksetzen"
+                      aria-label="Filter zurücksetzen"
+                    >
+                      <RotateCcw size={isMobile ? 18 : 22} />
+                    </IconButton>
+                  )}
                 </Box>
               </Box>
             )}

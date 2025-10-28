@@ -4,6 +4,20 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.36] - 2025-10-28
+
+### Added
+- ✨ **Filter: Badge-Anzeige & Reset-Button**
+  - **App.tsx**: Filter-Button zeigt nun Badge mit Anzahl aktiver Filter
+  - Badge erscheint hochgestellt am Filter-Button (SlidersHorizontal Icon)
+  - Filter-Button wird blau wenn Filter aktiv sind
+  - Neuer Reset-Button (RotateCcw Icon) erscheint nur bei aktiven Filtern
+  - Reset-Button setzt alle Filter auf einmal zurück
+  - `getActiveFilterCount()` Funktion zählt Preis- und Attributfilter
+  - `handleResetFilters()` resettet selectedFilters, attributeFilters, priceRange
+  - Funktioniert auf Mobile & Desktop
+  - Änderungen nach habdawas synchronisiert
+
 ## [1.15.35] - 2025-10-28
 
 ### Added
