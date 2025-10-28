@@ -75,8 +75,6 @@ const TokenSuccessPage = lazy(() => import('./components/Tokens/TokenSuccessPage
 const AdminPage = lazy(() => import('./components/Admin/AdminPage'));
 const ResetPasswordPage = lazy(() => import('./components/Auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const OAuthCallbackPage = lazy(() => import('./components/Auth/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
-const FilterCountsTest = lazy(() => import('./components/Test/FilterCountsTest').then(m => ({ default: m.FilterCountsTest })));
-const AdvancedFilterSidebarTest = lazy(() => import('./components/Test/AdvancedFilterSidebarTest').then(m => ({ default: m.AdvancedFilterSidebarTest })));
 const CategoryTreePage = lazy(() => import('./components/CategoryTreePage'));
 
 const theme = createTheme({
@@ -532,7 +530,7 @@ const MainContent = () => {
       }
 
       // Separate general filters (direct item columns) from attribute filters (item_attributes table)
-      const generalFilterKeys = ['brand', 'color', 'condition', 'material'];
+      const generalFilterKeys = ['brand', 'colors', 'condition', 'material', 'style'];
       const generalFilters = attributeFilters.filter(f => generalFilterKeys.includes(f.attributeKey));
       const realAttributeFilters = attributeFilters.filter(f => !generalFilterKeys.includes(f.attributeKey));
 
@@ -579,11 +577,11 @@ const MainContent = () => {
         const key = filter.attributeKey;
         const value = filter.value;
 
-        if (key === 'color') {
+        if (key === 'colors') {
           // colors is an array field, use overlaps operator for array matching
           // overlaps checks if arrays have any elements in common
           query = query.overlaps('colors', [value]);
-        } else if (key === 'brand' || key === 'condition' || key === 'material') {
+        } else if (key === 'brand' || key === 'condition' || key === 'material' || key === 'style') {
           // Direct column filters
           query = query.eq(key, value);
         }
@@ -1471,9 +1469,9 @@ const MainContent = () => {
                       borderColor: 'rgba(0, 0, 0, 0.12)',
                       color: 'text.primary',
                       bgcolor: 'background.paper',
-                      p: isMobile ? 0.5 : 1.25,
-                      minWidth: isMobile ? 32 : 'auto',
-                      height: isMobile ? 32 : 'auto',
+                      p: isMobile ? 0.5 : '7px',
+                      minWidth: isMobile ? 36 : 40,
+                      height: isMobile ? 36 : 40,
                       '&:hover': {
                         borderColor: 'primary.main',
                         bgcolor: 'rgba(25, 118, 210, 0.08)',
@@ -1481,7 +1479,7 @@ const MainContent = () => {
                       }
                     }}
                   >
-                    <ArrowUpDown size={isMobile ? 16 : 20} />
+                    <ArrowUpDown size={isMobile ? 18 : 22} />
                   </IconButton>
 
                   {!isMobile && (
@@ -1627,9 +1625,9 @@ const MainContent = () => {
                       borderColor: 'rgba(0, 0, 0, 0.12)',
                       color: 'text.primary',
                       bgcolor: 'background.paper',
-                      p: isMobile ? 0.5 : 1.25,
-                      minWidth: isMobile ? 32 : 'auto',
-                      height: isMobile ? 32 : 'auto',
+                      p: isMobile ? 0.5 : '7px',
+                      minWidth: isMobile ? 36 : 40,
+                      height: isMobile ? 36 : 40,
                       '&:hover': {
                         borderColor: 'primary.main',
                         bgcolor: 'rgba(25, 118, 210, 0.08)',
@@ -1639,7 +1637,7 @@ const MainContent = () => {
                     title="Aktualisieren"
                     aria-label="Aktualisieren"
                   >
-                    <RefreshCw size={isMobile ? 16 : 20} />
+                    <RefreshCw size={isMobile ? 18 : 22} />
                   </IconButton>
 
                   <IconButton
@@ -1650,9 +1648,9 @@ const MainContent = () => {
                       borderColor: 'rgba(0, 0, 0, 0.12)',
                       color: 'text.primary',
                       bgcolor: 'background.paper',
-                      p: isMobile ? 0.5 : 1.25,
-                      minWidth: isMobile ? 32 : 'auto',
-                      height: isMobile ? 32 : 'auto',
+                      p: isMobile ? 0.5 : '7px',
+                      minWidth: isMobile ? 36 : 40,
+                      height: isMobile ? 36 : 40,
                       '&:hover': {
                         borderColor: 'primary.main',
                         bgcolor: 'rgba(25, 118, 210, 0.08)',
@@ -1662,7 +1660,7 @@ const MainContent = () => {
                     title="Filter teilen"
                     aria-label="Filter teilen"
                   >
-                    <Share2 size={isMobile ? 16 : 20} />
+                    <Share2 size={isMobile ? 18 : 22} />
                   </IconButton>
                 </Box>
               </Box>
@@ -2061,8 +2059,6 @@ function App() {
                       <Route path="/tokens/success" element={<TokenSuccessPage />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/categories" element={<CategoryTreePage />} />
-                      <Route path="/test/filter-counts" element={<FilterCountsTest />} />
-                      <Route path="/test/filter-sidebar" element={<AdvancedFilterSidebarTest />} />
                       <Route path="/auth/callback" element={<OAuthCallbackPage />} />
                       <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
                       <Route path="*" element={<MainContent />} />

@@ -4,6 +4,25 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.35] - 2025-10-28
+
+### Added
+- 🎨 **Filter: Stil-Filter implementiert**
+  - **AdvancedFilterSidebar.tsx**: Neuer "Stil" (Style) Filter hinzugefügt
+  - Style-Filter mit Icon-Mapping für 9+ Stile: Modern (Sparkles), Klassisch (Crown), Vintage (Clock), Minimalist (Square), Industrial (Hammer), Skandinavisch (Home), Rustikal (TreePine), Elegant (Star), Sportlich (Zap)
+  - Database-Spalte `style` wird nun korrekt abgerufen und gefiltert
+  - **App.tsx**: `style` zu generalFilterKeys hinzugefügt
+  - Filter-Anwendung funktioniert parallel zu allen anderen Filtern
+  - Änderungen nach habdawas synchronisiert
+
+### Fixed
+- 📱 **Mobile UI: Button-Größen angepasst**
+  - **App.tsx**: Mobile Toolbar-Buttons (Sort, Reload, Share) von 32px auf 36px erhöht
+  - Icon-Größe in Mobile von 16px auf 18px erhöht
+  - Buttons passen nun perfekt zu den View-Selection-Buttons (ToggleButtonGroup)
+  - Bessere Touch-Targets für mobile Nutzung
+  - Änderungen nach habdawas synchronisiert
+
 ## [1.15.34] - 2025-10-28
 
 ### Added

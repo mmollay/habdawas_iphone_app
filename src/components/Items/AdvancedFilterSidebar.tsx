@@ -31,7 +31,14 @@ import {
   FileText,
   Hexagon,
   Leaf,
-  CircleDot
+  CircleDot,
+  Crown,
+  Clock,
+  Square,
+  Star,
+  Zap,
+  Home,
+  Tag
 } from 'lucide-react';
 import { getConditionLabel } from '../../utils/translations';
 import { supabase } from '../../lib/supabase';
@@ -62,6 +69,7 @@ interface FilterCounts {
   colors: FilterOption[];
   conditions: FilterOption[];
   materials: FilterOption[];
+  styles: FilterOption[];
   vehicleFuelTypes: FilterOption[];
   vehicleColors: FilterOption[];
 }
@@ -100,6 +108,7 @@ export const AdvancedFilterSidebar = ({
     colors: [],
     conditions: [],
     materials: [],
+    styles: [],
     vehicleFuelTypes: [],
     vehicleColors: [],
   });
@@ -184,6 +193,11 @@ export const AdvancedFilterSidebar = ({
           query = query.in('material', localFilters.material as string[]);
         }
 
+        // Apply style filter
+        if (localFilters.style && (localFilters.style as string[]).length > 0) {
+          query = query.in('style', localFilters.style as string[]);
+        }
+
         // Apply colors filter (array contains)
         if (localFilters.colors && (localFilters.colors as string[]).length > 0) {
           query = query.overlaps('colors', localFilters.colors as string[]);
@@ -232,7 +246,7 @@ export const AdvancedFilterSidebar = ({
         // Build query based on category only (not price, to prevent reload on price changes)
         let query = supabase
           .from('items')
-          .select('brand, colors, condition, material, vehicle_fuel_type, vehicle_color')
+          .select('brand, colors, condition, material, style, vehicle_fuel_type, vehicle_color')
           .eq('status', 'published');
 
         // Apply category filter if present
@@ -251,6 +265,7 @@ export const AdvancedFilterSidebar = ({
         const colorCounts: Record<string, number> = {};
         const conditionCounts: Record<string, number> = {};
         const materialCounts: Record<string, number> = {};
+        const styleCounts: Record<string, number> = {};
         const fuelTypeCounts: Record<string, number> = {};
         const vehicleColorCounts: Record<string, number> = {};
 
@@ -279,6 +294,11 @@ export const AdvancedFilterSidebar = ({
             materialCounts[item.material] = (materialCounts[item.material] || 0) + 1;
           }
 
+          // Style
+          if (item.style) {
+            styleCounts[item.style] = (styleCounts[item.style] || 0) + 1;
+          }
+
           // Vehicle-specific
           if (item.vehicle_fuel_type) {
             fuelTypeCounts[item.vehicle_fuel_type] = (fuelTypeCounts[item.vehicle_fuel_type] || 0) + 1;
@@ -303,6 +323,7 @@ export const AdvancedFilterSidebar = ({
             count: conditionCounts[c.value] || 0
           })),
           materials: toOptions(materialCounts),
+          styles: toOptions(styleCounts),
           vehicleFuelTypes: FUEL_TYPES.map(f => ({
             ...f,
             count: fuelTypeCounts[f.value] || 0
@@ -659,6 +680,70 @@ export const AdvancedFilterSidebar = ({
                           onClick={() => handleToggleFilter('material', material.value)}
                           deleteIcon={isSelected ? <Check size={14} /> : undefined}
                           onDelete={isSelected ? () => handleToggleFilter('material', material.value) : undefined}
+                          size="small"
+                          sx={{
+                            bgcolor: isSelected ? 'success.main' : 'grey.200',
+                            color: isSelected ? 'white' : 'text.primary',
+                            fontWeight: 500,
+                            fontSize: '0.75rem',
+                            height: '26px',
+                            '& .MuiChip-label': {
+                              px: 1,
+                            },
+                            '& .MuiChip-icon': {
+                              color: isSelected ? 'white' : 'text.secondary',
+                            },
+                            '& .MuiChip-deleteIcon': {
+                              color: 'white',
+                            },
+                            '&:hover': {
+                              bgcolor: isSelected ? 'success.dark' : 'grey.300',
+                            },
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
+                </Box>
+              )}
+
+              {/* Style Section */}
+              {filterCounts.styles.length > 0 && (
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', mb: 0.5 }}>
+                    Stil
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {filterCounts.styles.slice(0, 8).map((style) => {
+                      const isSelected = (localFilters.style || []).includes(style.value);
+
+                      // Simple Style Icon Mapping
+                      const getStyleIcon = (val: string) => {
+                        const valLower = val.toLowerCase();
+
+                        if (valLower.includes('modern')) return Sparkles;
+                        if (valLower.includes('klassisch') || valLower.includes('classic')) return Crown;
+                        if (valLower.includes('vintage') || valLower.includes('retro')) return Clock;
+                        if (valLower.includes('minimalist')) return Square;
+                        if (valLower.includes('industrial')) return Hammer;
+                        if (valLower.includes('skandinavisch') || valLower.includes('scandinavian')) return Home;
+                        if (valLower.includes('rustikal') || valLower.includes('rustic')) return TreePine;
+                        if (valLower.includes('elegant')) return Star;
+                        if (valLower.includes('sportlich') || valLower.includes('sport')) return Zap;
+
+                        return Tag; // Default
+                      };
+
+                      const IconComponent = getStyleIcon(style.value);
+
+                      return (
+                        <Chip
+                          key={style.value}
+                          icon={<IconComponent size={14} />}
+                          label={`${style.label} (${style.count})`}
+                          onClick={() => handleToggleFilter('style', style.value)}
+                          deleteIcon={isSelected ? <Check size={14} /> : undefined}
+                          onDelete={isSelected ? () => handleToggleFilter('style', style.value) : undefined}
                           size="small"
                           sx={{
                             bgcolor: isSelected ? 'success.main' : 'grey.200',
