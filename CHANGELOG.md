@@ -4,85 +4,57 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
-## [1.16.0] - 2025-10-28
+## [1.15.36] - 2025-10-29
 
 ### Added
-- 🚀 **Big 3 Spezial-Kategorien: Willhaben-Modell VOLLSTÄNDIG implementiert**
-  - **Neue dedizierte Routen**: `/fahrzeuge`, `/immobilien`, `/jobs`
-  - **special-categories.ts**: Zentrale Typ-Definition mit SpecialCategory Interface
-  - **VehiclesPage.tsx**: Vollständige Listing-Seite für Fahrzeuge mit Datenladung
-    - ItemGrid/ItemList/ItemGallery Integration (bestehende Components wiederverwendet)
-    - Supabase RPC `search_items_with_attributes` für hierarchisches Filtern
-    - View-Mode Toggle (Grid/List/Gallery) mit localStorage Persistenz
-    - Loading States & Empty States mit Car Icon & freundlichen Meldungen
-    - Toolbar mit Item-Count & Reload-Button
-    - Responsive Design (Mobile & Desktop optimiert)
-  - **PropertiesPage.tsx**: Vollständige Listing-Seite für Immobilien
-    - Gleiche Architektur wie VehiclesPage (Home Icon)
-    - Empty State: "Noch keine Immobilien verfügbar"
-  - **JobsPage.tsx**: Vollständige Listing-Seite für Jobs & Karriere
-    - Gleiche Architektur wie VehiclesPage (Briefcase Icon)
-    - Empty State: "Noch keine Jobs verfügbar"
-  - **App.tsx**: Lazy-Loading für Big 3 Pages mit React Router Routes
-  - **MainNavigation.tsx**: Big 3 Tabs prominent integriert (Desktop & Mobile)
-  - Desktop: Big 3 als separate Tabs mit Icons, Labels & Count-Badges
-  - Mobile: Big 3 am Anfang des "Alle"-Dropdowns mit blauer Markierung
-  - Spezial-Styling: Blue left border, highlighted background für Big 3
-  - Count-Badges zeigen Anzahl der Items pro Kategorie
-  - Active-State-Highlighting für aktuelle Big 3 Seite
-  - Lucide-React Icons: Car, Home, Briefcase
-  - Code-Splitting: Eigene Bundles für jede Big 3 Page
-    - JobsPage: ~3.62 kB
-    - VehiclesPage: ~3.65 kB
-    - PropertiesPage: ~3.66 kB
-  - DB-Integration: Erkennt Kategorien mit `is_special_category = true`
-  - SPECIAL_CATEGORIES Array mit fixed UUIDs (Vehicle, Property, Job Types)
-  - Vollständig responsive Design (Desktop Tabs, Mobile Dropdown)
-  - Alle Seiten getestet mit Playwright MCP:
-    - VehiclesPage: ✅ 3 VW Polo Items korrekt angezeigt
-    - PropertiesPage: ✅ Empty State korrekt
-    - JobsPage: ✅ Empty State korrekt
-  - Änderungen nach habdawas synchronisiert
+- 🎯 **Filter-Button: Badge mit aktiver Filter-Anzahl**
+  - **Header.tsx**: MUI Badge-Component um Filter-Button implementiert (Lines 209-231 Desktop, 414-436 Mobile)
+  - Badge zeigt Anzahl aktiver Filter als Zahl an (z.B. "1", "3")
+  - Badge erscheint nur wenn Filter aktiv sind (`activeFilterCount > 0`)
+  - Button wird blau eingefärbt wenn Filter aktiv sind (primary.main)
+  - Badge-Styling: Klein (18x18px), weiße Schrift auf blauem Hintergrund, fontWeight 600
+  - **App.tsx**: `activeFilterCount` als Prop an Header übergeben (Line 1244)
+  - `getActiveFilterCount()` Funktion aktualisiert, nutzt jetzt `selectedFilters` State (Lines 917-929)
+  - Funktion zählt priceRange als 1 wenn von Default abweichend
+  - Funktion zählt Array-Filter nach ihrer Länge (Anzahl ausgewählter Werte)
+  - Mit Playwright getestet: Badge zeigt "1" bei einem aktiven Filter (sportlich)
+  - Button-Farbe wechselt korrekt zwischen grau (inaktiv) und blau (aktiv)
 
-### Changed
-- 📱 **Navigation-Architektur erweitert**: Big 3 zwischen "Kategorien" und "Meine" Tab
-- 🎨 **Tab-Reihenfolge**: Kategorien → Fahrzeuge → Immobilien → Jobs → Alle → Meine → Favoriten
-- 🔧 **Build-Output**: Drei neue Code-Split Chunks für Big 3 Pages
-- 🔄 **Component Reuse**: Alle Big 3 Pages verwenden bestehende Item-Components
-- 🎯 **Default View Mode**: Grid als Standard (stabiler als Gallery)
+### Verified
+- ✅ **Reset-Button: Bereits vollständig implementiert**
+  - **AdvancedFilterSidebar.tsx**: Reset-Button existiert bereits (Lines 992-1013)
+  - Button ruft `handleResetFilters()` auf und löscht alle aktiven Filter
+  - Mit Playwright getestet: Reset funktioniert einwandfrei
+  - Nach Reset: URL wird zu `/` bereinigt
+  - Nach Reset: Item-Count kehrt von "3 Artikel" zu "13 Artikel" zurück
+  - Nach Reset: Filter-Badge verschwindet korrekt
+  - Alle 13 Items werden wieder angezeigt
 
-## [1.15.36] - 2025-10-28
-
-### Added
-- ✨ **Filter: Badge-Anzeige & Reset-Button**
-  - **App.tsx**: Filter-Button zeigt nun Badge mit Anzahl aktiver Filter
-  - Badge erscheint hochgestellt am Filter-Button (SlidersHorizontal Icon)
-  - Filter-Button wird blau wenn Filter aktiv sind
-  - Neuer Reset-Button (RotateCcw Icon) erscheint nur bei aktiven Filtern
-  - Reset-Button setzt alle Filter auf einmal zurück
-  - `getActiveFilterCount()` Funktion zählt Preis- und Attributfilter
-  - `handleResetFilters()` resettet selectedFilters, attributeFilters, priceRange
-  - Funktioniert auf Mobile & Desktop
-  - Änderungen nach habdawas synchronisiert
-
-## [1.15.35] - 2025-10-28
-
-### Added
-- 🎨 **Filter: Stil-Filter implementiert**
-  - **AdvancedFilterSidebar.tsx**: Neuer "Stil" (Style) Filter hinzugefügt
-  - Style-Filter mit Icon-Mapping für 9+ Stile: Modern (Sparkles), Klassisch (Crown), Vintage (Clock), Minimalist (Square), Industrial (Hammer), Skandinavisch (Home), Rustikal (TreePine), Elegant (Star), Sportlich (Zap)
-  - Database-Spalte `style` wird nun korrekt abgerufen und gefiltert
-  - **App.tsx**: `style` zu generalFilterKeys hinzugefügt
-  - Filter-Anwendung funktioniert parallel zu allen anderen Filtern
-  - Änderungen nach habdawas synchronisiert
+## [1.15.35] - 2025-10-29
 
 ### Fixed
-- 📱 **Mobile UI: Button-Größen angepasst**
-  - **App.tsx**: Mobile Toolbar-Buttons (Sort, Reload, Share) von 32px auf 36px erhöht
-  - Icon-Größe in Mobile von 16px auf 18px erhöht
-  - Buttons passen nun perfekt zu den View-Selection-Buttons (ToggleButtonGroup)
-  - Bessere Touch-Targets für mobile Nutzung
-  - Änderungen nach habdawas synchronisiert
+- 🐛 **Filter-System: Style & Size Filter funktionieren jetzt korrekt**
+  - **App.tsx**: 'style' und 'size' zu `generalFilterKeys` Array hinzugefügt (Line 533)
+  - Filter-Anwendungslogik erweitert: style/size werden jetzt als direkte Spaltenfilter behandelt
+  - Problem: Style-Filter zeigte korrekte Anzahl (3) in Sidebar, aber Hauptansicht filterte nicht
+  - Ursache: style/size wurden fälschlicherweise als attributeFilters behandelt statt als generalFilters
+  - Lösung: Beide Filter-Typen nutzen jetzt die direkten DB-Spalten (items.style, items.size)
+  - Mit Playwright getestet: "sportlich" Filter zeigt korrekt 3 Artikel
+
+- 🔗 **Database: Foreign Keys für Credit-System erstellt**
+  - **Migration**: `add_missing_foreign_keys_for_donations_and_transactions`
+  - FK: `donations.user_id` → `profiles.id` (ON DELETE CASCADE)
+  - FK: `community_pot_transactions.user_id` → `profiles.id` (ON DELETE CASCADE)
+  - FK: `community_pot_transactions.item_id` → `items.id` (ON DELETE SET NULL)
+  - Alle PGRST200 Console-Fehler behoben
+
+### Changed
+- ⚡ **Hooks: User- und Item-Daten Loading aktiviert**
+  - **useDonations.ts**: Unterstützt jetzt optionales Laden von User-Profilen via FK
+  - **useCommunityPotTransactions.ts**: Unterstützt User- und Item-Daten via FK
+  - Query-Syntax: `user:profiles!user_id(id,full_name,email)` für sichere FK-Joins
+  - includeUser/includeItem Parameter können jetzt sicher verwendet werden
+  - Alle Supabase-Beziehungen funktionieren einwandfrei
 
 ## [1.15.34] - 2025-10-28
 

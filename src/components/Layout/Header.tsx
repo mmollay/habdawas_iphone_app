@@ -23,6 +23,7 @@ interface HeaderProps {
   onFilterClick?: () => void;
   onShareClick?: () => void;
   onReloadClick?: () => void;
+  activeFilterCount?: number;
 }
 
 // Helper function to get badge icon component
@@ -46,7 +47,7 @@ const getBadgeIcon = (iconName: string, size = 16) => {
   }
 };
 
-export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = '', onSearchChange, onSearch, showSearch = true, customButtons, onFilterClick, onShareClick, onReloadClick }: HeaderProps) => {
+export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = '', onSearchChange, onSearch, showSearch = true, customButtons, onFilterClick, onShareClick, onReloadClick, activeFilterCount = 0 }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
@@ -207,23 +208,37 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
               onFilterClick={onFilterClick}
             />
             {onFilterClick && (
-              <IconButton
-                onClick={onFilterClick}
+              <Badge
+                badgeContent={activeFilterCount > 0 ? activeFilterCount : null}
+                color="primary"
                 sx={{
-                  bgcolor: 'background.paper',
-                  border: '1px solid',
-                  borderColor: 'rgba(0, 0, 0, 0.12)',
-                  width: 44,
-                  height: 44,
-                  flexShrink: 0,
-                  '&:hover': {
-                    bgcolor: 'rgba(0, 0, 0, 0.04)',
-                    borderColor: 'rgba(0, 0, 0, 0.23)',
-                  },
+                  '& .MuiBadge-badge': {
+                    fontSize: '0.625rem',
+                    height: 18,
+                    minWidth: 18,
+                    fontWeight: 600,
+                  }
                 }}
               >
-                <SlidersHorizontal size={20} />
-              </IconButton>
+                <IconButton
+                  onClick={onFilterClick}
+                  sx={{
+                    bgcolor: activeFilterCount > 0 ? 'primary.main' : 'background.paper',
+                    color: activeFilterCount > 0 ? 'white' : 'text.primary',
+                    border: '1px solid',
+                    borderColor: activeFilterCount > 0 ? 'primary.main' : 'rgba(0, 0, 0, 0.12)',
+                    width: 44,
+                    height: 44,
+                    flexShrink: 0,
+                    '&:hover': {
+                      bgcolor: activeFilterCount > 0 ? 'primary.dark' : 'rgba(0, 0, 0, 0.04)',
+                      borderColor: activeFilterCount > 0 ? 'primary.dark' : 'rgba(0, 0, 0, 0.23)',
+                    },
+                  }}
+                >
+                  <SlidersHorizontal size={20} strokeWidth={2} />
+                </IconButton>
+              </Badge>
             )}
           </Box>
         )}
@@ -412,23 +427,37 @@ export const Header = ({ onNavigate, onLoginClick, onUploadClick, searchQuery = 
               placeholder="Suche nach Produkten, Kategorien, Marken..."
             />
             {onFilterClick && (
-              <IconButton
-                onClick={onFilterClick}
+              <Badge
+                badgeContent={activeFilterCount > 0 ? activeFilterCount : null}
+                color="primary"
                 sx={{
-                  bgcolor: 'background.paper',
-                  border: '1px solid',
-                  borderColor: 'rgba(0, 0, 0, 0.12)',
-                  width: 44,
-                  height: 44,
-                  flexShrink: 0,
-                  '&:hover': {
-                    bgcolor: 'rgba(0, 0, 0, 0.04)',
-                    borderColor: 'rgba(0, 0, 0, 0.23)',
-                  },
+                  '& .MuiBadge-badge': {
+                    fontSize: '0.625rem',
+                    height: 18,
+                    minWidth: 18,
+                    fontWeight: 600,
+                  }
                 }}
               >
-                <SlidersHorizontal size={20} />
-              </IconButton>
+                <IconButton
+                  onClick={onFilterClick}
+                  sx={{
+                    bgcolor: activeFilterCount > 0 ? 'primary.main' : 'background.paper',
+                    color: activeFilterCount > 0 ? 'white' : 'text.primary',
+                    border: '1px solid',
+                    borderColor: activeFilterCount > 0 ? 'primary.main' : 'rgba(0, 0, 0, 0.12)',
+                    width: 44,
+                    height: 44,
+                    flexShrink: 0,
+                    '&:hover': {
+                      bgcolor: activeFilterCount > 0 ? 'primary.dark' : 'rgba(0, 0, 0, 0.04)',
+                      borderColor: activeFilterCount > 0 ? 'primary.dark' : 'rgba(0, 0, 0, 0.23)',
+                    },
+                  }}
+                >
+                  <SlidersHorizontal size={20} strokeWidth={2} />
+                </IconButton>
+              </Badge>
             )}
           </Box>
         </Box>

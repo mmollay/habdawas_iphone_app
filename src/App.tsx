@@ -29,7 +29,7 @@ import {
   Tabs,
   Badge,
 } from '@mui/material';
-import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, ChevronRight, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2, FolderTree, SlidersHorizontal, RotateCcw } from 'lucide-react';
+import { Camera, Grid3x3, List, Filter, Search, X, Globe, User, ArrowUp, Heart, ArrowUpDown, XCircle, Image, RefreshCw, ChevronDown, ChevronUp, ChevronRight, Calendar, Coins, Share2, Car, Home, Shirt, Apple, Sofa, Baby, Dumbbell, PawPrint, Briefcase, Store, Sprout, Factory, Cloud, CheckSquare, Square, Trash2, FolderTree } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { HandPreferenceProvider, useHandPreference } from './contexts/HandPreferenceContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
@@ -76,9 +76,6 @@ const AdminPage = lazy(() => import('./components/Admin/AdminPage'));
 const ResetPasswordPage = lazy(() => import('./components/Auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const OAuthCallbackPage = lazy(() => import('./components/Auth/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
 const CategoryTreePage = lazy(() => import('./components/CategoryTreePage'));
-const VehiclesPage = lazy(() => import('./pages/VehiclesPage').then(m => ({ default: m.VehiclesPage })));
-const PropertiesPage = lazy(() => import('./pages/PropertiesPage').then(m => ({ default: m.PropertiesPage })));
-const JobsPage = lazy(() => import('./pages/JobsPage').then(m => ({ default: m.JobsPage })));
 
 const theme = createTheme({
   palette: {
@@ -533,7 +530,7 @@ const MainContent = () => {
       }
 
       // Separate general filters (direct item columns) from attribute filters (item_attributes table)
-      const generalFilterKeys = ['brand', 'colors', 'condition', 'material', 'style'];
+      const generalFilterKeys = ['brand', 'colors', 'condition', 'material', 'style', 'size'];
       const generalFilters = attributeFilters.filter(f => generalFilterKeys.includes(f.attributeKey));
       const realAttributeFilters = attributeFilters.filter(f => !generalFilterKeys.includes(f.attributeKey));
 
@@ -584,7 +581,7 @@ const MainContent = () => {
           // colors is an array field, use overlaps operator for array matching
           // overlaps checks if arrays have any elements in common
           query = query.overlaps('colors', [value]);
-        } else if (key === 'brand' || key === 'condition' || key === 'material' || key === 'style') {
+        } else if (key === 'brand' || key === 'condition' || key === 'material' || key === 'style' || key === 'size') {
           // Direct column filters
           query = query.eq(key, value);
         }
@@ -806,34 +803,6 @@ const MainContent = () => {
     return iconMap[slug] || <Globe size={16} />;
   }, [categories]);
 
-  // Count active filters
-  const getActiveFilterCount = useCallback(() => {
-    let count = 0;
-
-    // Check price range filter
-    if (priceRange[0] > 0 || priceRange[1] < 10000) {
-      count++;
-    }
-
-    // Count all selected filters
-    Object.entries(selectedFilters).forEach(([key, values]) => {
-      if (key !== 'priceRange' && Array.isArray(values) && values.length > 0) {
-        count += values.length;
-      }
-    });
-
-    return count;
-  }, [priceRange, selectedFilters]);
-
-  // Reset all filters
-  const handleResetFilters = useCallback(() => {
-    setSelectedFilters({});
-    setAttributeFilters([]);
-    setPriceRange([0, 10000]);
-    updateURL({ minPrice: null, maxPrice: null, filters: null });
-    loadItems(false, true);
-  }, []);
-
   // Handlers for AdvancedFilterSidebar
   const handleFilterClose = useCallback(() => {
     setFilterOpen(false);
@@ -943,6 +912,20 @@ const MainContent = () => {
       search: null,
       sort: null
     });
+  };
+
+  const getActiveFilterCount = () => {
+    let count = 0;
+    // Count filters from selectedFilters object
+    Object.entries(selectedFilters).forEach(([key, values]) => {
+      if (key === 'priceRange') {
+        const [min, max] = values as [number, number];
+        if (min > 0 || max < 10000) count++;
+      } else if (Array.isArray(values) && values.length > 0) {
+        count += values.length;
+      }
+    });
+    return count;
   };
 
   const generateShareableURL = () => {
@@ -1248,6 +1231,7 @@ const MainContent = () => {
         onFilterClick={() => setFilterOpen(true)}
         onShareClick={() => setShareDialogOpen(true)}
         onReloadClick={() => window.location.reload()}
+        activeFilterCount={getActiveFilterCount()}
       />
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -1490,9 +1474,9 @@ const MainContent = () => {
                       borderColor: 'rgba(0, 0, 0, 0.12)',
                       color: 'text.primary',
                       bgcolor: 'background.paper',
-                      p: isMobile ? 0.5 : '7px',
-                      minWidth: isMobile ? 36 : 40,
-                      height: isMobile ? 36 : 40,
+                      p: isMobile ? 0.5 : 1,
+                      minWidth: isMobile ? 32 : 40,
+                      height: isMobile ? 32 : 40,
                       '&:hover': {
                         borderColor: 'primary.main',
                         bgcolor: 'rgba(25, 118, 210, 0.08)',
@@ -1500,7 +1484,7 @@ const MainContent = () => {
                       }
                     }}
                   >
-                    <ArrowUpDown size={isMobile ? 18 : 22} />
+                    <ArrowUpDown size={isMobile ? 16 : 20} />
                   </IconButton>
 
                   {!isMobile && (
@@ -1646,9 +1630,9 @@ const MainContent = () => {
                       borderColor: 'rgba(0, 0, 0, 0.12)',
                       color: 'text.primary',
                       bgcolor: 'background.paper',
-                      p: isMobile ? 0.5 : '7px',
-                      minWidth: isMobile ? 36 : 40,
-                      height: isMobile ? 36 : 40,
+                      p: isMobile ? 0.5 : 1,
+                      minWidth: isMobile ? 32 : 40,
+                      height: isMobile ? 32 : 40,
                       '&:hover': {
                         borderColor: 'primary.main',
                         bgcolor: 'rgba(25, 118, 210, 0.08)',
@@ -1658,7 +1642,7 @@ const MainContent = () => {
                     title="Aktualisieren"
                     aria-label="Aktualisieren"
                   >
-                    <RefreshCw size={isMobile ? 18 : 22} />
+                    <RefreshCw size={isMobile ? 16 : 20} />
                   </IconButton>
 
                   <IconButton
@@ -1669,9 +1653,9 @@ const MainContent = () => {
                       borderColor: 'rgba(0, 0, 0, 0.12)',
                       color: 'text.primary',
                       bgcolor: 'background.paper',
-                      p: isMobile ? 0.5 : '7px',
-                      minWidth: isMobile ? 36 : 40,
-                      height: isMobile ? 36 : 40,
+                      p: isMobile ? 0.5 : 1,
+                      minWidth: isMobile ? 32 : 40,
+                      height: isMobile ? 32 : 40,
                       '&:hover': {
                         borderColor: 'primary.main',
                         bgcolor: 'rgba(25, 118, 210, 0.08)',
@@ -1681,72 +1665,8 @@ const MainContent = () => {
                     title="Filter teilen"
                     aria-label="Filter teilen"
                   >
-                    <Share2 size={isMobile ? 18 : 22} />
+                    <Share2 size={isMobile ? 16 : 20} />
                   </IconButton>
-
-                  {/* Filter Button mit Badge */}
-                  <Badge
-                    badgeContent={getActiveFilterCount()}
-                    color="primary"
-                    sx={{
-                      '& .MuiBadge-badge': {
-                        fontSize: '0.625rem',
-                        height: 16,
-                        minWidth: 16,
-                        padding: '0 4px',
-                        fontWeight: 700,
-                      }
-                    }}
-                  >
-                    <IconButton
-                      onClick={() => setFilterOpen(true)}
-                      sx={{
-                        borderRadius: 5,
-                        border: '1.5px solid',
-                        borderColor: getActiveFilterCount() > 0 ? 'primary.main' : 'rgba(0, 0, 0, 0.12)',
-                        color: getActiveFilterCount() > 0 ? 'primary.main' : 'text.primary',
-                        bgcolor: getActiveFilterCount() > 0 ? 'rgba(25, 118, 210, 0.08)' : 'background.paper',
-                        p: isMobile ? 0.5 : '7px',
-                        minWidth: isMobile ? 36 : 40,
-                        height: isMobile ? 36 : 40,
-                        '&:hover': {
-                          borderColor: 'primary.main',
-                          bgcolor: 'rgba(25, 118, 210, 0.08)',
-                          border: '1.5px solid',
-                        }
-                      }}
-                      title="Filter"
-                      aria-label="Filter"
-                    >
-                      <SlidersHorizontal size={isMobile ? 18 : 22} />
-                    </IconButton>
-                  </Badge>
-
-                  {/* Reset Filter Button - nur anzeigen wenn Filter aktiv */}
-                  {getActiveFilterCount() > 0 && (
-                    <IconButton
-                      onClick={handleResetFilters}
-                      sx={{
-                        borderRadius: 5,
-                        border: '1.5px solid',
-                        borderColor: 'rgba(0, 0, 0, 0.12)',
-                        color: 'error.main',
-                        bgcolor: 'background.paper',
-                        p: isMobile ? 0.5 : '7px',
-                        minWidth: isMobile ? 36 : 40,
-                        height: isMobile ? 36 : 40,
-                        '&:hover': {
-                          borderColor: 'error.main',
-                          bgcolor: 'rgba(211, 47, 47, 0.08)',
-                          border: '1.5px solid',
-                        }
-                      }}
-                      title="Filter zurücksetzen"
-                      aria-label="Filter zurücksetzen"
-                    >
-                      <RotateCcw size={isMobile ? 18 : 22} />
-                    </IconButton>
-                  )}
                 </Box>
               </Box>
             )}
@@ -2144,9 +2064,6 @@ function App() {
                       <Route path="/tokens/success" element={<TokenSuccessPage />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/categories" element={<CategoryTreePage />} />
-                      <Route path="/fahrzeuge" element={<VehiclesPage />} />
-                      <Route path="/immobilien" element={<PropertiesPage />} />
-                      <Route path="/jobs" element={<JobsPage />} />
                       <Route path="/auth/callback" element={<OAuthCallbackPage />} />
                       <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
                       <Route path="*" element={<MainContent />} />
